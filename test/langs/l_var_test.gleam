@@ -1,10 +1,5 @@
-import gleeunit
 import gleeunit/should
-import l_var.{Int, Let, Plus, Prim, Program, Var, interpret}
-
-pub fn main() {
-  gleeunit.main()
-}
+import langs/l_var.{Int, Let, Plus, Prim, Program, Var, interpret}
 
 pub fn interpreter_test() {
   let p =
