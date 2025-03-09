@@ -31,5 +31,5 @@ pub type Tail {
 }
 
 pub type CProgram {
-  CProgram(info: dict.Dict(String, List(Var)))
+  CProgram(info: dict.Dict(String, List(Var)), body: dict.Dict(String, Tail))
 }
