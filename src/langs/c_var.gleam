@@ -1,12 +1,8 @@
 import gleam/dict
 
-pub type Var {
-  Var(name: String)
-}
-
 pub type Atm {
   Int(value: Int)
-  Variable(v: Var)
+  Variable(v: String)
 }
 
 pub type PrimOp {
@@ -22,14 +18,14 @@ pub type Expr {
 }
 
 pub type Stmt {
-  Assign(var: Var, expr: Expr)
+  Assign(var: String, expr: Expr)
 }
 
 pub type Tail {
-  Return(e: Expr)
+  Return(a: Expr)
   Seq(s: Stmt, t: Tail)
 }
 
 pub type CProgram {
-  CProgram(info: dict.Dict(String, List(Var)), body: dict.Dict(String, Tail))
+  CProgram(info: dict.Dict(String, List(String)), body: dict.Dict(String, Tail))
 }
