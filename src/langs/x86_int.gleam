@@ -66,7 +66,7 @@ pub type Instr {
 }
 
 pub type Block {
-  Block(body: List(Instr))
+  Block(body: List(Instr), frame_size: Int)
 }
 
 pub type X86Program {

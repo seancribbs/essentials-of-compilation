@@ -8,7 +8,8 @@ import langs/x86_var as var
 pub fn assign_homes(input: var.X86Program) -> x86.X86Program {
   let blocks =
     dict.map_values(input.body, fn(_, block) {
-      block.body |> assign_homes_block() |> x86.Block
+      let #(instrs, frame_size) = assign_homes_block(block.body)
+      x86.Block(instrs, frame_size)
     })
   x86.X86Program(blocks)
 }
@@ -25,16 +26,16 @@ type Homes {
 // movq -8(%rbp), -16(%rbp)
 // movq -16(%rbp), %rax
 
-fn assign_homes_block(input: List(var.Instr)) -> List(x86.Instr) {
+fn assign_homes_block(input: List(var.Instr)) -> #(List(x86.Instr), Int) {
   // String => Arg
   let init = #(Homes(0, dict.new()), [])
-  let #(_, instrs) =
+  let #(homes, instrs) =
     list.fold(input, init, fn(acc, instr) {
       let #(homes, instrs) = acc
       let #(new_homes, new_instr) = assign_homes_instr(homes, instr)
       #(new_homes, [new_instr, ..instrs])
     })
-  list.reverse(instrs)
+  #(list.reverse(instrs), -homes.offset)
 }
 
 fn assign_homes_instr(homes: Homes, instr: var.Instr) -> #(Homes, x86.Instr) {

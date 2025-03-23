@@ -27,14 +27,17 @@ pub fn assign_homes_test() {
       dict.from_list([
         #(
           "start",
-          x86.Block([
-            x86.Movq(x86.Imm(20), x86.Deref(x86.Rbp, -8)),
-            x86.Movq(x86.Imm(22), x86.Deref(x86.Rbp, -16)),
-            x86.Movq(x86.Deref(x86.Rbp, -8), x86.Deref(x86.Rbp, -24)),
-            x86.Addq(x86.Deref(x86.Rbp, -16), x86.Deref(x86.Rbp, -24)),
-            x86.Movq(x86.Deref(x86.Rbp, -24), x86.Reg(x86.Rax)),
-            x86.Jmp("conclusion"),
-          ]),
+          x86.Block(
+            [
+              x86.Movq(x86.Imm(20), x86.Deref(x86.Rbp, -8)),
+              x86.Movq(x86.Imm(22), x86.Deref(x86.Rbp, -16)),
+              x86.Movq(x86.Deref(x86.Rbp, -8), x86.Deref(x86.Rbp, -24)),
+              x86.Addq(x86.Deref(x86.Rbp, -16), x86.Deref(x86.Rbp, -24)),
+              x86.Movq(x86.Deref(x86.Rbp, -24), x86.Reg(x86.Rax)),
+              x86.Jmp("conclusion"),
+            ],
+            24,
+          ),
         ),
       ]),
     )
@@ -64,13 +67,16 @@ pub fn assign_homes_neg_test() {
       dict.from_list([
         #(
           "start",
-          x86.Block([
-            x86.Movq(x86.Imm(10), x86.Deref(x86.Rbp, -8)),
-            x86.Negq(x86.Deref(x86.Rbp, -8)),
-            x86.Movq(x86.Imm(42), x86.Reg(x86.Rax)),
-            x86.Addq(x86.Deref(x86.Rbp, -8), x86.Reg(x86.Rax)),
-            x86.Jmp("conclusion"),
-          ]),
+          x86.Block(
+            [
+              x86.Movq(x86.Imm(10), x86.Deref(x86.Rbp, -8)),
+              x86.Negq(x86.Deref(x86.Rbp, -8)),
+              x86.Movq(x86.Imm(42), x86.Reg(x86.Rax)),
+              x86.Addq(x86.Deref(x86.Rbp, -8), x86.Reg(x86.Rax)),
+              x86.Jmp("conclusion"),
+            ],
+            8,
+          ),
         ),
       ]),
     )
