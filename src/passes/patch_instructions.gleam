@@ -43,6 +43,14 @@ fn patch_instruction(instr: x86.Instr) -> List(x86.Instr) {
       x86.Movq(a, x86.Reg(x86.Rax)),
       x86.Movq(x86.Reg(x86.Rax), b),
     ]
+    x86.Addq(x86.Deref(_, _) as a, x86.Deref(_, _) as b) -> [
+      x86.Movq(a, x86.Reg(x86.Rax)),
+      x86.Addq(x86.Reg(x86.Rax), b),
+    ]
+    x86.Subq(x86.Deref(_, _) as a, x86.Deref(_, _) as b) -> [
+      x86.Movq(a, x86.Reg(x86.Rax)),
+      x86.Subq(x86.Reg(x86.Rax), b),
+    ]
     other -> [other]
   }
 }
