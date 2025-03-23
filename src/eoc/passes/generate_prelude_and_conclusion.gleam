@@ -1,10 +1,10 @@
+import eoc/langs/x86_int as x86
 import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/pair
 import gleam/string
 import gleam/string_tree
-import langs/x86_int as x86
 
 pub fn generate_prelude_and_conclusion(input: x86.X86Program) -> x86.X86Program {
   let main = generate_main(input)

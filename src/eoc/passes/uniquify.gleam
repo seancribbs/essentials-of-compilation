@@ -1,6 +1,6 @@
+import eoc/langs/l_var
 import gleam/dict
 import gleam/int
-import langs/l_var
 
 // uniquify (shadowing of variables by making unique names)
 //    Lvar -> Lvar

@@ -1,9 +1,9 @@
+import eoc/passes/explicate_control.{explicate_control}
 import gleam/dict
 import gleeunit/should
-import passes/explicate_control.{explicate_control}
 
-import langs/c_var as c
-import langs/l_mon_var as lmv
+import eoc/langs/c_var as c
+import eoc/langs/l_mon_var as lmv
 
 pub fn explicate_control_test() {
   let p =

@@ -1,7 +1,7 @@
+import eoc/langs/x86_int as x86
+import eoc/passes/patch_instructions.{patch_instructions}
 import gleam/dict
 import gleeunit/should
-import langs/x86_int as x86
-import passes/patch_instructions.{patch_instructions}
 
 pub fn patch_instructions_test() {
   let p1 =

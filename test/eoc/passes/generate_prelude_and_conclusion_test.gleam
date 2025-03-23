@@ -1,10 +1,10 @@
+import eoc/langs/x86_int as x86
+import eoc/passes/generate_prelude_and_conclusion.{
+  generate_prelude_and_conclusion, program_to_text,
+}
 import gleam/dict
 import gleam/string
 import gleeunit/should
-import langs/x86_int as x86
-import passes/generate_prelude_and_conclusion.{
-  generate_prelude_and_conclusion, program_to_text,
-}
 
 pub fn generate_prelude_and_conclusion_test() {
   let p =

@@ -1,8 +1,8 @@
 // import gleeunit
+import eoc/langs/l_mon_var
+import eoc/langs/l_var
+import eoc/passes/remove_complex_operands.{remove_complex_operands}
 import gleeunit/should
-import langs/l_mon_var
-import langs/l_var
-import passes/remove_complex_operands.{remove_complex_operands}
 
 // (+ 42 (- 10))
 //

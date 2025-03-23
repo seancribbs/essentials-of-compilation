@@ -1,12 +1,12 @@
+import eoc/langs/l_var as l
+import eoc/passes/assign_homes
+import eoc/passes/explicate_control
+import eoc/passes/generate_prelude_and_conclusion
+import eoc/passes/patch_instructions
+import eoc/passes/remove_complex_operands
+import eoc/passes/select_instructions
+import eoc/passes/uniquify
 import gleam/io
-import langs/l_var as l
-import passes/assign_homes
-import passes/explicate_control
-import passes/generate_prelude_and_conclusion
-import passes/patch_instructions
-import passes/remove_complex_operands
-import passes/select_instructions
-import passes/uniquify
 
 pub fn main() {
   let p =

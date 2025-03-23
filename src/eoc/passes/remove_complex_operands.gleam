@@ -4,8 +4,8 @@
 import gleam/dict
 import gleam/int
 
-import langs/l_mon_var
-import langs/l_var
+import eoc/langs/l_mon_var
+import eoc/langs/l_var
 
 pub fn remove_complex_operands(input: l_var.Program) -> l_mon_var.Program {
   let #(rco, _) = rco_exp(input.body, 0)

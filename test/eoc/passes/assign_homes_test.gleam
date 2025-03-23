@@ -1,8 +1,8 @@
+import eoc/langs/x86_int as x86
+import eoc/langs/x86_var as var
+import eoc/passes/assign_homes
 import gleam/dict
 import gleeunit/should
-import langs/x86_int as x86
-import langs/x86_var as var
-import passes/assign_homes
 
 pub fn assign_homes_test() {
   let vp =

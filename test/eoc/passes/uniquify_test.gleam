@@ -1,7 +1,7 @@
 // import gleeunit
+import eoc/langs/l_var.{Int, Let, Plus, Prim, Program, Var}
+import eoc/passes/uniquify.{uniquify}
 import gleeunit/should
-import langs/l_var.{Int, Let, Plus, Prim, Program, Var}
-import passes/uniquify.{uniquify}
 
 // (let ([x 32]) (+ let ([x 10]) x) x)
 // (let ([x.1 32]) (+ let ([x.2 10]) x.2) x.1)

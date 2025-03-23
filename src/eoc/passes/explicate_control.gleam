@@ -1,6 +1,6 @@
+import eoc/langs/c_var
+import eoc/langs/l_mon_var
 import gleam/dict
-import langs/c_var
-import langs/l_mon_var
 
 // explicate_control (explicit execution order, graph with gotos)
 //    LMonVar -> Cvar

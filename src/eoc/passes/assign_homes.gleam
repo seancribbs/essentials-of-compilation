@@ -1,9 +1,9 @@
 // assign_homes (replaces variables with registers or stack locations)
 //    x86var -> x86int
+import eoc/langs/x86_int as x86
+import eoc/langs/x86_var as var
 import gleam/dict
 import gleam/list
-import langs/x86_int as x86
-import langs/x86_var as var
 
 pub fn assign_homes(input: var.X86Program) -> x86.X86Program {
   let blocks =

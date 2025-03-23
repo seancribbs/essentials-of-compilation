@@ -3,8 +3,8 @@
 import gleam/dict
 import gleam/list
 
-import langs/c_var
-import langs/x86_var
+import eoc/langs/c_var
+import eoc/langs/x86_var
 
 pub fn select_instructions(input: c_var.CProgram) -> x86_var.X86Program {
   let blocks =

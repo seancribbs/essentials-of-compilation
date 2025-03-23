@@ -18,9 +18,9 @@
 // movq -16(%rbp), %rax
 // jmp conclusion
 
+import eoc/langs/x86_int as x86
 import gleam/dict
 import gleam/list
-import langs/x86_int as x86
 
 pub fn patch_instructions(input: x86.X86Program) -> x86.X86Program {
   input.body

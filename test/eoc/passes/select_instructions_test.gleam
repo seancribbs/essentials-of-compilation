@@ -1,12 +1,12 @@
+import eoc/langs/c_var as c
+import eoc/langs/l_var
+import eoc/langs/x86_var as x86
+import eoc/passes/explicate_control
+import eoc/passes/remove_complex_operands
+import eoc/passes/select_instructions.{select_instructions}
+import eoc/passes/uniquify
 import gleam/dict
 import gleeunit/should
-import langs/c_var as c
-import langs/l_var
-import langs/x86_var as x86
-import passes/explicate_control
-import passes/remove_complex_operands
-import passes/select_instructions.{select_instructions}
-import passes/uniquify
 
 pub fn select_instructions_test() {
   let c =

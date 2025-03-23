@@ -1,5 +1,5 @@
+import eoc/langs/l_var.{Int, Let, Plus, Prim, Program, Var, interpret}
 import gleeunit/should
-import langs/l_var.{Int, Let, Plus, Prim, Program, Var, interpret}
 
 pub fn interpreter_test() {
   let p =
