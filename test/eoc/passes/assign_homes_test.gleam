@@ -10,14 +10,17 @@ pub fn assign_homes_test() {
       dict.from_list([
         #(
           "start",
-          var.Block([
-            var.Movq(var.Imm(20), var.Var("x.2")),
-            var.Movq(var.Imm(22), var.Var("x.1")),
-            var.Movq(var.Var("x.2"), var.Var("y.3")),
-            var.Addq(var.Var("x.1"), var.Var("y.3")),
-            var.Movq(var.Var("y.3"), var.Reg(var.Rax)),
-            var.Jmp("conclusion"),
-          ]),
+          var.Block(
+            [
+              var.Movq(var.Imm(20), var.Var("x.2")),
+              var.Movq(var.Imm(22), var.Var("x.1")),
+              var.Movq(var.Var("x.2"), var.Var("y.3")),
+              var.Addq(var.Var("x.1"), var.Var("y.3")),
+              var.Movq(var.Var("y.3"), var.Reg(var.Rax)),
+              var.Jmp("conclusion"),
+            ],
+            [],
+          ),
         ),
       ]),
     )
@@ -51,13 +54,16 @@ pub fn assign_homes_neg_test() {
       dict.from_list([
         #(
           "start",
-          var.Block([
-            var.Movq(var.Imm(10), var.Var("tmp.1")),
-            var.Negq(var.Var("tmp.1")),
-            var.Movq(var.Imm(42), var.Reg(var.Rax)),
-            var.Addq(var.Var("tmp.1"), var.Reg(var.Rax)),
-            var.Jmp("conclusion"),
-          ]),
+          var.Block(
+            [
+              var.Movq(var.Imm(10), var.Var("tmp.1")),
+              var.Negq(var.Var("tmp.1")),
+              var.Movq(var.Imm(42), var.Reg(var.Rax)),
+              var.Addq(var.Var("tmp.1"), var.Reg(var.Rax)),
+              var.Jmp("conclusion"),
+            ],
+            [],
+          ),
         ),
       ]),
     )

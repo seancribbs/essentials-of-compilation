@@ -75,7 +75,7 @@ fn assign_homes_instr(homes: Homes, instr: var.Instr) -> #(Homes, x86.Instr) {
 
 fn assign_home_for_arg(homes: Homes, arg: var.Arg) -> #(Homes, x86.Arg) {
   case arg {
-    var.Deref(reg, off) -> #(homes, x86.Deref(translate_reg(reg), off))
+    // var.Deref(reg, off) -> #(homes, x86.Deref(translate_reg(reg), off))
     var.Imm(i) -> #(homes, x86.Imm(i))
     var.Reg(reg) -> #(homes, x86.Reg(translate_reg(reg)))
     var.Var(v) -> assign_home_for_var(homes, v)

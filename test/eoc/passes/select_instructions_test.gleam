@@ -28,14 +28,17 @@ pub fn select_instructions_test() {
       dict.from_list([
         #(
           "start",
-          x86.Block([
-            x86.Movq(x86.Imm(20), x86.Var("x.2")),
-            x86.Movq(x86.Imm(22), x86.Var("x.1")),
-            x86.Movq(x86.Var("x.2"), x86.Var("y.3")),
-            x86.Addq(x86.Var("x.1"), x86.Var("y.3")),
-            x86.Movq(x86.Var("y.3"), x86.Reg(x86.Rax)),
-            x86.Jmp("conclusion"),
-          ]),
+          x86.Block(
+            [
+              x86.Movq(x86.Imm(20), x86.Var("x.2")),
+              x86.Movq(x86.Imm(22), x86.Var("x.1")),
+              x86.Movq(x86.Var("x.2"), x86.Var("y.3")),
+              x86.Addq(x86.Var("x.1"), x86.Var("y.3")),
+              x86.Movq(x86.Var("y.3"), x86.Reg(x86.Rax)),
+              x86.Jmp("conclusion"),
+            ],
+            [],
+          ),
         ),
       ]),
     )
@@ -61,13 +64,16 @@ pub fn select_instructions_neg_test() {
       dict.from_list([
         #(
           "start",
-          x86.Block([
-            x86.Movq(x86.Imm(10), x86.Var("tmp.1")),
-            x86.Negq(x86.Var("tmp.1")),
-            x86.Movq(x86.Imm(42), x86.Reg(x86.Rax)),
-            x86.Addq(x86.Var("tmp.1"), x86.Reg(x86.Rax)),
-            x86.Jmp("conclusion"),
-          ]),
+          x86.Block(
+            [
+              x86.Movq(x86.Imm(10), x86.Var("tmp.1")),
+              x86.Negq(x86.Var("tmp.1")),
+              x86.Movq(x86.Imm(42), x86.Reg(x86.Rax)),
+              x86.Addq(x86.Var("tmp.1"), x86.Reg(x86.Rax)),
+              x86.Jmp("conclusion"),
+            ],
+            [],
+          ),
         ),
       ]),
     )

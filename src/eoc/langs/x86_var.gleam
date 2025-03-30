@@ -27,6 +27,7 @@
 //    popq  %rbp
 //    retq
 import gleam/dict
+import gleam/set.{type Set}
 
 pub type Register {
   Rsp
@@ -50,7 +51,7 @@ pub type Register {
 pub type Arg {
   Imm(value: Int)
   Reg(reg: Register)
-  Deref(reg: Register, offset: Int)
+  // Deref(reg: Register, offset: Int)
   Var(name: String)
 }
 
@@ -67,9 +68,14 @@ pub type Instr {
 }
 
 pub type Block {
-  Block(body: List(Instr))
+  Block(body: List(Instr), live_after: List(Set(Location)))
 }
 
 pub type X86Program {
   X86Program(body: dict.Dict(String, Block))
+}
+
+pub type Location {
+  LocReg(reg: Register)
+  LocVar(name: String)
 }

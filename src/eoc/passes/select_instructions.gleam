@@ -8,7 +8,9 @@ import eoc/langs/x86_var
 
 pub fn select_instructions(input: c_var.CProgram) -> x86_var.X86Program {
   let blocks =
-    dict.map_values(input.body, fn(_, tail) { x86_var.Block(select_tail(tail)) })
+    dict.map_values(input.body, fn(_, tail) {
+      x86_var.Block(select_tail(tail), [])
+    })
   x86_var.X86Program(blocks)
 }
 
