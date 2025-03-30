@@ -1,8 +1,8 @@
 // remove_complex_operands (ensures atomic operands of primitive ops)
 //    Lvar -> LMonVar
 
-import gleam/dict
 import gleam/int
+import gleam/list
 
 import eoc/langs/l_mon_var
 import eoc/langs/l_var
@@ -32,24 +32,24 @@ pub fn remove_complex_operands(input: l_var.Program) -> l_mon_var.Program {
 fn rco_atom(
   input: l_var.Expr,
   counter: Int,
-) -> #(l_mon_var.Atm, dict.Dict(String, l_mon_var.Expr), Int) {
+) -> #(l_mon_var.Atm, List(#(String, l_mon_var.Expr)), Int) {
   case input {
-    l_var.Int(i) -> #(l_mon_var.Int(i), dict.new(), counter)
-    l_var.Var(v) -> #(l_mon_var.Var(v), dict.new(), counter)
+    l_var.Int(i) -> #(l_mon_var.Int(i), [], counter)
+    l_var.Var(v) -> #(l_mon_var.Var(v), [], counter)
     l_var.Let(v, b, e) -> {
       let #(binding, counter_b) = rco_exp(b, counter)
       let #(expr, counter_e) = rco_exp(e, counter_b)
       let #(var, new_counter) = new_var(counter_e)
       #(
         l_mon_var.Var(var),
-        dict.from_list([#(var, l_mon_var.Let(v, binding, expr))]),
+        [#(var, l_mon_var.Let(v, binding, expr))],
         new_counter,
       )
     }
     prim_expr -> {
       let #(expr, counter_e) = rco_exp(prim_expr, counter)
       let #(var, new_counter) = new_var(counter_e)
-      #(l_mon_var.Var(var), dict.from_list([#(var, expr)]), new_counter)
+      #(l_mon_var.Var(var), [#(var, expr)], new_counter)
     }
   }
 }
@@ -68,10 +68,10 @@ fn rco_exp(input: l_var.Expr, counter: Int) -> #(l_mon_var.Expr, Int) {
     l_var.Prim(l_var.Negate(e)) -> {
       let #(atm, bindings, new_counter) = rco_atom(e, counter)
       let new_expr =
-        dict.fold(
+        list.fold(
           bindings,
           l_mon_var.Prim(l_mon_var.Negate(atm)),
-          fn(exp, variable, binding) { l_mon_var.Let(variable, binding, exp) },
+          fn(exp, pair) { l_mon_var.Let(pair.0, pair.1, exp) },
         )
       #(new_expr, new_counter)
     }
@@ -80,10 +80,10 @@ fn rco_exp(input: l_var.Expr, counter: Int) -> #(l_mon_var.Expr, Int) {
       let #(atm_b, bindings_b, counter_b) = rco_atom(b, counter_a)
       let new_expr =
         bindings_a
-        |> dict.merge(bindings_b)
-        |> dict.fold(
+        |> list.append(bindings_b)
+        |> list.fold_right(
           l_mon_var.Prim(l_mon_var.Minus(atm_a, atm_b)),
-          fn(exp, variable, binding) { l_mon_var.Let(variable, binding, exp) },
+          fn(exp, pair) { l_mon_var.Let(pair.0, pair.1, exp) },
         )
 
       #(new_expr, counter_b)
@@ -93,10 +93,10 @@ fn rco_exp(input: l_var.Expr, counter: Int) -> #(l_mon_var.Expr, Int) {
       let #(atm_b, bindings_b, counter_b) = rco_atom(b, counter_a)
       let new_expr =
         bindings_a
-        |> dict.merge(bindings_b)
-        |> dict.fold(
+        |> list.append(bindings_b)
+        |> list.fold_right(
           l_mon_var.Prim(l_mon_var.Plus(atm_a, atm_b)),
-          fn(exp, variable, binding) { l_mon_var.Let(variable, binding, exp) },
+          fn(exp, pair) { l_mon_var.Let(pair.0, pair.1, exp) },
         )
 
       #(new_expr, counter_b)
