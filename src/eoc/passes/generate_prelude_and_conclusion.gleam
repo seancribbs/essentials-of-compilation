@@ -1,3 +1,4 @@
+import eoc/langs/x86_base.{Rbp, Rsp}
 import eoc/langs/x86_int as x86
 import gleam/dict
 import gleam/int
@@ -30,9 +31,9 @@ fn generate_main(input: x86.X86Program) -> x86.Block {
   let assert Ok(start_block) = dict.get(input.body, "start")
   x86.Block(
     [
-      x86.Pushq(x86.Reg(x86.Rbp)),
-      x86.Movq(x86.Reg(x86.Rsp), x86.Reg(x86.Rbp)),
-      x86.Subq(x86.Imm(start_block.frame_size), x86.Reg(x86.Rsp)),
+      x86.Pushq(x86.Reg(Rbp)),
+      x86.Movq(x86.Reg(Rsp), x86.Reg(Rbp)),
+      x86.Subq(x86.Imm(start_block.frame_size), x86.Reg(Rsp)),
       x86.Jmp("start"),
     ],
     0,
@@ -43,8 +44,8 @@ fn generate_conclusion(input: x86.X86Program) -> x86.Block {
   let assert Ok(start_block) = dict.get(input.body, "start")
   x86.Block(
     [
-      x86.Addq(x86.Imm(start_block.frame_size), x86.Reg(x86.Rsp)),
-      x86.Popq(x86.Reg(x86.Rbp)),
+      x86.Addq(x86.Imm(start_block.frame_size), x86.Reg(Rsp)),
+      x86.Popq(x86.Reg(Rbp)),
       x86.Retq,
     ],
     0,
@@ -136,24 +137,24 @@ fn arg_to_text(arg: x86.Arg) -> string_tree.StringTree {
   }
 }
 
-fn reg_to_text(arg: x86.Register) -> string_tree.StringTree {
+fn reg_to_text(arg: x86_base.Register) -> string_tree.StringTree {
   let r = case arg {
-    x86.R10 -> "r10"
-    x86.R11 -> "r11"
-    x86.R12 -> "r12"
-    x86.R13 -> "r13"
-    x86.R14 -> "r14"
-    x86.R15 -> "r15"
-    x86.R8 -> "r8"
-    x86.R9 -> "r9"
-    x86.Rax -> "rax"
-    x86.Rbp -> "rbp"
-    x86.Rbx -> "rbx"
-    x86.Rcx -> "rcx"
-    x86.Rdi -> "rdi"
-    x86.Rdx -> "rdx"
-    x86.Rsi -> "rsi"
-    x86.Rsp -> "rsp"
+    x86_base.R10 -> "r10"
+    x86_base.R11 -> "r11"
+    x86_base.R12 -> "r12"
+    x86_base.R13 -> "r13"
+    x86_base.R14 -> "r14"
+    x86_base.R15 -> "r15"
+    x86_base.R8 -> "r8"
+    x86_base.R9 -> "r9"
+    x86_base.Rax -> "rax"
+    x86_base.Rbp -> "rbp"
+    x86_base.Rbx -> "rbx"
+    x86_base.Rcx -> "rcx"
+    x86_base.Rdi -> "rdi"
+    x86_base.Rdx -> "rdx"
+    x86_base.Rsi -> "rsi"
+    x86_base.Rsp -> "rsp"
   }
   string_tree.from_strings(["%", r])
 }

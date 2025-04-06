@@ -1,6 +1,6 @@
+import eoc/langs/x86_base.{LocReg, LocVar, Rax, Rsp}
 import eoc/langs/x86_var.{
-  Addq, Block, Callq, Imm, Jmp, LocReg, LocVar, Movq, Negq, Rax, Reg, Rsp, Var,
-  X86Program,
+  Addq, Block, Callq, Imm, Jmp, Movq, Negq, Reg, Var, X86Program,
 }
 import eoc/passes/uncover_live
 import gleam/dict
@@ -23,7 +23,6 @@ pub fn uncover_live_figure_35_test() {
     Jmp("conclusion"),
   ]
   let live_after = [
-    set.from_list([LocReg(Rsp)]),
     set.from_list([LocVar("v"), LocReg(Rsp)]),
     set.from_list([LocVar("v"), LocVar("w"), LocReg(Rsp)]),
     set.from_list([LocVar("w"), LocVar("x"), LocReg(Rsp)]),
@@ -37,9 +36,16 @@ pub fn uncover_live_figure_35_test() {
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
+  let base_block = x86_var.new_block()
 
-  let p = X86Program(dict.from_list([#("start", Block(instrs, []))]))
-  let p2 = X86Program(dict.from_list([#("start", Block(instrs, live_after))]))
+  let p =
+    X86Program(dict.from_list([#("start", Block(..base_block, body: instrs))]))
+  let p2 =
+    X86Program(
+      dict.from_list([
+        #("start", Block(..base_block, body: instrs, live_after:)),
+      ]),
+    )
 
   p |> uncover_live.uncover_live |> should.equal(p2)
 }
@@ -52,14 +58,21 @@ pub fn uncover_live_with_callq_test() {
   ]
 
   let live_after = [
-    set.from_list([LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
 
-  let p = X86Program(dict.from_list([#("start", Block(instrs, []))]))
-  let p2 = X86Program(dict.from_list([#("start", Block(instrs, live_after))]))
+  let base_block = x86_var.new_block()
+
+  let p =
+    X86Program(dict.from_list([#("start", Block(..base_block, body: instrs))]))
+  let p2 =
+    X86Program(
+      dict.from_list([
+        #("start", Block(..base_block, body: instrs, live_after:)),
+      ]),
+    )
 
   p |> uncover_live.uncover_live |> should.equal(p2)
 }

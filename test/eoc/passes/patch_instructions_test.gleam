@@ -1,3 +1,4 @@
+import eoc/langs/x86_base.{Rax, Rbp}
 import eoc/langs/x86_int as x86
 import eoc/passes/patch_instructions.{patch_instructions}
 import gleam/dict
@@ -11,11 +12,11 @@ pub fn patch_instructions_test() {
           "start",
           x86.Block(
             [
-              x86.Movq(x86.Imm(20), x86.Deref(x86.Rbp, -8)),
-              x86.Movq(x86.Imm(22), x86.Deref(x86.Rbp, -16)),
-              x86.Movq(x86.Deref(x86.Rbp, -8), x86.Deref(x86.Rbp, -24)),
-              x86.Addq(x86.Deref(x86.Rbp, -16), x86.Deref(x86.Rbp, -24)),
-              x86.Movq(x86.Deref(x86.Rbp, -24), x86.Reg(x86.Rax)),
+              x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
+              x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
+              x86.Movq(x86.Deref(Rbp, -8), x86.Deref(Rbp, -24)),
+              x86.Addq(x86.Deref(Rbp, -16), x86.Deref(Rbp, -24)),
+              x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
               x86.Jmp("conclusion"),
             ],
             24,
@@ -31,13 +32,13 @@ pub fn patch_instructions_test() {
           "start",
           x86.Block(
             [
-              x86.Movq(x86.Imm(20), x86.Deref(x86.Rbp, -8)),
-              x86.Movq(x86.Imm(22), x86.Deref(x86.Rbp, -16)),
-              x86.Movq(x86.Deref(x86.Rbp, -8), x86.Reg(x86.Rax)),
-              x86.Movq(x86.Reg(x86.Rax), x86.Deref(x86.Rbp, -24)),
-              x86.Movq(x86.Deref(x86.Rbp, -16), x86.Reg(x86.Rax)),
-              x86.Addq(x86.Reg(x86.Rax), x86.Deref(x86.Rbp, -24)),
-              x86.Movq(x86.Deref(x86.Rbp, -24), x86.Reg(x86.Rax)),
+              x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
+              x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
+              x86.Movq(x86.Deref(Rbp, -8), x86.Reg(Rax)),
+              x86.Movq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
+              x86.Movq(x86.Deref(Rbp, -16), x86.Reg(Rax)),
+              x86.Addq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
+              x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
               x86.Jmp("conclusion"),
             ],
             24,

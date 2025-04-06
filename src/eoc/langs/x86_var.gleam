@@ -26,27 +26,10 @@
 //    addq  $16, %rsp
 //    popq  %rbp
 //    retq
+import eoc/interference_graph
+import eoc/langs/x86_base.{type Location, type Register}
 import gleam/dict
 import gleam/set.{type Set}
-
-pub type Register {
-  Rsp
-  Rbp
-  Rax
-  Rbx
-  Rcx
-  Rdx
-  Rsi
-  Rdi
-  R8
-  R9
-  R10
-  R11
-  R12
-  R13
-  R14
-  R15
-}
 
 pub type Arg {
   Imm(value: Int)
@@ -68,14 +51,17 @@ pub type Instr {
 }
 
 pub type Block {
-  Block(body: List(Instr), live_after: List(Set(Location)))
+  Block(
+    body: List(Instr),
+    live_after: List(Set(Location)),
+    conflicts: interference_graph.Graph,
+  )
+}
+
+pub fn new_block() -> Block {
+  Block([], [], interference_graph.new())
 }
 
 pub type X86Program {
   X86Program(body: dict.Dict(String, Block))
-}
-
-pub type Location {
-  LocReg(reg: Register)
-  LocVar(name: String)
 }

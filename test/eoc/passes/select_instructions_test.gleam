@@ -1,5 +1,6 @@
 import eoc/langs/c_var as c
 import eoc/langs/l_var
+import eoc/langs/x86_base.{Rax}
 import eoc/langs/x86_var as x86
 import eoc/passes/explicate_control
 import eoc/passes/remove_complex_operands
@@ -23,22 +24,21 @@ pub fn select_instructions_test() {
 
   let cp = c.CProgram(dict.new(), dict.from_list([#("start", c)]))
 
+  let base_block = x86.new_block()
+
   let x =
     x86.X86Program(
       dict.from_list([
         #(
           "start",
-          x86.Block(
-            [
-              x86.Movq(x86.Imm(20), x86.Var("x.2")),
-              x86.Movq(x86.Imm(22), x86.Var("x.1")),
-              x86.Movq(x86.Var("x.2"), x86.Var("y.3")),
-              x86.Addq(x86.Var("x.1"), x86.Var("y.3")),
-              x86.Movq(x86.Var("y.3"), x86.Reg(x86.Rax)),
-              x86.Jmp("conclusion"),
-            ],
-            [],
-          ),
+          x86.Block(..base_block, body: [
+            x86.Movq(x86.Imm(20), x86.Var("x.2")),
+            x86.Movq(x86.Imm(22), x86.Var("x.1")),
+            x86.Movq(x86.Var("x.2"), x86.Var("y.3")),
+            x86.Addq(x86.Var("x.1"), x86.Var("y.3")),
+            x86.Movq(x86.Var("y.3"), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
         ),
       ]),
     )
@@ -59,21 +59,20 @@ pub fn select_instructions_neg_test() {
     |> remove_complex_operands.remove_complex_operands()
     |> explicate_control.explicate_control()
 
+  let base_block = x86.new_block()
+
   let x =
     x86.X86Program(
       dict.from_list([
         #(
           "start",
-          x86.Block(
-            [
-              x86.Movq(x86.Imm(10), x86.Var("tmp.1")),
-              x86.Negq(x86.Var("tmp.1")),
-              x86.Movq(x86.Imm(42), x86.Reg(x86.Rax)),
-              x86.Addq(x86.Var("tmp.1"), x86.Reg(x86.Rax)),
-              x86.Jmp("conclusion"),
-            ],
-            [],
-          ),
+          x86.Block(..base_block, body: [
+            x86.Movq(x86.Imm(10), x86.Var("tmp.1")),
+            x86.Negq(x86.Var("tmp.1")),
+            x86.Movq(x86.Imm(42), x86.Reg(Rax)),
+            x86.Addq(x86.Var("tmp.1"), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
         ),
       ]),
     )

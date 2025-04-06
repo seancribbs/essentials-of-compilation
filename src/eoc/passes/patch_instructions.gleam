@@ -18,6 +18,7 @@
 // movq -16(%rbp), %rax
 // jmp conclusion
 
+import eoc/langs/x86_base.{Rax}
 import eoc/langs/x86_int as x86
 import gleam/dict
 import gleam/list
@@ -40,16 +41,16 @@ fn patch_instruction(instr: x86.Instr) -> List(x86.Instr) {
   case instr {
     // NOTE: this will not work if the register being dereferenced is RAX
     x86.Movq(x86.Deref(_, _) as a, x86.Deref(_, _) as b) -> [
-      x86.Movq(a, x86.Reg(x86.Rax)),
-      x86.Movq(x86.Reg(x86.Rax), b),
+      x86.Movq(a, x86.Reg(Rax)),
+      x86.Movq(x86.Reg(Rax), b),
     ]
     x86.Addq(x86.Deref(_, _) as a, x86.Deref(_, _) as b) -> [
-      x86.Movq(a, x86.Reg(x86.Rax)),
-      x86.Addq(x86.Reg(x86.Rax), b),
+      x86.Movq(a, x86.Reg(Rax)),
+      x86.Addq(x86.Reg(Rax), b),
     ]
     x86.Subq(x86.Deref(_, _) as a, x86.Deref(_, _) as b) -> [
-      x86.Movq(a, x86.Reg(x86.Rax)),
-      x86.Subq(x86.Reg(x86.Rax), b),
+      x86.Movq(a, x86.Reg(Rax)),
+      x86.Subq(x86.Reg(Rax), b),
     ]
     other -> [other]
   }

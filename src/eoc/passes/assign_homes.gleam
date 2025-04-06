@@ -1,5 +1,6 @@
 // assign_homes (replaces variables with registers or stack locations)
 //    x86var -> x86int
+import eoc/langs/x86_base.{Rbp}
 import eoc/langs/x86_int as x86
 import eoc/langs/x86_var as var
 import gleam/dict
@@ -75,31 +76,10 @@ fn assign_homes_instr(homes: Homes, instr: var.Instr) -> #(Homes, x86.Instr) {
 
 fn assign_home_for_arg(homes: Homes, arg: var.Arg) -> #(Homes, x86.Arg) {
   case arg {
-    // var.Deref(reg, off) -> #(homes, x86.Deref(translate_reg(reg), off))
+    // var.Deref(reg, off) -> #(homes, x86.Deref(reg, off))
     var.Imm(i) -> #(homes, x86.Imm(i))
-    var.Reg(reg) -> #(homes, x86.Reg(translate_reg(reg)))
+    var.Reg(reg) -> #(homes, x86.Reg(reg))
     var.Var(v) -> assign_home_for_var(homes, v)
-  }
-}
-
-fn translate_reg(input: var.Register) -> x86.Register {
-  case input {
-    var.R11 -> x86.R11
-    var.R10 -> x86.R10
-    var.R12 -> x86.R12
-    var.R13 -> x86.R13
-    var.R14 -> x86.R14
-    var.R15 -> x86.R15
-    var.R8 -> x86.R8
-    var.R9 -> x86.R9
-    var.Rax -> x86.Rax
-    var.Rbp -> x86.Rbp
-    var.Rbx -> x86.Rbx
-    var.Rcx -> x86.Rcx
-    var.Rdi -> x86.Rdi
-    var.Rdx -> x86.Rdx
-    var.Rsi -> x86.Rsi
-    var.Rsp -> x86.Rsp
   }
 }
 
@@ -107,7 +87,7 @@ fn assign_home_for_var(homes: Homes, name: String) -> #(Homes, x86.Arg) {
   case dict.get(homes.homes, name) {
     Error(_) -> {
       let new_offset = homes.offset - 8
-      let arg = x86.Deref(x86.Rbp, new_offset)
+      let arg = x86.Deref(Rbp, new_offset)
       #(Homes(new_offset, dict.insert(homes.homes, name, arg)), arg)
     }
     Ok(arg) -> #(homes, arg)
