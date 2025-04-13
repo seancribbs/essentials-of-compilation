@@ -5,10 +5,10 @@ import eoc/langs/x86_var.{
 }
 import eoc/passes/build_interference
 import gleam/dict
-import gleam/io
 import gleam/set
 import gleeunit/should
 
+// import gleam/io
 pub fn build_interference_test() {
   let instrs = [
     Movq(Imm(1), Var("v")),
@@ -51,6 +51,7 @@ pub fn build_interference_test() {
   let assert Ok(block) = dict.get(p2.body, "start")
   let conflicts = block.conflicts
 
+  // io.debug(conflicts)
   // movq $1, v v interferes with rsp,
   ig.has_conflict(conflicts, LocVar("v"), LocReg(Rsp)) |> should.be_true
   // movq $42, w w interferes with v and rsp,
@@ -110,5 +111,4 @@ pub fn build_interference_call_test() {
   // addq $42, rax
   // jmp conclusion
   ig.has_conflict(conflicts, LocReg(Rax), LocReg(Rsp)) |> should.be_true
-  io.debug(conflicts)
 }

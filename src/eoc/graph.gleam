@@ -208,6 +208,23 @@ pub fn insert_node(
   Graph(new_graph)
 }
 
+pub fn modify_value(
+  graph: Graph(key, value, label),
+  node_id: key,
+  with fun: fn(value) -> value,
+) -> Graph(key, value, label) {
+  case get_context(graph, node_id) {
+    Ok(context) -> {
+      let new_value = fun(context.node.value)
+      insert_context(
+        graph,
+        Context(..context, node: Node(..context.node, value: new_value)),
+      )
+    }
+    Error(_) -> graph
+  }
+}
+
 /// Adds an edge connecting two nodes in an undirected graph.
 ///
 /// ## Examples
@@ -232,12 +249,8 @@ pub fn insert_edge(
   and other: key,
 ) -> Graph(key, value, label) {
   graph
-  |> update_context(of: one, with: fn(context) {
-    add_edge(context, other, label)
-  })
-  |> update_context(of: other, with: fn(context) {
-    add_edge(context, one, label)
-  })
+  |> update_context(of: one, with: add_edge(_, other, label))
+  |> update_context(of: other, with: add_edge(_, one, label))
 }
 
 fn update_context(
@@ -374,7 +387,7 @@ pub fn map_contexts(
   insert_context(acc, fun(context))
 }
 
-fn insert_context(
+pub fn insert_context(
   graph: Graph(key, value, label),
   context: Context(key, value, label),
 ) -> Graph(key, value, label) {
