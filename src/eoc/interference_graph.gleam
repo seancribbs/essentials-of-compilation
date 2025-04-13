@@ -1,23 +1,18 @@
+import eoc/graph
 import eoc/langs/x86_base as x86
-import gleam/dict
 import gleam/list
 import gleam/set
-import graph
 
 pub type Node {
   Node(location: x86.Location)
 }
 
 pub type Graph {
-  Graph(
-    graph: graph.Graph(graph.Undirected, Node, Nil),
-    lut: dict.Dict(x86.Location, Int),
-    max_id: Int,
-  )
+  Graph(graph: graph.Graph(x86.Location, Node, Nil))
 }
 
 pub fn new() -> Graph {
-  Graph(graph.new(), dict.new(), 0)
+  Graph(graph.new())
   |> add_registers()
 }
 
@@ -26,33 +21,22 @@ pub fn add_locations(g: Graph, locations: set.Set(x86.Location)) -> Graph {
 }
 
 pub fn insert_location(g: Graph, location: x86.Location) -> Graph {
-  case dict.has_key(g.lut, location) {
-    True -> g
-    False -> {
-      let next_id = g.max_id + 1
-      let lut = dict.insert(g.lut, location, next_id)
-      let node = graph.Node(id: next_id, value: Node(location))
-      let g = graph.insert_node(g.graph, node)
-      Graph(graph: g, lut:, max_id: next_id)
-    }
-  }
+  g.graph
+  |> graph.insert_node(graph.Node(id: location, value: Node(location)))
+  |> Graph
 }
 
 pub fn add_conflict(g: Graph, a: x86.Location, b: x86.Location) -> Graph {
   case a == b {
     True -> g
     False -> {
-      let assert Ok(aid) = dict.get(g.lut, a)
-      let assert Ok(bid) = dict.get(g.lut, b)
-      Graph(..g, graph: graph.insert_undirected_edge(g.graph, Nil, aid, bid))
+      Graph(graph.insert_edge(g.graph, Nil, a, b))
     }
   }
 }
 
 pub fn has_conflict(g: Graph, a: x86.Location, b: x86.Location) -> Bool {
-  let assert Ok(aid) = dict.get(g.lut, a)
-  let assert Ok(bid) = dict.get(g.lut, b)
-  graph.has_edge(g.graph, aid, bid)
+  graph.has_edge(g.graph, a, b)
 }
 
 fn add_registers(g: Graph) -> Graph {
