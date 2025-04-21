@@ -39,6 +39,8 @@ fn patch_instructions_block(instrs: List(x86.Instr)) -> List(x86.Instr) {
 
 fn patch_instruction(instr: x86.Instr) -> List(x86.Instr) {
   case instr {
+    // no-op movq is unnecessary
+    x86.Movq(a, b) if a == b -> []
     // NOTE: this will not work if the register being dereferenced is RAX
     x86.Movq(x86.Deref(_, _) as a, x86.Deref(_, _) as b) -> [
       x86.Movq(a, x86.Reg(Rax)),
