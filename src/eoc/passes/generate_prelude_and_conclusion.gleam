@@ -4,12 +4,16 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/pair
+import gleam/set
 import gleam/string
 import gleam/string_tree
 
 pub fn generate_prelude_and_conclusion(input: x86.X86Program) -> x86.X86Program {
-  let main = generate_main(input)
-  let conclusion = generate_conclusion(input)
+  let alignment = compute_frame_alignment(input)
+  let saved_regs = get_saved_registers(input)
+  let main = generate_main(alignment, saved_regs)
+  let conclusion = generate_conclusion(alignment, saved_regs)
+
   input.body
   |> dict.insert("main", main)
   |> dict.insert("conclusion", conclusion)
@@ -27,29 +31,65 @@ pub fn generate_prelude_and_conclusion(input: x86.X86Program) -> x86.X86Program 
 //    popq  %rbp
 //    retq
 
-fn generate_main(input: x86.X86Program) -> x86.Block {
-  let assert Ok(start_block) = dict.get(input.body, "start")
-  x86.Block(
-    [
-      x86.Pushq(x86.Reg(Rbp)),
-      x86.Movq(x86.Reg(Rsp), x86.Reg(Rbp)),
-      x86.Subq(x86.Imm(start_block.frame_size), x86.Reg(Rsp)),
-      x86.Jmp("start"),
-    ],
-    0,
-  )
+fn align(bytes: Int) -> Int {
+  case bytes % 16 {
+    0 -> bytes
+    _ -> { bytes / 16 + 1 } * 16
+  }
 }
 
-fn generate_conclusion(input: x86.X86Program) -> x86.Block {
+fn compute_frame_alignment(input: x86.X86Program) -> Int {
   let assert Ok(start_block) = dict.get(input.body, "start")
-  x86.Block(
-    [
-      x86.Addq(x86.Imm(start_block.frame_size), x86.Reg(Rsp)),
-      x86.Popq(x86.Reg(Rbp)),
-      x86.Retq,
-    ],
-    0,
-  )
+  // Add one because we always save %rbp!!!
+  let saved_regs = set.size(start_block.used_callee) + 1
+  // A= align(8S + 8C) – 8C
+  align(8 * start_block.stack_vars + 8 * saved_regs) - { 8 * saved_regs }
+}
+
+fn get_saved_registers(input: x86.X86Program) -> List(x86_base.Register) {
+  let assert Ok(start_block) = dict.get(input.body, "start")
+  set.to_list(start_block.used_callee)
+}
+
+fn generate_main(
+  alignment: Int,
+  registers: List(x86_base.Register),
+) -> x86.Block {
+  let pushes = list.map([Rbp, ..registers], fn(r) { x86.Pushq(x86.Reg(r)) })
+  let aligner = case alignment {
+    0 -> []
+    _ -> [x86.Subq(x86.Imm(alignment), x86.Reg(Rsp))]
+  }
+
+  let instrs =
+    pushes
+    |> list.append([x86.Movq(x86.Reg(Rsp), x86.Reg(Rbp))])
+    |> list.append(aligner)
+    |> list.append([x86.Jmp("start")])
+
+  x86.Block(instrs, 0, set.new())
+}
+
+fn generate_conclusion(
+  alignment: Int,
+  registers: List(x86_base.Register),
+) -> x86.Block {
+  let pops =
+    [Rbp, ..registers]
+    |> list.map(fn(r) { x86.Popq(x86.Reg(r)) })
+    |> list.reverse()
+
+  let aligner = case alignment {
+    0 -> []
+    _ -> [x86.Addq(x86.Imm(alignment), x86.Reg(Rsp))]
+  }
+
+  let instrs =
+    aligner
+    |> list.append(pops)
+    |> list.append([x86.Retq])
+
+  x86.Block(instrs, 0, set.new())
 }
 
 pub fn program_to_text(input: x86.X86Program, entry: String) -> String {

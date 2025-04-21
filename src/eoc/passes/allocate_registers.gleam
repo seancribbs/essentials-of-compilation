@@ -19,13 +19,38 @@ pub fn allocate_registers(input: var.X86Program) -> int.X86Program {
 
 fn allocate_registers_block(input: var.Block) -> int.Block {
   let var.Block(instrs, _, conflicts) = input
-  let assignments =
-    conflicts
-    |> color_graph()
-    |> extract_assignments()
+  let assignments = conflicts |> color_graph |> extract_assignments
+  let used_callee =
+    assignments
+    |> dict.values()
+    |> list.filter_map(fn(arg) {
+      case arg {
+        int.Reg(reg) ->
+          case x86.is_callee_saved(reg) {
+            True -> Ok(reg)
+            False -> Error(Nil)
+          }
+
+        _ -> Error(Nil)
+      }
+    })
+    |> set.from_list()
+
+  let stack_size =
+    assignments
+    |> dict.values()
+    |> list.filter_map(fn(arg) {
+      case arg {
+        int.Deref(_, offset) -> Ok(-offset / 8)
+        _ -> Error(Nil)
+      }
+    })
+    |> list.max(gleam_int.compare)
+    |> result.unwrap(0)
+
   // Translate all the instructions with looking up their locations
   let new_instrs = list.map(instrs, translate_instr(_, assignments))
-  int.Block(new_instrs, 0)
+  int.Block(new_instrs, stack_size, used_callee)
 }
 
 fn translate_instr(

@@ -4,6 +4,7 @@ import eoc/passes/generate_prelude_and_conclusion.{
   generate_prelude_and_conclusion, program_to_text,
 }
 import gleam/dict
+import gleam/set
 import gleam/string
 import gleeunit/should
 
@@ -23,7 +24,8 @@ pub fn generate_prelude_and_conclusion_test() {
               x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
               x86.Jmp("conclusion"),
             ],
-            24,
+            3,
+            set.new(),
           ),
         ),
       ]),
@@ -42,6 +44,7 @@ pub fn generate_prelude_and_conclusion_test() {
               x86.Jmp("start"),
             ],
             0,
+            set.new(),
           ),
         ),
         #(
@@ -53,6 +56,7 @@ pub fn generate_prelude_and_conclusion_test() {
               x86.Retq,
             ],
             0,
+            set.new(),
           ),
         ),
         #(
@@ -67,7 +71,8 @@ pub fn generate_prelude_and_conclusion_test() {
               x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
               x86.Jmp("conclusion"),
             ],
-            24,
+            3,
+            set.new(),
           ),
         ),
       ]),
@@ -90,6 +95,7 @@ pub fn program_to_text_test() {
               x86.Jmp("start"),
             ],
             0,
+            set.new(),
           ),
         ),
         #(
@@ -101,6 +107,7 @@ pub fn program_to_text_test() {
               x86.Retq,
             ],
             0,
+            set.new(),
           ),
         ),
         #(
@@ -116,6 +123,7 @@ pub fn program_to_text_test() {
               x86.Jmp("conclusion"),
             ],
             24,
+            set.new(),
           ),
         ),
       ]),

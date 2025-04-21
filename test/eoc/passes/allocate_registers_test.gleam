@@ -1,7 +1,7 @@
 import eoc/langs/x86_base.{LocReg, LocVar, Rax, Rcx, Rdx, Rsi, Rsp}
 import eoc/langs/x86_int as int
 import eoc/langs/x86_var.{
-  Addq, Block, Callq, Imm, Jmp, Movq, Negq, Reg, Var, X86Program,
+  Addq, Block, Imm, Jmp, Movq, Negq, Reg, Var, X86Program,
 }
 import eoc/passes/allocate_registers
 import eoc/passes/build_interference
@@ -69,6 +69,7 @@ pub fn allocate_registers_test() {
               int.Jmp("conclusion"),
             ],
             0,
+            set.from_list([]),
           ),
         ),
       ]),

@@ -28,6 +28,7 @@
 //    retq
 import eoc/langs/x86_base.{type Register}
 import gleam/dict
+import gleam/set
 
 pub type Arg {
   Imm(value: Int)
@@ -48,7 +49,7 @@ pub type Instr {
 }
 
 pub type Block {
-  Block(body: List(Instr), frame_size: Int)
+  Block(body: List(Instr), stack_vars: Int, used_callee: set.Set(Register))
 }
 
 pub type X86Program {

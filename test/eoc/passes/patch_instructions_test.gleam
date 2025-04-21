@@ -2,6 +2,7 @@ import eoc/langs/x86_base.{Rax, Rbp, Rcx}
 import eoc/langs/x86_int as x86
 import eoc/passes/patch_instructions.{patch_instructions}
 import gleam/dict
+import gleam/set
 import gleeunit/should
 
 pub fn patch_instructions_test() {
@@ -20,6 +21,7 @@ pub fn patch_instructions_test() {
               x86.Jmp("conclusion"),
             ],
             24,
+            set.new(),
           ),
         ),
       ]),
@@ -42,6 +44,7 @@ pub fn patch_instructions_test() {
               x86.Jmp("conclusion"),
             ],
             24,
+            set.new(),
           ),
         ),
       ]),
@@ -72,6 +75,7 @@ pub fn patch_instructions_ch3_test() {
               x86.Jmp("conclusion"),
             ],
             24,
+            set.new(),
           ),
         ),
       ]),
@@ -97,6 +101,7 @@ pub fn patch_instructions_ch3_test() {
               x86.Jmp("conclusion"),
             ],
             24,
+            set.new(),
           ),
         ),
       ]),

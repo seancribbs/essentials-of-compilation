@@ -26,9 +26,7 @@ import gleam/list
 pub fn patch_instructions(input: x86.X86Program) -> x86.X86Program {
   input.body
   |> dict.map_values(fn(_, block) {
-    block.body
-    |> patch_instructions_block
-    |> x86.Block(block.frame_size)
+    x86.Block(..block, body: patch_instructions_block(block.body))
   })
   |> x86.X86Program
 }
