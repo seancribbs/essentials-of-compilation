@@ -1,6 +1,6 @@
 import eoc/langs/l_if.{
-  And, Bool, BoolValue, Cmp, If, Int, IntValue, Lt, Negate, Not, Plus, Prim,
-  Program, interpret,
+  And, Bool, BoolValue, Boolean, Cmp, If, Int, IntValue, Integer, Let, Lt,
+  Negate, Not, Plus, Prim, Program, TypeError, interpret, type_check_program,
 }
 import gleeunit/should
 
@@ -23,3 +23,41 @@ pub fn l_if_interpret_conditional_test() {
   let p = Program(If(Prim(Cmp(Lt, Int(5), Int(2))), Int(42), Int(3)))
   p |> interpret |> should.equal(IntValue(3))
 }
+
+pub fn l_if_typecheck_program_test() {
+  // #t
+  // => TypeError(Integer, Boolean, Bool(True))
+  Program(Bool(True))
+  |> type_check_program
+  |> should.equal(Error(TypeError(Integer, Boolean, Bool(True))))
+  //
+  // (and #f #t)
+  // => TypeError(Integer, Boolean, Prim(And(Bool(False), Bool(True))))
+  Program(Prim(And(Bool(False), Bool(True))))
+  |> type_check_program
+  |> should.equal(
+    Error(TypeError(Integer, Boolean, Prim(And(Bool(False), Bool(True))))),
+  )
+  //
+  // (if #t #f #f)
+  // => TypeError(Integer, Boolean, If(Bool(True), Bool(False), Bool(False)))
+  Program(If(Bool(True), Bool(False), Bool(False)))
+  |> type_check_program
+  |> should.equal(
+    Error(TypeError(Integer, Boolean, If(Bool(True), Bool(False), Bool(False)))),
+  )
+  //
+  // (let [x 42] (< 42 5))
+  // => TypeError(Integer, Boolean, Let("x", Int(42), Prim(Cmp(Lt, Int(42), Int(5))))
+  Program(Let("x", Int(42), Prim(Cmp(Lt, Int(42), Int(5)))))
+  |> type_check_program
+  |> should.equal(
+    Error(TypeError(
+      Integer,
+      Boolean,
+      Let("x", Int(42), Prim(Cmp(Lt, Int(42), Int(5)))),
+    )),
+  )
+}
+// Test: internal expression type errors!
+// Test: happy path cases

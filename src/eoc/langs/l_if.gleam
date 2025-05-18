@@ -9,6 +9,11 @@ pub type Type {
   Boolean
 }
 
+pub type TypeError {
+  TypeError(expected: Type, actual: Type, expression: Expr)
+  UnboundVariable(name: String)
+}
+
 pub type Cmp {
   Eq
   Lt
@@ -156,5 +161,116 @@ fn read_int() -> Int {
   case result {
     Error(_) -> panic as "could not read an int from stdin"
     Ok(i) -> i
+  }
+}
+
+type TypeEnv =
+  dict.Dict(String, Type)
+
+pub fn type_check_program(p: Program) -> Result(Program, TypeError) {
+  case type_check_exp(p.body, dict.new()) {
+    Ok(#(expr, Integer)) -> Ok(Program(expr))
+    Ok(#(expr, Boolean)) -> Error(TypeError(Integer, Boolean, expr))
+    Error(err) -> Error(err)
+  }
+}
+
+pub fn type_check_exp(e: Expr, env: TypeEnv) -> Result(#(Expr, Type), TypeError) {
+  case e {
+    Bool(_) -> Ok(#(e, Boolean))
+    Int(_) -> Ok(#(e, Integer))
+    Var(v) -> {
+      case dict.get(env, v) {
+        Ok(t) -> Ok(#(e, t))
+        Error(_) -> Error(UnboundVariable(v))
+      }
+    }
+    Prim(p) -> {
+      use #(op, t) <- result.map(type_check_op(p, env))
+      #(Prim(op), t)
+    }
+    Let(x, e, body) -> {
+      use #(e1, t) <- result.try(type_check_exp(e, env))
+      use #(body1, tb) <- result.map(type_check_exp(
+        body,
+        dict.insert(env, x, t),
+      ))
+      #(Let(x, e1, body1), tb)
+    }
+    If(cond, thn, els) -> {
+      use #(c1, tc) <- result.try(type_check_exp(cond, env))
+      use _ <- result.try(check_type_equal(Boolean, tc, c1))
+      use #(t1, tt) <- result.try(type_check_exp(thn, env))
+      use #(e1, te) <- result.try(type_check_exp(els, env))
+      use _ <- result.map(check_type_equal(tt, te, e))
+      #(If(c1, t1, e1), te)
+    }
+  }
+}
+
+pub fn type_check_op(
+  p: PrimOp,
+  env: TypeEnv,
+) -> Result(#(PrimOp, Type), TypeError) {
+  case p {
+    Read -> Ok(#(Read, Integer))
+    Negate(e) -> {
+      use #(e1, te) <- result.try(type_check_exp(e, env))
+      use _ <- result.map(check_type_equal(Boolean, te, e1))
+      #(Negate(e1), Boolean)
+    }
+    Not(e) -> {
+      use #(e1, te) <- result.try(type_check_exp(e, env))
+      use _ <- result.map(check_type_equal(Boolean, te, e1))
+      #(Not(e1), Boolean)
+    }
+    And(a, b) -> {
+      use #(a1, ta) <- result.try(type_check_exp(a, env))
+      use _ <- result.try(check_type_equal(Boolean, ta, a1))
+      use #(b1, tb) <- result.try(type_check_exp(b, env))
+      use _ <- result.map(check_type_equal(Boolean, tb, b1))
+      #(And(a1, b1), Boolean)
+    }
+    Or(a, b) -> {
+      use #(a1, ta) <- result.try(type_check_exp(a, env))
+      use _ <- result.try(check_type_equal(Boolean, ta, a1))
+      use #(b1, tb) <- result.try(type_check_exp(b, env))
+      use _ <- result.map(check_type_equal(Boolean, tb, b1))
+      #(Or(a1, b1), Boolean)
+    }
+    Cmp(Eq, a, b) -> {
+      use #(a1, ta) <- result.try(type_check_exp(a, env))
+      use #(b1, tb) <- result.try(type_check_exp(b, env))
+      use _ <- result.map(check_type_equal(ta, tb, Prim(p)))
+      #(Cmp(Eq, a1, b1), Boolean)
+    }
+    Cmp(op, a, b) -> {
+      use #(a1, ta) <- result.try(type_check_exp(a, env))
+      use _ <- result.try(check_type_equal(Integer, ta, a1))
+      use #(b1, tb) <- result.try(type_check_exp(b, env))
+      use _ <- result.map(check_type_equal(Integer, tb, b1))
+      #(Cmp(op, a1, b1), Boolean)
+    }
+    Minus(a, b) -> {
+      use #(a1, ta) <- result.try(type_check_exp(a, env))
+      use _ <- result.try(check_type_equal(Integer, ta, a1))
+      use #(b1, tb) <- result.try(type_check_exp(b, env))
+      use _ <- result.map(check_type_equal(Integer, tb, b1))
+      #(Minus(a1, b1), Integer)
+    }
+    Plus(a, b) -> {
+      use #(a1, ta) <- result.try(type_check_exp(a, env))
+      use _ <- result.try(check_type_equal(Integer, ta, a1))
+      use #(b1, tb) <- result.try(type_check_exp(b, env))
+      use _ <- result.map(check_type_equal(Integer, tb, b1))
+      #(Plus(a1, b1), Integer)
+    }
+  }
+}
+
+fn check_type_equal(a: Type, b: Type, e: Expr) -> Result(Nil, TypeError) {
+  case a == b {
+    True -> Ok(Nil)
+    False -> Error(TypeError(a, b, e))
   }
 }
