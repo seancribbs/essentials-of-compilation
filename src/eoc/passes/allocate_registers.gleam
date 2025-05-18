@@ -7,6 +7,7 @@ import gleam/dict
 import gleam/int as gleam_int
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/order
 import gleam/pair
 import gleam/result
 import gleam/set
@@ -154,6 +155,12 @@ fn pick_vertex(g: ig.Graph) -> Result(x86.Location, Nil) {
     case node.value.assignment {
       Some(_) -> Error(Nil)
       None -> Ok(#(set.size(node.value.saturation), node.id))
+    }
+  })
+  |> list.sort(fn(a, b) {
+    case gleam_int.compare(a.0, b.0) {
+      order.Eq -> x86.compare_location(a.1, b.1)
+      other -> other
     }
   })
   |> list.max(fn(a, b) { gleam_int.compare(a.0, b.0) })
