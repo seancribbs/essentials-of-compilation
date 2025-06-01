@@ -21,6 +21,17 @@ pub type Register {
   R15
 }
 
+pub type ByteReg {
+  Ah
+  Al
+  Bh
+  Bl
+  Ch
+  Cl
+  Dh
+  Dl
+}
+
 pub type Location {
   LocReg(reg: Register)
   LocVar(name: String)
