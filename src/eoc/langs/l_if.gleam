@@ -202,7 +202,7 @@ pub fn type_check_exp(e: Expr, env: TypeEnv) -> Result(#(Expr, Type), TypeError)
       use _ <- result.try(check_type_equal(Boolean, tc, c1))
       use #(t1, tt) <- result.try(type_check_exp(thn, env))
       use #(e1, te) <- result.try(type_check_exp(els, env))
-      use _ <- result.map(check_type_equal(tt, te, e))
+      use _ <- result.map(check_type_equal(tt, te, e1))
       #(If(c1, t1, e1), te)
     }
   }
@@ -241,7 +241,7 @@ pub fn type_check_op(
     Cmp(Eq, a, b) -> {
       use #(a1, ta) <- result.try(type_check_exp(a, env))
       use #(b1, tb) <- result.try(type_check_exp(b, env))
-      use _ <- result.map(check_type_equal(ta, tb, Prim(p)))
+      use _ <- result.map(check_type_equal(ta, tb, b1))
       #(Cmp(Eq, a1, b1), Boolean)
     }
     Cmp(op, a, b) -> {
