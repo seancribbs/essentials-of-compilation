@@ -1,4 +1,5 @@
 import eoc/langs/c_if
+import eoc/langs/l_if
 import eoc/langs/l_mon_if
 import gleam/dict
 import gleam/int
@@ -28,7 +29,7 @@ pub fn explicate_control(input: l_mon_if.Program) -> c_if.CProgram {
 
 fn explicate_tail(
   input: l_mon_if.Expr,
-  blocks: Blocks,
+  blocks: c_if.Blocks,
 ) -> #(c_if.Tail, c_if.Blocks) {
   case input {
     l_mon_if.Atomic(l_mon_if.Var(v)) -> #(
@@ -173,9 +174,36 @@ fn explicate_pred(
   blocks: c_if.Blocks,
 ) -> #(c_if.Tail, c_if.Blocks) {
   case cond {
-    l_mon_if.Atomic(l_mon_if.Var(v)) -> todo
-    l_mon_if.Let(var:, binding:, expr:) -> todo
-    l_mon_if.Prim(l_mon_if.Not(_)) -> todo
+    l_mon_if.Atomic(l_mon_if.Var(v)) -> {
+      let #(thn_block, b1) = create_block(if_true, blocks)
+      let #(els_block, b2) = create_block(if_false, b1)
+      #(
+        c_if.If(
+          c_if.Prim(c_if.Cmp(l_if.Eq, c_if.Variable(v), c_if.Bool(True))),
+          thn_block,
+          els_block,
+        ),
+        b2,
+      )
+    }
+
+    l_mon_if.Atomic(value: l_mon_if.Bool(value:)) -> {
+      case value {
+        True -> #(if_true, blocks)
+        False -> #(if_false, blocks)
+      }
+    }
+
+    l_mon_if.Prim(l_mon_if.Not(arg)) -> {
+      // Invert the branching on logical negation
+      explicate_pred(l_mon_if.Atomic(arg), if_false, if_true, blocks)
+    }
+
+    l_mon_if.Let(var:, binding:, expr:) -> {
+      let #(new_expr, b1) = explicate_pred(expr, if_true, if_false, blocks)
+      explicate_assign(binding, var, new_expr, b1)
+    }
+
     l_mon_if.Prim(l_mon_if.Cmp(op:, a:, b:)) -> {
       let #(thn_block, b1) = create_block(if_true, blocks)
       let #(els_block, b2) = create_block(if_false, b1)
@@ -197,12 +225,6 @@ fn explicate_pred(
       explicate_pred(c_inner, t1, f1, b4)
     }
 
-    l_mon_if.Atomic(value: l_mon_if.Bool(value:)) -> {
-      case value {
-        True -> #(if_true, blocks)
-        False -> #(if_false, blocks)
-      }
-    }
     _ -> panic as "explicate_pred unhandled case"
     // l_mon_if.Atomic(value: l_mon_if.Int(value:)) -> todo
     // l_mon_if.Prim(op: l_mon_if.Minus(a:, b:)) -> todo
