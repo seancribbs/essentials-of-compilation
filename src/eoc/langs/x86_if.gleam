@@ -1,4 +1,4 @@
-import eoc/langs/x86_base.{type ByteReg, type Register}
+import eoc/langs/x86_base.{type ByteReg, type Cc, type Register}
 import gleam/dict
 import gleam/set
 
@@ -10,14 +10,6 @@ pub type Arg {
   // need to be a regular argument.
   //
   // ByteReg(reg: ByteReg)
-}
-
-pub type Cc {
-  E
-  L
-  Le
-  G
-  Ge
 }
 
 pub type Instr {

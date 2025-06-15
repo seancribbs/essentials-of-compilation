@@ -32,6 +32,14 @@ pub type ByteReg {
   Dl
 }
 
+pub type Cc {
+  E
+  L
+  Le
+  G
+  Ge
+}
+
 pub type Location {
   LocReg(reg: Register)
   LocVar(name: String)

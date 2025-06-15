@@ -1,14 +1,16 @@
-import eoc/langs/c_var as c
+import eoc/interference_graph
+import eoc/langs/c_if as c
+import eoc/passes/shrink
 
-// import eoc/langs/l_var
+import eoc/langs/l_if
 import eoc/langs/x86_base.{Rax}
-import eoc/langs/x86_var as x86
+import eoc/langs/x86_var_if as x86
 
-// import eoc/passes/explicate_control
-// import eoc/passes/remove_complex_operands
+import eoc/passes/explicate_control
+import eoc/passes/remove_complex_operands
 import eoc/passes/select_instructions.{select_instructions}
 
-// import eoc/passes/uniquify
+import eoc/passes/uniquify
 import gleam/dict
 import gleeunit/should
 
@@ -51,35 +53,106 @@ pub fn select_instructions_test() {
 
 // (+ 42 (- 10))
 pub fn select_instructions_neg_test() {
-  True |> should.equal(True)
-  // let cp =
-  //   l_var.Program(
-  //     l_var.Prim(l_var.Plus(
-  //       l_var.Int(42),
-  //       l_var.Prim(l_var.Negate(l_var.Int(10))),
-  //     )),
-  //   )
-  //   |> uniquify.uniquify()
-  //   |> remove_complex_operands.remove_complex_operands()
-  //   |> explicate_control.explicate_control()
+  // True |> should.equal(True)
+  let cp =
+    l_if.Program(
+      l_if.Prim(l_if.Plus(l_if.Int(42), l_if.Prim(l_if.Negate(l_if.Int(10))))),
+    )
+    |> uniquify.uniquify()
+    |> shrink.shrink()
+    |> remove_complex_operands.remove_complex_operands()
+    |> explicate_control.explicate_control()
 
-  // let base_block = x86.new_block()
+  let base_block = x86.new_block()
 
-  // let x =
-  //   x86.X86Program(
-  //     dict.from_list([
-  //       #(
-  //         "start",
-  //         x86.Block(..base_block, body: [
-  //           x86.Movq(x86.Imm(10), x86.Var("tmp.1")),
-  //           x86.Negq(x86.Var("tmp.1")),
-  //           x86.Movq(x86.Imm(42), x86.Reg(Rax)),
-  //           x86.Addq(x86.Var("tmp.1"), x86.Reg(Rax)),
-  //           x86.Jmp("conclusion"),
-  //         ]),
-  //       ),
-  //     ]),
-  //   )
+  let x =
+    x86.X86Program(
+      dict.from_list([
+        #(
+          "start",
+          x86.Block(..base_block, body: [
+            x86.Movq(x86.Imm(10), x86.Var("tmp.1")),
+            x86.Negq(x86.Var("tmp.1")),
+            x86.Movq(x86.Imm(42), x86.Reg(Rax)),
+            x86.Addq(x86.Var("tmp.1"), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
+        ),
+      ]),
+    )
 
-  // cp |> select_instructions() |> should.equal(x)
+  cp |> select_instructions() |> should.equal(x)
+}
+
+pub fn select_instructions_branches_test() {
+  let p =
+    c.CProgram(
+      dict.new(),
+      dict.from_list([
+        #(
+          "start",
+          c.Seq(
+            c.Assign("tmp.1", c.Prim(c.Read)),
+            c.If(
+              c.Prim(c.Cmp(l_if.Eq, c.Variable("tmp.1"), c.Int(0))),
+              c.Goto("block_3"),
+              c.Goto("block_2"),
+            ),
+          ),
+        ),
+        #(
+          "block_3",
+          c.Seq(
+            c.Assign("tmp.2", c.Prim(c.Read)),
+            c.If(
+              c.Prim(c.Cmp(l_if.Eq, c.Variable("tmp.2"), c.Int(1))),
+              c.Goto("block_1"),
+              c.Goto("block_2"),
+            ),
+          ),
+        ),
+        #("block_1", c.Return(c.Atom(c.Int(0)))),
+        #("block_2", c.Return(c.Atom(c.Int(42)))),
+      ]),
+    )
+
+  let b = fn(i: List(x86.Instr)) -> x86.Block {
+    x86.Block(i, [], interference_graph.new())
+  }
+
+  let p2 =
+    x86.X86Program(
+      dict.from_list([
+        #(
+          "start",
+          b([
+            x86.Callq("read", 0),
+            x86.Movq(x86.Reg(Rax), x86.Var("tmp.1")),
+            x86.Cmpq(x86.Imm(0), x86.Var("tmp.1")),
+            x86.JmpIf(x86_base.E, "block_3"),
+            x86.Jmp("block_2"),
+          ]),
+        ),
+        #(
+          "block_3",
+          b([
+            x86.Callq("read", 0),
+            x86.Movq(x86.Reg(Rax), x86.Var("tmp.2")),
+            x86.Cmpq(x86.Imm(1), x86.Var("tmp.2")),
+            x86.JmpIf(x86_base.E, "block_1"),
+            x86.Jmp("block_2"),
+          ]),
+        ),
+        #(
+          "block_1",
+          b([x86.Movq(x86.Imm(0), x86.Reg(Rax)), x86.Jmp("conclusion")]),
+        ),
+        #(
+          "block_2",
+          b([x86.Movq(x86.Imm(42), x86.Reg(Rax)), x86.Jmp("conclusion")]),
+        ),
+      ]),
+    )
+
+  p |> select_instructions |> should.equal(p2)
 }
