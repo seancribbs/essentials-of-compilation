@@ -1,5 +1,5 @@
 import eoc/langs/x86_base.{LocReg, LocVar, Rax, Rsp}
-import eoc/langs/x86_var.{
+import eoc/langs/x86_var_if.{
   Addq, Block, Callq, Imm, Jmp, Movq, Negq, Reg, Var, X86Program,
 }
 import eoc/passes/uncover_live
@@ -22,6 +22,7 @@ pub fn uncover_live_figure_35_test() {
     Addq(Var("t"), Reg(Rax)),
     Jmp("conclusion"),
   ]
+  let live_before = set.from_list([LocReg(Rsp)])
   let live_after = [
     set.from_list([LocVar("v"), LocReg(Rsp)]),
     set.from_list([LocVar("v"), LocVar("w"), LocReg(Rsp)]),
@@ -36,14 +37,14 @@ pub fn uncover_live_figure_35_test() {
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
-  let base_block = x86_var.new_block()
+  let base_block = x86_var_if.new_block()
 
   let p =
     X86Program(dict.from_list([#("start", Block(..base_block, body: instrs))]))
   let p2 =
     X86Program(
       dict.from_list([
-        #("start", Block(..base_block, body: instrs, live_after:)),
+        #("start", Block(..base_block, body: instrs, live_after:, live_before:)),
       ]),
     )
 
@@ -57,20 +58,21 @@ pub fn uncover_live_with_callq_test() {
     Jmp("conclusion"),
   ]
 
+  let live_before = set.from_list([LocReg(Rsp)])
   let live_after = [
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
 
-  let base_block = x86_var.new_block()
+  let base_block = x86_var_if.new_block()
 
   let p =
     X86Program(dict.from_list([#("start", Block(..base_block, body: instrs))]))
   let p2 =
     X86Program(
       dict.from_list([
-        #("start", Block(..base_block, body: instrs, live_after:)),
+        #("start", Block(..base_block, body: instrs, live_after:, live_before:)),
       ]),
     )
 

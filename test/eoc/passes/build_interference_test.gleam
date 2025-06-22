@@ -1,6 +1,6 @@
 import eoc/interference_graph as ig
 import eoc/langs/x86_base.{LocReg, LocVar, Rax, Rsp}
-import eoc/langs/x86_var.{
+import eoc/langs/x86_var_if.{
   Addq, Block, Callq, Imm, Jmp, Movq, Negq, Reg, Var, X86Program,
 }
 import eoc/passes/build_interference
@@ -38,7 +38,7 @@ pub fn build_interference_test() {
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
-  let base_block = x86_var.new_block()
+  let base_block = x86_var_if.new_block()
 
   let p =
     X86Program(
@@ -94,7 +94,7 @@ pub fn build_interference_call_test() {
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
 
-  let base_block = x86_var.new_block()
+  let base_block = x86_var_if.new_block()
 
   let p =
     X86Program(

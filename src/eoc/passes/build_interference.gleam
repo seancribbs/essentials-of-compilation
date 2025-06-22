@@ -1,6 +1,6 @@
 import eoc/interference_graph
 import eoc/langs/x86_base
-import eoc/langs/x86_var as x86
+import eoc/langs/x86_var_if as x86
 import eoc/passes/uncover_live
 import gleam/dict
 import gleam/list

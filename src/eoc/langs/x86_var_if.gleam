@@ -58,13 +58,14 @@ pub type Instr {
 pub type Block {
   Block(
     body: List(Instr),
+    live_before: Set(Location),
     live_after: List(Set(Location)),
     conflicts: interference_graph.Graph,
   )
 }
 
 pub fn new_block() -> Block {
-  Block([], [], interference_graph.new())
+  Block([], set.new(), [], interference_graph.new())
 }
 
 pub type X86Program {

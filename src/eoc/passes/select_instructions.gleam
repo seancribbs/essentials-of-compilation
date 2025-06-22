@@ -1,18 +1,18 @@
 // select_instructions (convert C-like into x86 instructions)
 //    Cif -> x86var_if
-import eoc/interference_graph
 import gleam/dict
 import gleam/list
 
 import eoc/langs/c_if
 import eoc/langs/l_if
 import eoc/langs/x86_base.{Rax}
-import eoc/langs/x86_var_if
+import eoc/langs/x86_var_if.{Block}
 
 pub fn select_instructions(input: c_if.CProgram) -> x86_var_if.X86Program {
   let blocks =
     dict.map_values(input.body, fn(_, tail) {
-      x86_var_if.Block(select_tail(tail), [], interference_graph.new())
+      let block = x86_var_if.new_block()
+      Block(..block, body: select_tail(tail))
     })
   x86_var_if.X86Program(blocks)
 }
