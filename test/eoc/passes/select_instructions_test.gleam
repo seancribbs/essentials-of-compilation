@@ -116,17 +116,15 @@ pub fn select_instructions_branches_test() {
       ]),
     )
 
-  let b = fn(i: List(x86.Instr)) -> x86.Block {
-    x86.Block(i, [], interference_graph.new())
-  }
+  let base_block = x86.new_block()
 
   let p2 =
     x86.X86Program(
       dict.from_list([
         #(
           "start",
-          b([
-            x86.Callq("read", 0),
+          x86.Block(..base_block, body: [
+            x86.Callq("read_int", 0),
             x86.Movq(x86.Reg(Rax), x86.Var("tmp.1")),
             x86.Cmpq(x86.Imm(0), x86.Var("tmp.1")),
             x86.JmpIf(x86_base.E, "block_3"),
@@ -135,8 +133,8 @@ pub fn select_instructions_branches_test() {
         ),
         #(
           "block_3",
-          b([
-            x86.Callq("read", 0),
+          x86.Block(..base_block, body: [
+            x86.Callq("read_int", 0),
             x86.Movq(x86.Reg(Rax), x86.Var("tmp.2")),
             x86.Cmpq(x86.Imm(1), x86.Var("tmp.2")),
             x86.JmpIf(x86_base.E, "block_1"),
@@ -145,14 +143,25 @@ pub fn select_instructions_branches_test() {
         ),
         #(
           "block_1",
-          b([x86.Movq(x86.Imm(0), x86.Reg(Rax)), x86.Jmp("conclusion")]),
+          x86.Block(..base_block, body: [
+            x86.Movq(x86.Imm(0), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
         ),
         #(
           "block_2",
-          b([x86.Movq(x86.Imm(42), x86.Reg(Rax)), x86.Jmp("conclusion")]),
+          x86.Block(..base_block, body: [
+            x86.Movq(x86.Imm(42), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
         ),
       ]),
     )
 
+  // let p1 = select_instructions(p)
+  // dict.each(p2.body, fn(block_name, block2) {
+  //   let block1 = p1.body |> dict.get(block_name) |> should.be_ok
+  //   block1.body |> should.equal(block2.body)
+  // })
   p |> select_instructions |> should.equal(p2)
 }
