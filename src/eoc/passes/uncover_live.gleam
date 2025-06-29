@@ -6,7 +6,9 @@
 // addq b, c     | {}         |  {b, c}
 
 import eoc/cfg
-import eoc/langs/x86_base.{type Location, LocReg, LocVar, Rax, Rsp}
+import eoc/langs/x86_base.{
+  type Location, LocReg, LocVar, Rax, Rsp, bytereg_to_quad,
+}
 import eoc/langs/x86_var_if.{type Block, Block}
 import gleam/dict
 import gleam/list
@@ -119,7 +121,7 @@ fn read_locations_in_inst(inst: x86_var_if.Instr) -> set.Set(Location) {
     x86_var_if.Cmpq(a:, b:) ->
       set.union(locations_in_arg(a), locations_in_arg(b))
     x86_var_if.JmpIf(cmp: _, label: _) -> set.new()
-    x86_var_if.Movzbq(a: _, b: _) -> set.new()
+    x86_var_if.Movzbq(a:, b: _) -> set.from_list([LocReg(bytereg_to_quad(a))])
     x86_var_if.Set(cmp: _, arg: _) -> set.new()
     x86_var_if.Xorq(a:, b:) ->
       set.union(locations_in_arg(a), locations_in_arg(b))
@@ -141,7 +143,8 @@ pub fn write_location_in_inst(inst: x86_var_if.Instr) -> set.Set(Location) {
     x86_var_if.Cmpq(a: _, b: _) -> set.new()
     x86_var_if.JmpIf(cmp: _, label: _) -> set.new()
     x86_var_if.Movzbq(a: _, b:) -> locations_in_arg(b)
-    x86_var_if.Set(cmp: _, arg: _) -> set.new()
+    x86_var_if.Set(cmp: _, arg:) ->
+      set.from_list([LocReg(bytereg_to_quad(arg))])
     x86_var_if.Xorq(a: _, b:) -> locations_in_arg(b)
   }
 }

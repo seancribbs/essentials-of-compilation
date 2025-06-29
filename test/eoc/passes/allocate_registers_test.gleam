@@ -1,5 +1,5 @@
 import eoc/langs/x86_base.{LocReg, LocVar, Rax, Rcx, Rdx, Rsi, Rsp}
-import eoc/langs/x86_int as int
+import eoc/langs/x86_if as int
 import eoc/langs/x86_var_if.{
   Addq, Block, Imm, Jmp, Movq, Negq, Reg, Var, X86Program,
 }
@@ -51,29 +51,28 @@ pub fn allocate_registers_test() {
 
   let p2 =
     int.X86Program(
-      dict.from_list([
+      body: dict.from_list([
         #(
           "start",
-          int.Block(
-            [
-              int.Movq(int.Imm(1), int.Reg(Rdx)),
-              int.Movq(int.Imm(42), int.Reg(Rcx)),
-              int.Movq(int.Reg(Rdx), int.Reg(Rdx)),
-              int.Addq(int.Imm(7), int.Reg(Rdx)),
-              int.Movq(int.Reg(Rdx), int.Reg(Rsi)),
-              int.Movq(int.Reg(Rdx), int.Reg(Rdx)),
-              int.Addq(int.Reg(Rcx), int.Reg(Rdx)),
-              int.Movq(int.Reg(Rsi), int.Reg(Rcx)),
-              int.Negq(int.Reg(Rcx)),
-              int.Movq(int.Reg(Rdx), int.Reg(Rax)),
-              int.Addq(int.Reg(Rcx), int.Reg(Rax)),
-              int.Jmp("conclusion"),
-            ],
-            0,
-            set.from_list([]),
-          ),
+          int.Block([
+            int.Movq(int.Imm(1), int.Reg(Rdx)),
+            int.Movq(int.Imm(42), int.Reg(Rcx)),
+            int.Movq(int.Reg(Rdx), int.Reg(Rdx)),
+            int.Addq(int.Imm(7), int.Reg(Rdx)),
+            int.Movq(int.Reg(Rdx), int.Reg(Rsi)),
+            int.Movq(int.Reg(Rdx), int.Reg(Rdx)),
+            int.Addq(int.Reg(Rcx), int.Reg(Rdx)),
+            int.Movq(int.Reg(Rsi), int.Reg(Rcx)),
+            int.Negq(int.Reg(Rcx)),
+            int.Movq(int.Reg(Rdx), int.Reg(Rax)),
+            int.Addq(int.Reg(Rcx), int.Reg(Rax)),
+            int.Jmp("conclusion"),
+          ]),
         ),
       ]),
+      stack_vars: 0,
+      used_callee: set.from_list([]),
     )
-  // p |> allocate_registers.allocate_registers() |> should.equal(p2)
+
+  p |> allocate_registers.allocate_registers() |> should.equal(p2)
 }

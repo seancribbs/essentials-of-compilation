@@ -24,6 +24,13 @@ fn determine_conflicts(
   |> list.fold(ig, fn(g, pair) {
     let #(instr, live) = pair
     case instr {
+      x86.Movzbq(s, d) ->
+        rule_1(
+          g,
+          set.from_list([x86_base.LocReg(x86_base.bytereg_to_quad(s))]),
+          uncover_live.locations_in_arg(d),
+          live,
+        )
       x86.Movq(s, d) ->
         rule_1(
           g,

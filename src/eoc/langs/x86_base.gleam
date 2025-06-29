@@ -89,3 +89,12 @@ fn register_to_rank(r: Register) -> Int {
     R14 -> 10
   }
 }
+
+pub fn bytereg_to_quad(br: ByteReg) -> Register {
+  case br {
+    Ah | Al -> Rax
+    Bh | Bl -> Rbx
+    Ch | Cl -> Rcx
+    Dh | Dl -> Rdx
+  }
+}

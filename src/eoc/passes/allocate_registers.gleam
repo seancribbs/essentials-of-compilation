@@ -1,8 +1,8 @@
 import eoc/graph
 import eoc/interference_graph as ig
 import eoc/langs/x86_base as x86
-import eoc/langs/x86_int as int
-import eoc/langs/x86_var as var
+import eoc/langs/x86_if as int
+import eoc/langs/x86_var_if as var
 import gleam/dict
 import gleam/int as gleam_int
 import gleam/list
@@ -13,14 +13,7 @@ import gleam/result
 import gleam/set
 
 pub fn allocate_registers(input: var.X86Program) -> int.X86Program {
-  input.body
-  |> dict.map_values(fn(_, block) { allocate_registers_block(block) })
-  |> int.X86Program()
-}
-
-fn allocate_registers_block(input: var.Block) -> int.Block {
-  let var.Block(instrs, _, conflicts) = input
-  let assignments = conflicts |> color_graph |> extract_assignments
+  let assignments = input.conflicts |> color_graph |> extract_assignments
   let used_callee =
     assignments
     |> dict.values()
@@ -37,7 +30,7 @@ fn allocate_registers_block(input: var.Block) -> int.Block {
     })
     |> set.from_list()
 
-  let stack_size =
+  let stack_vars =
     assignments
     |> dict.values()
     |> list.filter_map(fn(arg) {
@@ -49,9 +42,14 @@ fn allocate_registers_block(input: var.Block) -> int.Block {
     |> list.max(gleam_int.compare)
     |> result.unwrap(0)
 
-  // Translate all the instructions with looking up their locations
-  let new_instrs = list.map(instrs, translate_instr(_, assignments))
-  int.Block(new_instrs, stack_size, used_callee)
+  let body =
+    input.body
+    |> dict.map_values(fn(_, block) {
+      let new_instrs = list.map(block.body, translate_instr(_, assignments))
+      int.Block(new_instrs)
+    })
+
+  int.X86Program(body:, stack_vars:, used_callee:)
 }
 
 fn translate_instr(
@@ -77,6 +75,19 @@ fn translate_instr(
     var.Retq -> int.Retq
     var.Subq(a, b) ->
       int.Subq(
+        translate_location(a, assignments),
+        translate_location(b, assignments),
+      )
+    var.Cmpq(a:, b:) ->
+      int.Cmpq(
+        translate_location(a, assignments),
+        translate_location(b, assignments),
+      )
+    var.JmpIf(cmp:, label:) -> int.JmpIf(cmp, label)
+    var.Movzbq(a:, b:) -> int.Movzbq(a, translate_location(b, assignments))
+    var.Set(cmp:, arg:) -> int.Set(cmp, arg)
+    var.Xorq(a:, b:) ->
+      int.Xorq(
         translate_location(a, assignments),
         translate_location(b, assignments),
       )

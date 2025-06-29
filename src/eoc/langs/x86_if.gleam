@@ -30,9 +30,13 @@ pub type Instr {
 }
 
 pub type Block {
-  Block(body: List(Instr), stack_vars: Int, used_callee: set.Set(Register))
+  Block(body: List(Instr))
 }
 
 pub type X86Program {
-  X86Program(body: dict.Dict(String, Block))
+  X86Program(
+    body: dict.Dict(String, Block),
+    stack_vars: Int,
+    used_callee: set.Set(Register),
+  )
 }
