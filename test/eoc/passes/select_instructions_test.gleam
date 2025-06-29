@@ -1,4 +1,3 @@
-import eoc/interference_graph
 import eoc/langs/c_if as c
 import eoc/passes/shrink
 
