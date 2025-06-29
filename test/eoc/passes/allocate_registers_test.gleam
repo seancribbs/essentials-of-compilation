@@ -42,7 +42,8 @@ pub fn allocate_registers_test() {
 
   let p =
     X86Program(
-      dict.from_list([
+      ..x86_var_if.new_program(),
+      body: dict.from_list([
         #("start", Block(..base_block, body: instrs, live_after:)),
       ]),
     )

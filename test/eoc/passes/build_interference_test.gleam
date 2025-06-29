@@ -1,9 +1,10 @@
 import eoc/interference_graph as ig
-import eoc/langs/x86_base.{LocReg, LocVar, Rax, Rsp}
+import eoc/langs/x86_base.{E, LocReg, LocVar, Rax, Rsp}
 import eoc/langs/x86_var_if.{
-  Addq, Block, Callq, Imm, Jmp, Movq, Negq, Reg, Var, X86Program,
+  Addq, Block, Callq, Cmpq, Imm, Jmp, JmpIf, Movq, Negq, Reg, Var, X86Program,
 }
 import eoc/passes/build_interference
+import eoc/passes/uncover_live
 import gleam/dict
 import gleam/set
 import gleeunit/should
@@ -42,14 +43,14 @@ pub fn build_interference_test() {
 
   let p =
     X86Program(
-      dict.from_list([
+      ..x86_var_if.new_program(),
+      body: dict.from_list([
         #("start", Block(..base_block, body: instrs, live_after:)),
       ]),
     )
 
   let p2 = build_interference.build_interference(p)
-  let assert Ok(block) = dict.get(p2.body, "start")
-  let conflicts = block.conflicts
+  let conflicts = p2.conflicts
 
   // io.debug(conflicts)
   // movq $1, v v interferes with rsp,
@@ -98,17 +99,68 @@ pub fn build_interference_call_test() {
 
   let p =
     X86Program(
-      dict.from_list([
+      ..x86_var_if.new_program(),
+      body: dict.from_list([
         #("start", Block(..base_block, body: instrs, live_after:)),
       ]),
     )
 
   let p2 = build_interference.build_interference(p)
-  let assert Ok(block) = dict.get(p2.body, "start")
-  let conflicts = block.conflicts
+  let conflicts = p2.conflicts
 
   // callq read_int
   // addq $42, rax
   // jmp conclusion
   ig.has_conflict(conflicts, LocReg(Rax), LocReg(Rsp)) |> should.be_true
+}
+
+pub fn build_interference_with_branching_test() {
+  let base_block = x86_var_if.new_block()
+
+  let start = [
+    Callq("read_int", 0),
+    // [Rsp]
+    Movq(Reg(Rax), Var("a")),
+    // [Rax, Rsp]
+    Addq(Imm(42), Var("a")),
+    // [a, Rsp]
+    Cmpq(Imm(0), Var("a")),
+    // [a, Rsp]
+    JmpIf(E, "block_1"),
+    // [a, Rsp]
+    Jmp("block_2"),
+    // [a, Rsp]
+  ]
+
+  let block_1 = [
+    Movq(Imm(0), Reg(Rax)),
+    // [Rsp]
+    Jmp("conclusion"),
+    // [Rax, Rsp]
+  ]
+
+  let block_2 = [
+    Movq(Var("a"), Reg(Rax)),
+    // [a, Rsp]
+    Jmp("conclusion"),
+    // [Rax, Rsp]
+  ]
+
+  let p =
+    X86Program(
+      ..x86_var_if.new_program(),
+      body: dict.from_list([
+        #("start", Block(..base_block, body: start)),
+        #("block_1", Block(..base_block, body: block_1)),
+        #("block_2", Block(..base_block, body: block_2)),
+      ]),
+    )
+
+  let p2 =
+    p |> uncover_live.uncover_live() |> build_interference.build_interference
+
+  let conflicts = p2.conflicts
+
+  // a and %rsp are live at the same time
+  ig.has_conflict(conflicts, LocReg(Rsp), LocVar("a")) |> should.be_true
 }

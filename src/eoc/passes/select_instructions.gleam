@@ -14,7 +14,7 @@ pub fn select_instructions(input: c_if.CProgram) -> x86_var_if.X86Program {
       let block = x86_var_if.new_block()
       Block(..block, body: select_tail(tail))
     })
-  x86_var_if.X86Program(blocks)
+  x86_var_if.X86Program(..x86_var_if.new_program(), body: blocks)
 }
 
 fn select_atm(input: c_if.Atm) -> x86_var_if.Arg {

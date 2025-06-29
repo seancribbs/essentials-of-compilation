@@ -38,13 +38,18 @@ pub fn uncover_live_figure_35_test() {
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
   let base_block = x86_var_if.new_block()
+  let base_program = x86_var_if.new_program()
 
   let p =
-    X86Program(dict.from_list([#("start", Block(..base_block, body: instrs))]))
+    X86Program(
+      ..base_program,
+      body: dict.from_list([#("start", Block(..base_block, body: instrs))]),
+    )
   let p2 =
     X86Program(
-      dict.from_list([
-        #("start", Block(..base_block, body: instrs, live_after:, live_before:)),
+      ..base_program,
+      body: dict.from_list([
+        #("start", Block(body: instrs, live_after:, live_before:)),
       ]),
     )
 
@@ -66,13 +71,18 @@ pub fn uncover_live_with_callq_test() {
   ]
 
   let base_block = x86_var_if.new_block()
+  let base_program = x86_var_if.new_program()
 
   let p =
-    X86Program(dict.from_list([#("start", Block(..base_block, body: instrs))]))
+    X86Program(
+      ..base_program,
+      body: dict.from_list([#("start", Block(..base_block, body: instrs))]),
+    )
   let p2 =
     X86Program(
-      dict.from_list([
-        #("start", Block(..base_block, body: instrs, live_after:, live_before:)),
+      ..base_program,
+      body: dict.from_list([
+        #("start", Block(body: instrs, live_after:, live_before:)),
       ]),
     )
 
@@ -111,9 +121,12 @@ pub fn uncover_live_with_branching_test() {
     // [Rax, Rsp]
   ]
 
+  let base_program = x86_var_if.new_program()
+
   let p =
     X86Program(
-      dict.from_list([
+      ..base_program,
+      body: dict.from_list([
         #("start", Block(..base_block, body: start)),
         #("block_1", Block(..base_block, body: block_1)),
         #("block_2", Block(..base_block, body: block_2)),

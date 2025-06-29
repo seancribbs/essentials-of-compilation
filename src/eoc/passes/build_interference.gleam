@@ -7,21 +7,21 @@ import gleam/list
 import gleam/set
 
 pub fn build_interference(program: x86.X86Program) -> x86.X86Program {
-  program.body
-  |> dict.map_values(fn(_, block) {
-    let conflicts = determine_conflicts(block.body, block.live_after)
-    x86.Block(..block, conflicts:)
-  })
-  |> x86.X86Program
+  let conflicts =
+    dict.fold(program.body, program.conflicts, fn(ig, _, block) {
+      determine_conflicts(ig, block.body, block.live_after)
+    })
+  x86.X86Program(..program, conflicts:)
 }
 
 fn determine_conflicts(
+  ig: interference_graph.Graph,
   body: List(x86.Instr),
   live_after: List(set.Set(x86_base.Location)),
 ) -> interference_graph.Graph {
   body
   |> list.zip(live_after)
-  |> list.fold(interference_graph.new(), fn(g, pair) {
+  |> list.fold(ig, fn(g, pair) {
     let #(instr, live) = pair
     case instr {
       x86.Movq(s, d) ->
@@ -48,10 +48,10 @@ fn rule_1(
     |> set.union(live)
     |> interference_graph.add_locations(g, _)
 
-  set.fold(live, g, fn(g, var) {
-    case !set.contains(s, var) && !set.contains(d, var) {
+  set.fold(live, g, fn(g, loc) {
+    case !set.contains(s, loc) && !set.contains(d, loc) {
       True ->
-        set.fold(d, g, fn(g, d) { interference_graph.add_conflict(g, d, var) })
+        set.fold(d, g, fn(g, d) { interference_graph.add_conflict(g, d, loc) })
       False -> g
     }
   })

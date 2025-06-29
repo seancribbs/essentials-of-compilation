@@ -15,14 +15,15 @@ import gleam/set
 pub fn uncover_live(input: x86_var_if.X86Program) -> x86_var_if.X86Program {
   let assert Ok(block_order) = build_cfg_order(input.body)
 
-  block_order
-  |> list.fold(input.body, fn(blocks, block_name) {
-    let assert Ok(block) = dict.get(blocks, block_name)
-    let assert [live_before, ..live_after] =
-      compute_live_after(block.body, blocks)
-    dict.insert(blocks, block_name, Block(..block, live_before:, live_after:))
-  })
-  |> x86_var_if.X86Program
+  let new_blocks =
+    list.fold(block_order, input.body, fn(blocks, block_name) {
+      let assert Ok(block) = dict.get(blocks, block_name)
+      let assert [live_before, ..live_after] =
+        compute_live_after(block.body, blocks)
+      dict.insert(blocks, block_name, Block(..block, live_before:, live_after:))
+    })
+
+  x86_var_if.X86Program(..input, body: new_blocks)
 }
 
 fn build_cfg_order(

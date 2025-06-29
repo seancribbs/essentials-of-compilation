@@ -60,14 +60,20 @@ pub type Block {
     body: List(Instr),
     live_before: Set(Location),
     live_after: List(Set(Location)),
-    conflicts: interference_graph.Graph,
   )
 }
 
+pub fn new_program() -> X86Program {
+  X86Program(body: dict.new(), conflicts: interference_graph.new())
+}
+
 pub fn new_block() -> Block {
-  Block([], set.new(), [], interference_graph.new())
+  Block([], set.new(), [])
 }
 
 pub type X86Program {
-  X86Program(body: dict.Dict(String, Block))
+  X86Program(
+    body: dict.Dict(String, Block),
+    conflicts: interference_graph.Graph,
+  )
 }

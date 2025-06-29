@@ -29,10 +29,11 @@ pub fn select_instructions_test() {
   let cp = c.CProgram(dict.new(), dict.from_list([#("start", c)]))
 
   let base_block = x86.new_block()
-
+  let base_program = x86.new_program()
   let x =
     x86.X86Program(
-      dict.from_list([
+      ..base_program,
+      body: dict.from_list([
         #(
           "start",
           x86.Block(..base_block, body: [
@@ -63,10 +64,12 @@ pub fn select_instructions_neg_test() {
     |> explicate_control.explicate_control()
 
   let base_block = x86.new_block()
+  let base_program = x86.new_program()
 
   let x =
     x86.X86Program(
-      dict.from_list([
+      ..base_program,
+      body: dict.from_list([
         #(
           "start",
           x86.Block(..base_block, body: [
@@ -116,10 +119,12 @@ pub fn select_instructions_branches_test() {
     )
 
   let base_block = x86.new_block()
+  let base_program = x86.new_program()
 
   let p2 =
     x86.X86Program(
-      dict.from_list([
+      ..base_program,
+      body: dict.from_list([
         #(
           "start",
           x86.Block(..base_block, body: [
