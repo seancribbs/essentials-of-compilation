@@ -1,5 +1,5 @@
 import eoc/langs/x86_base.{Rax, Rbp, Rsp}
-import eoc/langs/x86_int as x86
+import eoc/langs/x86_if as x86
 import eoc/passes/generate_prelude_and_conclusion.{
   generate_prelude_and_conclusion, program_to_text,
 }
@@ -14,21 +14,19 @@ pub fn generate_prelude_and_conclusion_test() {
       dict.from_list([
         #(
           "start",
-          x86.Block(
-            [
-              x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
-              x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
-              x86.Movq(x86.Deref(Rbp, -8), x86.Reg(Rax)),
-              x86.Movq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
-              x86.Addq(x86.Deref(Rbp, -16), x86.Deref(Rbp, -24)),
-              x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
-              x86.Jmp("conclusion"),
-            ],
-            3,
-            set.new(),
-          ),
+          x86.Block([
+            x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
+            x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
+            x86.Movq(x86.Deref(Rbp, -8), x86.Reg(Rax)),
+            x86.Movq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
+            x86.Addq(x86.Deref(Rbp, -16), x86.Deref(Rbp, -24)),
+            x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
         ),
       ]),
+      3,
+      set.new(),
     )
 
   let p2 =
@@ -36,46 +34,36 @@ pub fn generate_prelude_and_conclusion_test() {
       dict.from_list([
         #(
           "main",
-          x86.Block(
-            [
-              x86.Pushq(x86.Reg(Rbp)),
-              x86.Movq(x86.Reg(Rsp), x86.Reg(Rbp)),
-              x86.Subq(x86.Imm(24), x86.Reg(Rsp)),
-              x86.Jmp("start"),
-            ],
-            0,
-            set.new(),
-          ),
+          x86.Block([
+            x86.Pushq(x86.Reg(Rbp)),
+            x86.Movq(x86.Reg(Rsp), x86.Reg(Rbp)),
+            x86.Subq(x86.Imm(24), x86.Reg(Rsp)),
+            x86.Jmp("start"),
+          ]),
         ),
         #(
           "conclusion",
-          x86.Block(
-            [
-              x86.Addq(x86.Imm(24), x86.Reg(Rsp)),
-              x86.Popq(x86.Reg(Rbp)),
-              x86.Retq,
-            ],
-            0,
-            set.new(),
-          ),
+          x86.Block([
+            x86.Addq(x86.Imm(24), x86.Reg(Rsp)),
+            x86.Popq(x86.Reg(Rbp)),
+            x86.Retq,
+          ]),
         ),
         #(
           "start",
-          x86.Block(
-            [
-              x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
-              x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
-              x86.Movq(x86.Deref(Rbp, -8), x86.Reg(Rax)),
-              x86.Movq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
-              x86.Addq(x86.Deref(Rbp, -16), x86.Deref(Rbp, -24)),
-              x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
-              x86.Jmp("conclusion"),
-            ],
-            3,
-            set.new(),
-          ),
+          x86.Block([
+            x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
+            x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
+            x86.Movq(x86.Deref(Rbp, -8), x86.Reg(Rax)),
+            x86.Movq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
+            x86.Addq(x86.Deref(Rbp, -16), x86.Deref(Rbp, -24)),
+            x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
         ),
       ]),
+      3,
+      set.new(),
     )
 
   p |> generate_prelude_and_conclusion() |> should.equal(p2)
@@ -87,46 +75,36 @@ pub fn program_to_text_test() {
       dict.from_list([
         #(
           "main",
-          x86.Block(
-            [
-              x86.Pushq(x86.Reg(Rbp)),
-              x86.Movq(x86.Reg(Rsp), x86.Reg(Rbp)),
-              x86.Subq(x86.Imm(24), x86.Reg(Rsp)),
-              x86.Jmp("start"),
-            ],
-            0,
-            set.new(),
-          ),
+          x86.Block([
+            x86.Pushq(x86.Reg(Rbp)),
+            x86.Movq(x86.Reg(Rsp), x86.Reg(Rbp)),
+            x86.Subq(x86.Imm(24), x86.Reg(Rsp)),
+            x86.Jmp("start"),
+          ]),
         ),
         #(
           "conclusion",
-          x86.Block(
-            [
-              x86.Addq(x86.Imm(24), x86.Reg(Rsp)),
-              x86.Popq(x86.Reg(Rbp)),
-              x86.Retq,
-            ],
-            0,
-            set.new(),
-          ),
+          x86.Block([
+            x86.Addq(x86.Imm(24), x86.Reg(Rsp)),
+            x86.Popq(x86.Reg(Rbp)),
+            x86.Retq,
+          ]),
         ),
         #(
           "start",
-          x86.Block(
-            [
-              x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
-              x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
-              x86.Movq(x86.Deref(Rbp, -8), x86.Reg(Rax)),
-              x86.Movq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
-              x86.Addq(x86.Deref(Rbp, -16), x86.Deref(Rbp, -24)),
-              x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
-              x86.Jmp("conclusion"),
-            ],
-            24,
-            set.new(),
-          ),
+          x86.Block([
+            x86.Movq(x86.Imm(20), x86.Deref(Rbp, -8)),
+            x86.Movq(x86.Imm(22), x86.Deref(Rbp, -16)),
+            x86.Movq(x86.Deref(Rbp, -8), x86.Reg(Rax)),
+            x86.Movq(x86.Reg(Rax), x86.Deref(Rbp, -24)),
+            x86.Addq(x86.Deref(Rbp, -16), x86.Deref(Rbp, -24)),
+            x86.Movq(x86.Deref(Rbp, -24), x86.Reg(Rax)),
+            x86.Jmp("conclusion"),
+          ]),
         ),
       ]),
+      24,
+      set.new(),
     )
 
   let text =

@@ -1,5 +1,5 @@
 import eoc/langs/x86_base.{Rbp, Rsp}
-import eoc/langs/x86_int as x86
+import eoc/langs/x86_if as x86
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -14,10 +14,12 @@ pub fn generate_prelude_and_conclusion(input: x86.X86Program) -> x86.X86Program 
   let main = generate_main(alignment, saved_regs)
   let conclusion = generate_conclusion(alignment, saved_regs)
 
-  input.body
-  |> dict.insert("main", main)
-  |> dict.insert("conclusion", conclusion)
-  |> x86.X86Program
+  let body =
+    input.body
+    |> dict.insert("main", main)
+    |> dict.insert("conclusion", conclusion)
+
+  x86.X86Program(..input, body:)
 }
 
 // main:
@@ -39,16 +41,15 @@ fn align(bytes: Int) -> Int {
 }
 
 fn compute_frame_alignment(input: x86.X86Program) -> Int {
-  let assert Ok(start_block) = dict.get(input.body, "start")
+  // let assert Ok(start_block) = dict.get(input.body, "start")
   // Add one because we always save %rbp!!!
-  let saved_regs = set.size(start_block.used_callee) + 1
+  let saved_regs = set.size(input.used_callee) + 1
   // A= align(8S + 8C) – 8C
-  align(8 * start_block.stack_vars + 8 * saved_regs) - { 8 * saved_regs }
+  align(8 * input.stack_vars + 8 * saved_regs) - { 8 * saved_regs }
 }
 
 fn get_saved_registers(input: x86.X86Program) -> List(x86_base.Register) {
-  let assert Ok(start_block) = dict.get(input.body, "start")
-  set.to_list(start_block.used_callee)
+  set.to_list(input.used_callee)
 }
 
 fn generate_main(
@@ -67,7 +68,7 @@ fn generate_main(
     |> list.append(aligner)
     |> list.append([x86.Jmp("start")])
 
-  x86.Block(instrs, 0, set.new())
+  x86.Block(instrs)
 }
 
 fn generate_conclusion(
@@ -89,7 +90,7 @@ fn generate_conclusion(
     |> list.append(pops)
     |> list.append([x86.Retq])
 
-  x86.Block(instrs, 0, set.new())
+  x86.Block(instrs)
 }
 
 pub fn program_to_text(input: x86.X86Program, entry: String) -> String {
@@ -157,6 +158,49 @@ fn instr_to_text(instr: x86.Instr) -> string_tree.StringTree {
         arg_to_text(b),
       ]
       |> string_tree.concat()
+    x86.Cmpq(a:, b:) ->
+      [
+        string_tree.from_string("cmpq "),
+        arg_to_text(a),
+        string_tree.from_string(", "),
+        arg_to_text(b),
+      ]
+      |> string_tree.concat()
+    x86.Xorq(a:, b:) ->
+      [
+        string_tree.from_string("xorq "),
+        arg_to_text(a),
+        string_tree.from_string(", "),
+        arg_to_text(b),
+      ]
+      |> string_tree.concat()
+    x86.Movzbq(a:, b:) ->
+      [
+        string_tree.from_string("movzbq "),
+        bytereg_to_text(a),
+        string_tree.from_string(", "),
+        arg_to_text(b),
+      ]
+      |> string_tree.concat()
+
+    x86.JmpIf(cmp:, label:) ->
+      case cmp {
+        x86_base.E -> string_tree.from_string("je ")
+        x86_base.G -> string_tree.from_string("jg ")
+        x86_base.Ge -> string_tree.from_string("jge ")
+        x86_base.L -> string_tree.from_string("jl ")
+        x86_base.Le -> string_tree.from_string("jle ")
+      }
+      |> string_tree.append(label)
+    x86.Set(cmp:, arg:) ->
+      case cmp {
+        x86_base.E -> string_tree.from_string("sete ")
+        x86_base.G -> string_tree.from_string("setg ")
+        x86_base.Ge -> string_tree.from_string("setge ")
+        x86_base.L -> string_tree.from_string("setl ")
+        x86_base.Le -> string_tree.from_string("setle ")
+      }
+      |> string_tree.append_tree(bytereg_to_text(arg))
   }
 
   [indent(), text] |> string_tree.concat()
@@ -175,6 +219,20 @@ fn arg_to_text(arg: x86.Arg) -> string_tree.StringTree {
       |> string_tree.append_tree(reg_to_text(r))
       |> string_tree.append(")")
   }
+}
+
+fn bytereg_to_text(arg: x86_base.ByteReg) -> string_tree.StringTree {
+  let r = case arg {
+    x86_base.Ah -> "ah"
+    x86_base.Al -> "al"
+    x86_base.Bh -> "bh"
+    x86_base.Bl -> "bl"
+    x86_base.Ch -> "ch"
+    x86_base.Cl -> "cl"
+    x86_base.Dh -> "dh"
+    x86_base.Dl -> "dl"
+  }
+  string_tree.from_strings(["%", r])
 }
 
 fn reg_to_text(arg: x86_base.Register) -> string_tree.StringTree {

@@ -1,4 +1,3 @@
-import eoc/langs/l_if
 import eoc/langs/x86_base.{E, LocReg, LocVar, Rax, Rsp}
 import eoc/langs/x86_var_if.{
   Addq, Block, Callq, Cmpq, Imm, Jmp, JmpIf, Movq, Movzbq, Negq, Reg, Set, Var,
