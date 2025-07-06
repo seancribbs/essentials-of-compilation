@@ -23,11 +23,26 @@ pub fn main() {
   //     l.Var("y"),
   //   ))
 
+  // let p =
+  //   l.Program(l.If(
+  //     l.Prim(l.Cmp(l.Eq, l.Prim(l.Read), l.Int(1))),
+  //     l.Int(42),
+  //     l.Int(0),
+  //   ))
+
   let p =
-    l.Program(l.If(
-      l.Prim(l.Cmp(l.Eq, l.Prim(l.Read), l.Int(1))),
-      l.Int(42),
-      l.Int(0),
+    l.Program(l.Let(
+      "y",
+      l.If(
+        l.Bool(True),
+        l.Prim(l.Read),
+        l.If(
+          l.Prim(l.Cmp(l.Eq, l.Prim(l.Read), l.Int(0))),
+          l.Int(777),
+          l.Let("x", l.Prim(l.Read), l.Prim(l.Plus(l.Int(1), l.Var("x")))),
+        ),
+      ),
+      l.Prim(l.Plus(l.Var("y"), l.Int(2))),
     ))
 
   let assert Ok(pt) = l.type_check_program(p)
