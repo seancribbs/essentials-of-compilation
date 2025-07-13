@@ -30,6 +30,12 @@ pub fn main() {
   //     l.Int(0),
   //   ))
 
+  // (let ([y (if #t
+  //            (read)
+  //            (if (eq? (read) 0)
+  //                777
+  //                (let ([x (read)]) (+ 1 x))))])
+  //  (+ y 2))
   let p =
     l.Program(l.Let(
       "y",

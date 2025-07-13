@@ -1,0 +1,119 @@
+import eoc/langs/l_if.{Eq, Gt, Gte, Lt, Lte}
+import eoc/passes/parse.{
+  type Token, And, Boolean, Cmp, Identifier, If, Integer, Keyword, LBracket,
+  LParen, Let, Minus, Not, Or, Plus, RBracket, RParen, Read, tokens,
+}
+import gleam/list
+import gleeunit/should
+
+fn tokenized(input: String) -> List(Token) {
+  input
+  |> tokens
+  |> should.be_ok
+  |> list.map(fn(tok) { tok.value })
+}
+
+pub fn tokens_test() {
+  // Integers
+  "1 2 3 9223372036854775807 18446744073709551616 42"
+  |> tokenized
+  |> should.equal([
+    Integer(1),
+    Integer(2),
+    Integer(3),
+    Integer(9_223_372_036_854_775_807),
+    Integer(18_446_744_073_709_551_616),
+    Integer(42),
+  ])
+  // Punctuation
+  " ( ) [ ]" |> tokenized |> should.equal([LParen, RParen, LBracket, RBracket])
+  // Keywords
+  "#t #f" |> tokenized |> should.equal([Boolean(True), Boolean(False)])
+  "read let + - and or not if"
+  |> tokenized
+  |> should.equal([
+    Keyword(Read),
+    Keyword(Let),
+    Keyword(Plus),
+    Keyword(Minus),
+    Keyword(And),
+    Keyword(Or),
+    Keyword(Not),
+    Keyword(If),
+  ])
+  // Comparison ops
+  "eq?" |> tokenized |> should.equal([Cmp(Eq)])
+  "> < >= <="
+  |> tokenized
+  |> should.equal([Cmp(Gt), Cmp(Lt), Cmp(Gte), Cmp(Lte)])
+
+  // Identifiers
+  "a b c something var1234 var_3"
+  |> tokenized
+  |> should.equal([
+    Identifier("a"),
+    Identifier("b"),
+    Identifier("c"),
+    Identifier("something"),
+    Identifier("var1234"),
+    Identifier("var_3"),
+  ])
+
+  // Realistic example
+  "(let ([y (if #t
+              (read)
+              (if (eq? (read) 0)
+                  777
+                  (let ([x (read)]) (+ 1 x))))])
+    (+ y 2))"
+  |> tokenized
+  |> should.equal([
+    LParen,
+    Keyword(Let),
+    LParen,
+    LBracket,
+    Identifier("y"),
+    LParen,
+    Keyword(If),
+    Boolean(True),
+    LParen,
+    Keyword(Read),
+    RParen,
+    LParen,
+    Keyword(If),
+    LParen,
+    Cmp(Eq),
+    LParen,
+    Keyword(Read),
+    RParen,
+    Integer(0),
+    RParen,
+    Integer(777),
+    LParen,
+    Keyword(Let),
+    LParen,
+    LBracket,
+    Identifier("x"),
+    LParen,
+    Keyword(Read),
+    RParen,
+    RBracket,
+    RParen,
+    LParen,
+    Keyword(Plus),
+    Integer(1),
+    Identifier("x"),
+    RParen,
+    RParen,
+    RParen,
+    RParen,
+    RBracket,
+    RParen,
+    LParen,
+    Keyword(Plus),
+    Identifier("y"),
+    Integer(2),
+    RParen,
+    RParen,
+  ])
+}
