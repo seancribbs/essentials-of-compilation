@@ -1,7 +1,7 @@
-import eoc/langs/l_if.{Eq, Gt, Gte, Lt, Lte}
+import eoc/langs/l_if.{Eq, Gt, Gte, Lt, Lte} as l
 import eoc/passes/parse.{
   type Token, And, Boolean, Cmp, Identifier, If, Integer, Keyword, LBracket,
-  LParen, Let, Minus, Not, Or, Plus, RBracket, RParen, Read, tokens,
+  LParen, Let, Minus, Not, Or, Plus, RBracket, RParen, Read, parse, tokens,
 }
 import gleam/list
 import gleeunit/should
@@ -116,4 +116,33 @@ pub fn tokens_test() {
     RParen,
     RParen,
   ])
+}
+
+pub fn parse_test() {
+  let p =
+    l.Program(l.Let(
+      "y",
+      l.If(
+        l.Bool(True),
+        l.Prim(l.Read),
+        l.If(
+          l.Prim(l.Cmp(l.Eq, l.Prim(l.Read), l.Int(0))),
+          l.Int(777),
+          l.Let("x", l.Prim(l.Read), l.Prim(l.Plus(l.Int(1), l.Var("x")))),
+        ),
+      ),
+      l.Prim(l.Plus(l.Var("y"), l.Int(2))),
+    ))
+
+  "(let ([y (if #t
+              (read)
+              (if (eq? (read) 0)
+                  777
+                  (let ([x (read)]) (+ 1 x))))])
+    (+ y 2))"
+  |> tokens
+  |> should.be_ok
+  |> parse
+  |> should.be_ok
+  |> should.equal(p)
 }

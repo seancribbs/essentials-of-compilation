@@ -3,6 +3,7 @@ import eoc/passes/allocate_registers
 import eoc/passes/build_interference
 import eoc/passes/explicate_control
 import eoc/passes/generate_prelude_and_conclusion
+import eoc/passes/parse
 import eoc/passes/patch_instructions
 import eoc/passes/remove_complex_operands
 import eoc/passes/select_instructions
@@ -36,21 +37,31 @@ pub fn main() {
   //                777
   //                (let ([x (read)]) (+ 1 x))))])
   //  (+ y 2))
-  let p =
-    l.Program(l.Let(
-      "y",
-      l.If(
-        l.Bool(True),
-        l.Prim(l.Read),
-        l.If(
-          l.Prim(l.Cmp(l.Eq, l.Prim(l.Read), l.Int(0))),
-          l.Int(777),
-          l.Let("x", l.Prim(l.Read), l.Prim(l.Plus(l.Int(1), l.Var("x")))),
-        ),
-      ),
-      l.Prim(l.Plus(l.Var("y"), l.Int(2))),
-    ))
+  //
+  // let p =
+  //   l.Program(l.Let(
+  //     "y",
+  //     l.If(
+  //       l.Bool(True),
+  //       l.Prim(l.Read),
+  //       l.If(
+  //         l.Prim(l.Cmp(l.Eq, l.Prim(l.Read), l.Int(0))),
+  //         l.Int(777),
+  //         l.Let("x", l.Prim(l.Read), l.Prim(l.Plus(l.Int(1), l.Var("x")))),
+  //       ),
+  //     ),
+  //     l.Prim(l.Plus(l.Var("y"), l.Int(2))),
+  //   ))
 
+  let input =
+    "(let ([y (if #t
+              (read)
+              (if (eq? (read) 0)
+                  777
+                  (let ([x (read)]) (+ 1 x))))])
+    (+ y 2))"
+  let assert Ok(tokens) = parse.tokens(input)
+  let assert Ok(p) = parse.parse(tokens)
   let assert Ok(pt) = l.type_check_program(p)
 
   pt
