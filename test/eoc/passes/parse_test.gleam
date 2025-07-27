@@ -1,4 +1,4 @@
-import eoc/langs/l_if.{Eq, Gt, Gte, Lt, Lte} as l
+import eoc/langs/l_while.{Eq, Gt, Gte, Lt, Lte} as l
 import eoc/passes/parse.{
   type Token, And, Boolean, Cmp, Identifier, If, Integer, Keyword, LBracket,
   LParen, Let, Minus, Not, Or, Plus, RBracket, RParen, Read, parse, tokens,
@@ -140,6 +140,44 @@ pub fn parse_test() {
                   777
                   (let ([x (read)]) (+ 1 x))))])
     (+ y 2))"
+  |> tokens
+  |> should.be_ok
+  |> parse
+  |> should.be_ok
+  |> should.equal(p)
+}
+
+pub fn parse_while_test() {
+  let p =
+    l.Program(l.Let(
+      "sum",
+      l.Int(0),
+      l.Let(
+        "i",
+        l.Int(5),
+        l.Begin(
+          [
+            l.WhileLoop(
+              l.Prim(l.Cmp(Gt, l.Var("i"), l.Int(0))),
+              l.Begin(
+                [l.SetBang("sum", l.Prim(l.Plus(l.Var("sum"), l.Var("i"))))],
+                l.SetBang("i", l.Prim(l.Minus(l.Var("i"), l.Int(1)))),
+              ),
+            ),
+          ],
+          l.Var("sum"),
+        ),
+      ),
+    ))
+
+  "(let ([sum 0])
+    (let ([i 5])
+      (begin
+        (while (> i 0)
+          (begin
+            (set! sum (+ sum i))
+            (set! i (- i 1))))
+        sum)))"
   |> tokens
   |> should.be_ok
   |> parse
