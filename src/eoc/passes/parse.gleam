@@ -2,7 +2,6 @@ import eoc/langs/l_while as lang
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/set
-import gleam/string
 import nibble.{type DeadEnd, type Parser, do, return}
 import nibble/lexer
 

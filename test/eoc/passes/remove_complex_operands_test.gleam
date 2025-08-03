@@ -1,7 +1,11 @@
 // import gleeunit
-import eoc/langs/l_if
-import eoc/langs/l_mon_if
+import eoc/langs/l_mon_while as l_mon
+import eoc/langs/l_while.{Lt}
+import eoc/langs/l_while_get as l
+import eoc/passes/parse.{parse, tokens}
 import eoc/passes/remove_complex_operands.{remove_complex_operands}
+import eoc/passes/uncover_get
+import eoc/passes/uniquify
 import gleeunit/should
 
 // (+ 42 (- 10))
@@ -11,16 +15,13 @@ import gleeunit/should
 // (let ([tmp.1 (- 10)])
 //    (+ 42 tmp.1))
 pub fn rco_test() {
-  let p =
-    l_if.Program(
-      l_if.Prim(l_if.Plus(l_if.Int(42), l_if.Prim(l_if.Negate(l_if.Int(10))))),
-    )
+  let p = l.Program(l.Prim(l.Plus(l.Int(42), l.Prim(l.Negate(l.Int(10))))))
 
   let p2 =
-    l_mon_if.Program(l_mon_if.Let(
+    l_mon.Program(l_mon.Let(
       "tmp.1",
-      l_mon_if.Prim(l_mon_if.Negate(l_mon_if.Int(10))),
-      l_mon_if.Prim(l_mon_if.Plus(l_mon_if.Int(42), l_mon_if.Var("tmp.1"))),
+      l_mon.Prim(l_mon.Negate(l_mon.Int(10))),
+      l_mon.Prim(l_mon.Plus(l_mon.Int(42), l_mon.Var("tmp.1"))),
     ))
 
   p |> remove_complex_operands() |> should.equal(p2)
@@ -30,22 +31,13 @@ pub fn rco_test() {
 //    (let ([b a])
 //      b))
 pub fn rco_noop_test() {
-  let p =
-    l_if.Program(l_if.Let(
-      "a",
-      l_if.Int(42),
-      l_if.Let("b", l_if.Var("a"), l_if.Var("b")),
-    ))
+  let p = l.Program(l.Let("a", l.Int(42), l.Let("b", l.Var("a"), l.Var("b"))))
 
   let p2 =
-    l_mon_if.Program(l_mon_if.Let(
+    l_mon.Program(l_mon.Let(
       "a",
-      l_mon_if.Atomic(l_mon_if.Int(42)),
-      l_mon_if.Let(
-        "b",
-        l_mon_if.Atomic(l_mon_if.Var("a")),
-        l_mon_if.Atomic(l_mon_if.Var("b")),
-      ),
+      l_mon.Atomic(l_mon.Int(42)),
+      l_mon.Let("b", l_mon.Atomic(l_mon.Var("a")), l_mon.Atomic(l_mon.Var("b"))),
     ))
 
   p |> remove_complex_operands() |> should.equal(p2)
@@ -59,28 +51,20 @@ pub fn rco_noop_test() {
 // ))
 pub fn rco_order_of_bindings_test() {
   let p =
-    l_if.Program(
-      l_if.Prim(l_if.Plus(
-        l_if.Prim(l_if.Negate(l_if.Prim(l_if.Read))),
-        l_if.Prim(l_if.Read),
-      )),
-    )
+    l.Program(l.Prim(l.Plus(l.Prim(l.Negate(l.Prim(l.Read))), l.Prim(l.Read))))
 
   let p2 =
-    l_mon_if.Program(l_mon_if.Let(
+    l_mon.Program(l_mon.Let(
       "tmp.2",
-      l_mon_if.Let(
+      l_mon.Let(
         "tmp.1",
-        l_mon_if.Prim(l_mon_if.Read),
-        l_mon_if.Prim(l_mon_if.Negate(l_mon_if.Var("tmp.1"))),
+        l_mon.Prim(l_mon.Read),
+        l_mon.Prim(l_mon.Negate(l_mon.Var("tmp.1"))),
       ),
-      l_mon_if.Let(
+      l_mon.Let(
         "tmp.3",
-        l_mon_if.Prim(l_mon_if.Read),
-        l_mon_if.Prim(l_mon_if.Plus(
-          l_mon_if.Var("tmp.2"),
-          l_mon_if.Var("tmp.3"),
-        )),
+        l_mon.Prim(l_mon.Read),
+        l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.2"), l_mon.Var("tmp.3"))),
       ),
     ))
 
@@ -97,34 +81,117 @@ pub fn rco_order_of_bindings_test() {
 // )
 pub fn rco_if_test() {
   let p =
-    l_if.Program(l_if.If(
-      l_if.Prim(
-        l_if.Not(
-          l_if.Prim(l_if.Cmp(l_if.Lt, l_if.Prim(l_if.Read), l_if.Int(10))),
-        ),
-      ),
-      l_if.Int(5),
-      l_if.Int(42),
+    l.Program(l.If(
+      l.Prim(l.Not(l.Prim(l.Cmp(Lt, l.Prim(l.Read), l.Int(10))))),
+      l.Int(5),
+      l.Int(42),
     ))
 
   let p2 =
-    l_mon_if.Program(l_mon_if.If(
-      l_mon_if.Let(
+    l_mon.Program(l_mon.If(
+      l_mon.Let(
         "tmp.2",
-        l_mon_if.Let(
+        l_mon.Let(
           "tmp.1",
-          l_mon_if.Prim(l_mon_if.Read),
-          l_mon_if.Prim(l_mon_if.Cmp(
-            l_if.Lt,
-            l_mon_if.Var("tmp.1"),
-            l_mon_if.Int(10),
-          )),
+          l_mon.Prim(l_mon.Read),
+          l_mon.Prim(l_mon.Cmp(Lt, l_mon.Var("tmp.1"), l_mon.Int(10))),
         ),
-        l_mon_if.Prim(l_mon_if.Not(l_mon_if.Var("tmp.2"))),
+        l_mon.Prim(l_mon.Not(l_mon.Var("tmp.2"))),
       ),
-      l_mon_if.Atomic(l_mon_if.Int(5)),
-      l_mon_if.Atomic(l_mon_if.Int(42)),
+      l_mon.Atomic(l_mon.Int(5)),
+      l_mon.Atomic(l_mon.Int(42)),
     ))
 
   p |> remove_complex_operands |> should.equal(p2)
+}
+
+pub fn rco_loops_test() {
+  let p =
+    parsed(
+      "
+  (let ([x2 10])
+    (let ([y3 0])
+      (+ (+ (begin
+              (set! y3 (read))
+              x2)
+            (begin
+              (set! x2 (read))
+              y3))
+          x2)))
+  ",
+    )
+  // becomes
+  // "
+  // (let ([x2 10])
+  //   (let ([y3 0])
+  //     (let ([tmp.1 (begin
+  //                   (set! y3 (read))
+  //                   (get! x2))])
+  //       (let ([tmp.2 (begin
+  //                     (set! x2 (read))
+  //                     (get! y3))])
+  //         (let ([tmp.3 (+ tmp.1 tmp.2)])
+  //           (let ([tmp.4 (get! x2)])
+  //             (+ tmp.3 tmp.4)))))))
+  // "
+
+  // (let ([x2 10])
+  //  (let ([y3 0])
+  //    (let ([tmp.3
+  //           (let ([tmp.1 (begin
+  //                           (set! y3 (read))
+  //                           (get! x2))])
+  //              (let ([tmp.2 (begin
+  //                             (set! x2 (read))
+  //                             (get! y3))])
+  //                (+ tmp.1 tmp.2)))])
+  //   (let ([tmp.4 (get! x2)])
+  //    (+ tmp.3 tmp.4))
+  // )
+  //  )
+  // )
+
+  let p2 =
+    l_mon.Program(l_mon.Let(
+      "x2",
+      l_mon.Atomic(l_mon.Int(10)),
+      l_mon.Let(
+        "y3",
+        l_mon.Atomic(l_mon.Int(0)),
+        l_mon.Let(
+          "tmp.1",
+          l_mon.Begin(
+            [l_mon.SetBang("y3", l_mon.Prim(l_mon.Read))],
+            l_mon.GetBang("x2"),
+          ),
+          l_mon.Let(
+            "tmp.2",
+            l_mon.Begin(
+              [l_mon.SetBang("x2", l_mon.Prim(l_mon.Read))],
+              l_mon.GetBang("y3"),
+            ),
+            l_mon.Let(
+              "tmp.3",
+              l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Var("tmp.2"))),
+              l_mon.Let(
+                "tmp.4",
+                l_mon.GetBang("x2"),
+                l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.3"), l_mon.Var("tmp.4"))),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ))
+
+  p |> remove_complex_operands |> should.equal(p2)
+}
+
+fn parsed(input: String) -> l.Program {
+  input
+  |> tokens
+  |> should.be_ok
+  |> parse
+  |> should.be_ok
+  |> uncover_get.uncover_get
 }

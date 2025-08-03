@@ -1,5 +1,5 @@
 // import gleeunit
-import eoc/langs/l_if.{
+import eoc/langs/l_while.{
   Bool, Cmp, Gte, If, Int, Let, Lt, Minus, Or, Plus, Prim, Program, Read, Var,
 }
 import eoc/passes/uniquify.{uniquify}
