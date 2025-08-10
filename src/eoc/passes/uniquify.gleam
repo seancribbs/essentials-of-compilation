@@ -89,7 +89,7 @@ fn uniquify_exp(
 
     l.SetBang(var:, value:) -> {
       let #(value1, counter1) = uniquify_exp(value, env, counter)
-      #(l.SetBang(var:, value: value1), counter1)
+      #(l.SetBang(get_var(env, var), value: value1), counter1)
     }
 
     l.Begin(stmts:, result:) -> {
