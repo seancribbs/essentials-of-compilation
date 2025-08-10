@@ -1,8 +1,10 @@
 // L_if => L_if (without and/or)
-import eoc/langs/l_if.{
-  type Expr, type PrimOp, type Program, And, Bool, Cmp, If, Int, Let, Minus,
-  Negate, Not, Or, Plus, Prim, Program, Read, Var,
+import eoc/langs/l_while.{
+  type Expr, type PrimOp, type Program, And, Begin, Bool, Cmp, If, Int, Let,
+  Minus, Negate, Not, Or, Plus, Prim, Program, Read, SetBang, Var, Void,
+  WhileLoop,
 }
+import gleam/list
 
 pub fn shrink(input: Program) -> Program {
   input.body
@@ -16,6 +18,11 @@ fn shrink_expr(expr: Expr) -> Expr {
     If(cond, t, e) -> If(shrink_expr(cond), shrink_expr(t), shrink_expr(e))
     Let(var, binding, body) -> Let(var, shrink_expr(binding), shrink_expr(body))
     Prim(op) -> shrink_op(op)
+    Begin(stmts:, result:) ->
+      Begin(list.map(stmts, shrink_expr), shrink_expr(result))
+    SetBang(var:, value:) -> SetBang(var, shrink_expr(value))
+    WhileLoop(condition:, body:) ->
+      WhileLoop(shrink_expr(condition), shrink_expr(body))
   }
 }
 
@@ -29,5 +36,6 @@ fn shrink_op(op: PrimOp) -> Expr {
     Not(v) -> Prim(Not(shrink_expr(v)))
     Plus(a, b) -> Prim(Plus(shrink_expr(a), shrink_expr(b)))
     Read -> Prim(Read)
+    Void -> Prim(Void)
   }
 }
