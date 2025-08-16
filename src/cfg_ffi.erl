@@ -4,11 +4,13 @@
     new/0,
     topsort/1,
     add_vertex/2,
-    add_edge/3
+    add_edge/3,
+    in_neighbors/2,
+    out_neighbors/2
 ]).
 
 new() ->
-    digraph:new([acyclic]).
+    digraph:new([cyclic]).
 
 topsort(G) ->
     case digraph_utils:topsort(G) of
@@ -23,3 +25,7 @@ add_vertex(G, V) ->
 add_edge(G, V1, V2) ->
     _ = digraph:add_edge(G, V1, V2),
     G.
+
+in_neighbors(G, V) -> digraph:in_neighbours(G, V).
+
+out_neighbors(G, V) -> digraph:out_neighbours(G, V).

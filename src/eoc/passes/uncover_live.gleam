@@ -12,6 +12,7 @@ import eoc/langs/x86_base.{
 import eoc/langs/x86_var_if.{type Block, Block}
 import gleam/dict
 import gleam/list
+import gleam/result
 import gleam/set
 
 pub fn uncover_live(input: x86_var_if.X86Program) -> x86_var_if.X86Program {
@@ -28,25 +29,85 @@ pub fn uncover_live(input: x86_var_if.X86Program) -> x86_var_if.X86Program {
   x86_var_if.X86Program(..input, body: new_blocks)
 }
 
+fn analyze_dataflow(
+  g: cfg.CFG(String, Nil),
+  blocks: dict.Dict(String, Block),
+) -> dict.Dict(String, set.Set(Location)) {
+  let worklist = dict.keys(blocks)
+  let mapping =
+    worklist
+    |> list.map(fn(k) { #(k, set.new()) })
+    |> dict.from_list()
+
+  analyze_dataflow_inner(g, blocks, mapping, worklist)
+}
+
+fn analyze_dataflow_inner(
+  g: cfg.CFG(String, Nil),
+  blocks: dict.Dict(String, Block),
+  mapping: dict.Dict(String, set.Set(Location)),
+  worklist: List(String),
+) -> dict.Dict(String, set.Set(Location)) {
+  case worklist {
+    [] -> mapping
+    [node, ..worklist] -> {
+      let input =
+        g
+        |> cfg.in_neighbors(node)
+        |> list.fold(set.new(), fn(state, pred) {
+          mapping
+          |> dict.get(pred)
+          |> result.lazy_unwrap(set.new)
+          |> set.union(state)
+        })
+      let assert Ok(block) = dict.get(blocks, node)
+      let output = transfer(block.body, input)
+      let assert Ok(previous) = dict.get(mapping, node)
+      case output == previous {
+        True -> analyze_dataflow_inner(g, blocks, mapping, worklist)
+        False ->
+          analyze_dataflow_inner(
+            g,
+            blocks,
+            dict.insert(mapping, node, output),
+            list.append(worklist, cfg.out_neighbors(g, node)),
+          )
+      }
+    }
+  }
+}
+
+fn transfer(
+  instrs: List(x86_var_if.Instr),
+  live_after: set.Set(Location),
+) -> set.Set(Location) {
+  todo
+}
+
 fn build_cfg_order(
   blocks: dict.Dict(String, Block),
 ) -> Result(List(String), Nil) {
   blocks
-  |> dict.fold(cfg.new(), fn(g, block_name, block) {
-    block.body
-    |> list.fold(cfg.add_vertex(g, block_name), fn(g, instr) {
-      case instr {
-        x86_var_if.JmpIf(cmp: _, label:) | x86_var_if.Jmp(label:)
-          if label != "conclusion"
-        ->
-          g
-          |> cfg.add_vertex(label)
-          |> cfg.add_edge(label, block_name)
-        _ -> g
-      }
-    })
-  })
+  |> build_cfg
   |> cfg.topsort()
+}
+
+fn build_cfg(blocks: dict.Dict(String, Block)) -> cfg.CFG(String, Nil) {
+  // construct a graph from the dict of blocks
+  use g, block_name, block <- dict.fold(blocks, cfg.new())
+
+  // add vertexes for jmp instructions inside the body of each block
+  use g, instr <- list.fold(block.body, cfg.add_vertex(g, block_name))
+
+  case instr {
+    x86_var_if.JmpIf(cmp: _, label:) | x86_var_if.Jmp(label:)
+      if label != "conclusion"
+    ->
+      g
+      |> cfg.add_vertex(label)
+      |> cfg.add_edge(label, block_name)
+    _ -> g
+  }
 }
 
 fn compute_live_after(
