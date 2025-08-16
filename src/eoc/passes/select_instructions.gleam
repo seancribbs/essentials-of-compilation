@@ -3,29 +3,30 @@
 import gleam/dict
 import gleam/list
 
-import eoc/langs/c_if
-import eoc/langs/l_if
+import eoc/langs/c_loop as c
+import eoc/langs/l_while as l
 import eoc/langs/x86_base.{Rax}
-import eoc/langs/x86_var_if.{Block}
+import eoc/langs/x86_var_if as x86
 
-pub fn select_instructions(input: c_if.CProgram) -> x86_var_if.X86Program {
+pub fn select_instructions(input: c.CProgram) -> x86.X86Program {
   let blocks =
     dict.map_values(input.body, fn(_, tail) {
-      let block = x86_var_if.new_block()
-      Block(..block, body: select_tail(tail))
+      let block = x86.new_block()
+      x86.Block(..block, body: select_tail(tail))
     })
-  x86_var_if.X86Program(..x86_var_if.new_program(), body: blocks)
+  x86.X86Program(..x86.new_program(), body: blocks)
 }
 
-fn select_atm(input: c_if.Atm) -> x86_var_if.Arg {
+fn select_atm(input: c.Atm) -> x86.Arg {
   case input {
-    c_if.Int(i) -> x86_var_if.Imm(i)
-    c_if.Variable(v) -> x86_var_if.Var(v)
-    c_if.Bool(bool) ->
+    c.Int(i) -> x86.Imm(i)
+    c.Variable(v) -> x86.Var(v)
+    c.Bool(bool) ->
       case bool {
-        True -> x86_var_if.Imm(1)
-        False -> x86_var_if.Imm(0)
+        True -> x86.Imm(1)
+        False -> x86.Imm(0)
       }
+    c.Void -> x86.Imm(0)
   }
 }
 
@@ -42,104 +43,102 @@ fn select_atm(input: c_if.Atm) -> x86_var_if.Arg {
 // -->
 // callq read_int
 // movq %rax, var
-fn select_stmt(input: c_if.Stmt) -> List(x86_var_if.Instr) {
+fn select_stmt(input: c.Stmt) -> List(x86.Instr) {
   case input {
-    c_if.Assign(v, c_if.Atom(atm)) -> [
-      x86_var_if.Movq(select_atm(atm), x86_var_if.Var(v)),
+    c.Assign(v, c.Atom(atm)) -> [x86.Movq(select_atm(atm), x86.Var(v))]
+    c.Assign(v, c.Prim(c.Read)) -> [
+      x86.Callq("read_int", 0),
+      x86.Movq(x86.Reg(Rax), x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Read)) -> [
-      x86_var_if.Callq("read_int", 0),
-      x86_var_if.Movq(x86_var_if.Reg(Rax), x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Neg(c.Variable(v1)))) if v == v1 -> [
+      x86.Negq(x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Neg(c_if.Variable(v1)))) if v == v1 -> [
-      x86_var_if.Negq(x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Neg(atm))) -> [
+      x86.Movq(select_atm(atm), x86.Var(v)),
+      x86.Negq(x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Neg(atm))) -> [
-      x86_var_if.Movq(select_atm(atm), x86_var_if.Var(v)),
-      x86_var_if.Negq(x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Plus(c.Variable(v1), b))) if v == v1 -> [
+      x86.Addq(select_atm(b), x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Plus(c_if.Variable(v1), b))) if v == v1 -> [
-      x86_var_if.Addq(select_atm(b), x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Plus(a, c.Variable(v1)))) if v == v1 -> [
+      x86.Addq(select_atm(a), x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Plus(a, c_if.Variable(v1)))) if v == v1 -> [
-      x86_var_if.Addq(select_atm(a), x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Plus(a, b))) -> [
+      x86.Movq(select_atm(a), x86.Var(v)),
+      x86.Addq(select_atm(b), x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Plus(a, b))) -> [
-      x86_var_if.Movq(select_atm(a), x86_var_if.Var(v)),
-      x86_var_if.Addq(select_atm(b), x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Minus(c.Variable(v1), b))) if v == v1 -> [
+      x86.Subq(select_atm(b), x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Minus(c_if.Variable(v1), b))) if v == v1 -> [
-      x86_var_if.Subq(select_atm(b), x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Minus(a, c.Variable(v1)))) if v == v1 -> [
+      x86.Negq(x86.Var(v)),
+      x86.Addq(select_atm(a), x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Minus(a, c_if.Variable(v1)))) if v == v1 -> [
-      x86_var_if.Negq(x86_var_if.Var(v)),
-      x86_var_if.Addq(select_atm(a), x86_var_if.Var(v)),
+    c.Assign(v, c.Prim(c.Minus(a, b))) -> [
+      x86.Movq(select_atm(a), x86.Var(v)),
+      x86.Subq(select_atm(b), x86.Var(v)),
     ]
-    c_if.Assign(v, c_if.Prim(c_if.Minus(a, b))) -> [
-      x86_var_if.Movq(select_atm(a), x86_var_if.Var(v)),
-      x86_var_if.Subq(select_atm(b), x86_var_if.Var(v)),
+    c.Assign(var:, expr: c.Prim(op: c.Not(a:))) -> [
+      x86.Movq(select_atm(a), x86.Var(var)),
+      x86.Xorq(x86.Imm(1), x86.Var(var)),
     ]
-    c_if.Assign(var:, expr: c_if.Prim(op: c_if.Not(a:))) -> [
-      x86_var_if.Movq(select_atm(a), x86_var_if.Var(var)),
-      x86_var_if.Xorq(x86_var_if.Imm(1), x86_var_if.Var(var)),
+    c.Assign(var:, expr: c.Prim(op: c.Cmp(op:, a:, b:))) -> [
+      x86.Cmpq(select_atm(b), select_atm(a)),
+      x86.Set(convert_op_to_cc(op), x86_base.Al),
+      x86.Movzbq(x86_base.Al, x86.Var(var)),
     ]
-    c_if.Assign(var:, expr: c_if.Prim(op: c_if.Cmp(op:, a:, b:))) -> [
-      x86_var_if.Cmpq(select_atm(b), select_atm(a)),
-      x86_var_if.Set(convert_op_to_cc(op), x86_base.Al),
-      x86_var_if.Movzbq(x86_base.Al, x86_var_if.Var(var)),
-    ]
+    c.ReadStmt -> [x86.Callq("read_int", 0)]
   }
 }
 
-fn select_tail(input: c_if.Tail) -> List(x86_var_if.Instr) {
+fn select_tail(input: c.Tail) -> List(x86.Instr) {
   case input {
-    c_if.Seq(s, t) -> list.append(select_stmt(s), select_tail(t))
-    c_if.Return(c_if.Atom(atm)) -> [
-      x86_var_if.Movq(select_atm(atm), x86_var_if.Reg(Rax)),
-      x86_var_if.Jmp("conclusion"),
+    c.Seq(s, t) -> list.append(select_stmt(s), select_tail(t))
+    c.Return(c.Atom(atm)) -> [
+      x86.Movq(select_atm(atm), x86.Reg(Rax)),
+      x86.Jmp("conclusion"),
     ]
-    c_if.Return(c_if.Prim(c_if.Read)) -> [
-      x86_var_if.Callq("read_int", 0),
-      x86_var_if.Jmp("conclusion"),
+    c.Return(c.Prim(c.Read)) -> [
+      x86.Callq("read_int", 0),
+      x86.Jmp("conclusion"),
     ]
-    c_if.Return(c_if.Prim(c_if.Neg(a))) -> [
-      x86_var_if.Movq(select_atm(a), x86_var_if.Reg(Rax)),
-      x86_var_if.Negq(x86_var_if.Reg(Rax)),
-      x86_var_if.Jmp("conclusion"),
+    c.Return(c.Prim(c.Neg(a))) -> [
+      x86.Movq(select_atm(a), x86.Reg(Rax)),
+      x86.Negq(x86.Reg(Rax)),
+      x86.Jmp("conclusion"),
     ]
-    c_if.Return(c_if.Prim(c_if.Plus(a, b))) -> [
-      x86_var_if.Movq(select_atm(a), x86_var_if.Reg(Rax)),
-      x86_var_if.Addq(select_atm(b), x86_var_if.Reg(Rax)),
-      x86_var_if.Jmp("conclusion"),
+    c.Return(c.Prim(c.Plus(a, b))) -> [
+      x86.Movq(select_atm(a), x86.Reg(Rax)),
+      x86.Addq(select_atm(b), x86.Reg(Rax)),
+      x86.Jmp("conclusion"),
     ]
-    c_if.Return(c_if.Prim(c_if.Minus(a, b))) -> [
-      x86_var_if.Movq(select_atm(a), x86_var_if.Reg(Rax)),
-      x86_var_if.Subq(select_atm(b), x86_var_if.Reg(Rax)),
-      x86_var_if.Jmp("conclusion"),
+    c.Return(c.Prim(c.Minus(a, b))) -> [
+      x86.Movq(select_atm(a), x86.Reg(Rax)),
+      x86.Subq(select_atm(b), x86.Reg(Rax)),
+      x86.Jmp("conclusion"),
     ]
-    c_if.Return(c_if.Prim(c_if.Cmp(_, _, _)))
-    | c_if.Return(c_if.Prim(op: c_if.Not(_))) ->
+    c.Return(c.Prim(c.Cmp(_, _, _))) | c.Return(c.Prim(op: c.Not(_))) ->
       panic as "program returns boolean"
-    c_if.Goto(label:) -> [x86_var_if.Jmp(label)]
-    c_if.If(
-      cond: c_if.Prim(c_if.Cmp(op:, a:, b:)),
-      if_true: c_if.Goto(l1),
-      if_false: c_if.Goto(l2),
+    c.Goto(label:) -> [x86.Jmp(label)]
+    c.If(
+      cond: c.Prim(c.Cmp(op:, a:, b:)),
+      if_true: c.Goto(l1),
+      if_false: c.Goto(l2),
     ) -> [
-      x86_var_if.Cmpq(select_atm(b), select_atm(a)),
-      x86_var_if.JmpIf(convert_op_to_cc(op), l1),
-      x86_var_if.Jmp(l2),
+      x86.Cmpq(select_atm(b), select_atm(a)),
+      x86.JmpIf(convert_op_to_cc(op), l1),
+      x86.Jmp(l2),
     ]
-    c_if.If(_, _, _) -> panic as "invalid if statement"
+    c.If(_, _, _) -> panic as "invalid if statement"
   }
 }
 
-fn convert_op_to_cc(op: l_if.Cmp) -> x86_base.Cc {
+fn convert_op_to_cc(op: l.Cmp) -> x86_base.Cc {
   case op {
-    l_if.Eq -> x86_base.E
-    l_if.Lt -> x86_base.L
-    l_if.Lte -> x86_base.Le
-    l_if.Gt -> x86_base.G
-    l_if.Gte -> x86_base.Ge
+    l.Eq -> x86_base.E
+    l.Lt -> x86_base.L
+    l.Lte -> x86_base.Le
+    l.Gt -> x86_base.G
+    l.Gte -> x86_base.Ge
   }
 }
