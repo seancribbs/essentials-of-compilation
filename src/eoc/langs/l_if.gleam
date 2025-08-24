@@ -1,8 +1,6 @@
+import eoc/runtime
 import gleam/dict
-import gleam/erlang
-import gleam/int
 import gleam/result
-import gleam/string
 
 pub type Type {
   Integer
@@ -95,7 +93,7 @@ fn interpret_op(op: PrimOp, env: Env) -> IValue {
       let assert IntValue(bv) = interpret_exp(b, env)
       IntValue(av + bv)
     }
-    Read -> IntValue(read_int())
+    Read -> IntValue(runtime.read_int())
     And(a, b) -> {
       case interpret_exp(a, env) {
         BoolValue(True) -> {
@@ -147,19 +145,6 @@ fn interpret_op(op: PrimOp, env: Env) -> IValue {
 fn get_var(env: Env, name: String) -> IValue {
   case dict.get(env, name) {
     Error(_) -> panic as "referenced unknown variable"
-    Ok(i) -> i
-  }
-}
-
-fn read_int() -> Int {
-  let result = {
-    erlang.get_line("> ")
-    |> result.map_error(fn(_) { Nil })
-    |> result.try(fn(line) { line |> string.trim() |> int.parse() })
-  }
-
-  case result {
-    Error(_) -> panic as "could not read an int from stdin"
     Ok(i) -> i
   }
 }

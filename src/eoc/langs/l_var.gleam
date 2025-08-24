@@ -1,8 +1,5 @@
+import eoc/runtime
 import gleam/dict
-import gleam/erlang
-import gleam/int
-import gleam/result
-import gleam/string
 
 pub type PrimOp {
   Read
@@ -47,26 +44,13 @@ fn interpret_op(op: PrimOp, env: Env) -> Int {
     Minus(a, b) -> interpret_exp(a, env) - interpret_exp(b, env)
     Negate(v) -> -interpret_exp(v, env)
     Plus(a, b) -> interpret_exp(a, env) + interpret_exp(b, env)
-    Read -> read_int()
+    Read -> runtime.read_int()
   }
 }
 
 fn get_var(env: Env, name: String) -> Int {
   case dict.get(env, name) {
     Error(_) -> panic as "referenced unknown variable"
-    Ok(i) -> i
-  }
-}
-
-fn read_int() -> Int {
-  let result = {
-    erlang.get_line("> ")
-    |> result.map_error(fn(_) { Nil })
-    |> result.try(fn(line) { line |> string.trim() |> int.parse() })
-  }
-
-  case result {
-    Error(_) -> panic as "could not read an int from stdin"
     Ok(i) -> i
   }
 }

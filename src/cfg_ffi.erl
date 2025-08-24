@@ -2,7 +2,6 @@
 
 -export([
     new/0,
-    topsort/1,
     add_vertex/2,
     add_edge/3,
     in_neighbors/2,
@@ -11,12 +10,6 @@
 
 new() ->
     digraph:new([cyclic]).
-
-topsort(G) ->
-    case digraph_utils:topsort(G) of
-        L when is_list(L) -> {ok, L};
-        false -> {error, nil}
-    end.
 
 add_vertex(G, V) ->
     V = digraph:add_vertex(G, V),

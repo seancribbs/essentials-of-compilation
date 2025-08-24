@@ -1,7 +1,4 @@
-import gleam/erlang
-import gleam/int
-import gleam/result
-import gleam/string
+import eoc/runtime
 
 pub type PrimOp {
   Read
@@ -35,20 +32,7 @@ fn interpret_op(op: PrimOp) -> Int {
     Minus(a, b) -> interpret_exp(a) - interpret_exp(b)
     Negate(v) -> -interpret_exp(v)
     Plus(a, b) -> interpret_exp(a) + interpret_exp(b)
-    Read -> read_int()
-  }
-}
-
-fn read_int() -> Int {
-  let result = {
-    erlang.get_line(">")
-    |> result.map_error(fn(_) { Nil })
-    |> result.try(fn(line) { line |> string.trim() |> int.parse() })
-  }
-
-  case result {
-    Error(_) -> panic as "could not read an int from stdin"
-    Ok(i) -> i
+    Read -> runtime.read_int()
   }
 }
 

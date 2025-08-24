@@ -16,38 +16,52 @@ import gleam/result
 import gleam/set
 
 pub fn uncover_live(input: x86_var_if.X86Program) -> x86_var_if.X86Program {
-  let assert Ok(block_order) = build_cfg_order(input.body)
-
   let new_blocks =
-    list.fold(block_order, input.body, fn(blocks, block_name) {
-      let assert Ok(block) = dict.get(blocks, block_name)
-      let assert [live_before, ..live_after] =
-        compute_live_after(block.body, blocks)
-      dict.insert(blocks, block_name, Block(..block, live_before:, live_after:))
+    input.body
+    |> build_cfg()
+    |> analyze_dataflow(input.body)
+    |> dict.map_values(fn(block_name, live_sets) {
+      let assert Ok(block) = dict.get(input.body, block_name)
+      let assert [live_before, ..live_after] = live_sets
+      Block(..block, live_before:, live_after:)
     })
 
   x86_var_if.X86Program(..input, body: new_blocks)
 }
 
-fn analyze_dataflow(
-  g: cfg.CFG(String, Nil),
-  blocks: dict.Dict(String, Block),
-) -> dict.Dict(String, set.Set(Location)) {
+type LiveSet =
+  set.Set(Location)
+
+type Mapping =
+  dict.Dict(String, List(LiveSet))
+
+type Blocks =
+  dict.Dict(String, Block)
+
+type CFG =
+  cfg.CFG(String, Nil)
+
+type Worklist =
+  List(String)
+
+fn analyze_dataflow(g: CFG, blocks: Blocks) -> Mapping {
   let worklist = dict.keys(blocks)
   let mapping =
     worklist
-    |> list.map(fn(k) { #(k, set.new()) })
+    |> list.map(fn(k) { #(k, []) })
     |> dict.from_list()
+    |> dict.insert("conclusion", [set.from_list([LocReg(Rax), LocReg(Rsp)])])
 
-  analyze_dataflow_inner(g, blocks, mapping, worklist)
+  analyze_dataflow_loop(g, blocks, mapping, worklist)
+  |> dict.delete("conclusion")
 }
 
-fn analyze_dataflow_inner(
-  g: cfg.CFG(String, Nil),
-  blocks: dict.Dict(String, Block),
-  mapping: dict.Dict(String, set.Set(Location)),
-  worklist: List(String),
-) -> dict.Dict(String, set.Set(Location)) {
+fn analyze_dataflow_loop(
+  g: CFG,
+  blocks: Blocks,
+  mapping: Mapping,
+  worklist: Worklist,
+) -> Mapping {
   case worklist {
     [] -> mapping
     [node, ..worklist] -> {
@@ -55,18 +69,22 @@ fn analyze_dataflow_inner(
         g
         |> cfg.in_neighbors(node)
         |> list.fold(set.new(), fn(state, pred) {
-          mapping
-          |> dict.get(pred)
-          |> result.lazy_unwrap(set.new)
-          |> set.union(state)
+          let assert Ok(live_sets) = dict.get(mapping, pred)
+          let before =
+            live_sets
+            |> list.first()
+            |> result.unwrap(set.new())
+
+          set.union(state, before)
         })
+
       let assert Ok(block) = dict.get(blocks, node)
       let output = transfer(block.body, input)
       let assert Ok(previous) = dict.get(mapping, node)
       case output == previous {
-        True -> analyze_dataflow_inner(g, blocks, mapping, worklist)
+        True -> analyze_dataflow_loop(g, blocks, mapping, worklist)
         False ->
-          analyze_dataflow_inner(
+          analyze_dataflow_loop(
             g,
             blocks,
             dict.insert(mapping, node, output),
@@ -79,20 +97,15 @@ fn analyze_dataflow_inner(
 
 fn transfer(
   instrs: List(x86_var_if.Instr),
-  live_after: set.Set(Location),
-) -> set.Set(Location) {
-  todo
+  live_after: LiveSet,
+) -> List(LiveSet) {
+  use live_after, instr <- list.fold_right(instrs, [live_after])
+
+  let assert Ok(next) = list.first(live_after)
+  [before_set(next, instr), ..live_after]
 }
 
-fn build_cfg_order(
-  blocks: dict.Dict(String, Block),
-) -> Result(List(String), Nil) {
-  blocks
-  |> build_cfg
-  |> cfg.topsort()
-}
-
-fn build_cfg(blocks: dict.Dict(String, Block)) -> cfg.CFG(String, Nil) {
+fn build_cfg(blocks: Blocks) -> CFG {
   // construct a graph from the dict of blocks
   use g, block_name, block <- dict.fold(blocks, cfg.new())
 
@@ -100,9 +113,7 @@ fn build_cfg(blocks: dict.Dict(String, Block)) -> cfg.CFG(String, Nil) {
   use g, instr <- list.fold(block.body, cfg.add_vertex(g, block_name))
 
   case instr {
-    x86_var_if.JmpIf(cmp: _, label:) | x86_var_if.Jmp(label:)
-      if label != "conclusion"
-    ->
+    x86_var_if.JmpIf(cmp: _, label:) | x86_var_if.Jmp(label:) ->
       g
       |> cfg.add_vertex(label)
       |> cfg.add_edge(label, block_name)
@@ -110,43 +121,13 @@ fn build_cfg(blocks: dict.Dict(String, Block)) -> cfg.CFG(String, Nil) {
   }
 }
 
-fn compute_live_after(
-  instrs: List(x86_var_if.Instr),
-  blocks: dict.Dict(String, Block),
-) -> List(set.Set(Location)) {
-  list.fold_right(
-    instrs,
-    [set.from_list([LocReg(Rax), LocReg(Rsp)])],
-    fn(live_after, instr) {
-      let assert Ok(after) = list.first(live_after)
-      let after = case instr {
-        // NOTE: "conclusion" is the end of the program, so it isn't a block that we have generated yet
-        x86_var_if.Jmp(label: "conclusion") -> after
-        x86_var_if.Jmp(label:) -> {
-          let assert Ok(dest) = dict.get(blocks, label)
-          dest.live_before
-        }
-        x86_var_if.JmpIf(cmp: _, label:) -> {
-          let assert Ok(dest) = dict.get(blocks, label)
-          set.union(dest.live_before, after)
-        }
-        _ -> after
-      }
-      [before_set(after, instr), ..live_after]
-    },
-  )
-}
-
-fn before_set(
-  after: set.Set(Location),
-  instr: x86_var_if.Instr,
-) -> set.Set(Location) {
+fn before_set(after: LiveSet, instr: x86_var_if.Instr) -> LiveSet {
   after
   |> set.difference(write_location_in_inst(instr))
   |> set.union(read_locations_in_inst(instr))
 }
 
-pub fn locations_in_arg(arg: x86_var_if.Arg) -> set.Set(Location) {
+pub fn locations_in_arg(arg: x86_var_if.Arg) -> LiveSet {
   case arg {
     // x86_var_if.Deref(_, _) -> todo
     x86_var_if.Imm(_) -> set.new()
@@ -155,7 +136,7 @@ pub fn locations_in_arg(arg: x86_var_if.Arg) -> set.Set(Location) {
   }
 }
 
-fn read_locations_in_inst(inst: x86_var_if.Instr) -> set.Set(Location) {
+fn read_locations_in_inst(inst: x86_var_if.Instr) -> LiveSet {
   case inst {
     x86_var_if.Addq(a, b) -> set.union(locations_in_arg(a), locations_in_arg(b))
     x86_var_if.Subq(a, b) -> set.union(locations_in_arg(a), locations_in_arg(b))
@@ -189,7 +170,7 @@ fn read_locations_in_inst(inst: x86_var_if.Instr) -> set.Set(Location) {
   }
 }
 
-pub fn write_location_in_inst(inst: x86_var_if.Instr) -> set.Set(Location) {
+pub fn write_location_in_inst(inst: x86_var_if.Instr) -> LiveSet {
   case inst {
     x86_var_if.Addq(_, b) -> locations_in_arg(b)
     x86_var_if.Subq(_, b) -> locations_in_arg(b)

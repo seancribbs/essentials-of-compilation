@@ -1,11 +1,21 @@
+import eoc/langs/l_while as l
 import eoc/langs/x86_base.{E, LocReg, LocVar, Rax, Rsp}
 import eoc/langs/x86_var_if.{
   Addq, Block, Callq, Cmpq, Imm, Jmp, JmpIf, Movq, Movzbq, Negq, Reg, Set, Var,
   X86Program,
 }
+import eoc/passes/explicate_control
+import eoc/passes/parse.{parse, tokens}
+import eoc/passes/remove_complex_operands
+import eoc/passes/select_instructions
+import eoc/passes/shrink
+import eoc/passes/uncover_get
 import eoc/passes/uncover_live
+import eoc/passes/uniquify
 import gleam/dict
+import gleam/io
 import gleam/set
+import gleam/string
 import gleeunit/should
 
 pub fn uncover_live_figure_35_test() {
@@ -208,3 +218,268 @@ pub fn uncover_live_assign_boolean_var_test() {
   set.contains(movzbq, LocReg(Rax)) |> should.be_false
   set.contains(movzbq, LocVar("x")) |> should.be_true
 }
+
+pub fn uncover_live_while_loop_test() {
+  let p =
+    "
+  (let ([sum 0])
+    (let ([i 5])
+      (begin
+        (while (> i 0)
+          (begin
+            (set! sum (+ sum i))
+            (set! i (- i 1))))
+        sum)))
+  "
+    |> parsed
+    |> shrink.shrink
+    |> uniquify.uniquify
+    |> uncover_get.uncover_get
+    |> remove_complex_operands.remove_complex_operands
+    |> explicate_control.explicate_control
+    |> select_instructions.select_instructions
+
+  let p2 = uncover_live.uncover_live(p)
+
+  let assert Ok(s) = dict.get(p2.body, "block_1")
+  s.live_before |> should.equal(set.from_list([LocVar("sum.1"), LocReg(Rsp)]))
+
+  let assert Ok(s) = dict.get(p2.body, "start")
+  s.live_before
+  |> should.equal(set.from_list([LocReg(Rsp)]))
+
+  let assert Ok(s) = dict.get(p2.body, "block_2")
+  s.live_before
+  |> should.equal(set.from_list([LocVar("sum.1"), LocVar("i.2"), LocReg(Rsp)]))
+
+  let assert Ok(s) = dict.get(p2.body, "loop_1")
+  s.live_before
+  |> should.equal(set.from_list([LocVar("sum.1"), LocVar("i.2"), LocReg(Rsp)]))
+  // X86Program(
+  //   dict.from_list([
+  //     #(
+  //       "block_1",
+  //       Block(
+  //         [Movq(Var("sum.1"), Reg(Rax)), Jmp("conclusion")],
+  //         Set(dict.from_list([])),
+  //         [],
+  //       ),
+  //     ),
+  //     #(
+  //       "block_2",
+  //       Block(
+  //         [
+  //           Movq(Var("sum.1"), Var("tmp.2")),    [sum.1, i.2, rsp]
+  //           Movq(Var("i.2"), Var("tmp.3")),      [i.2, tmp.2, rsp]
+  //           Movq(Var("tmp.2"), Var("sum.1")),    [tmp.2, tmp.3, rsp]
+  //           Addq(Var("tmp.3"), Var("sum.1")),    [i.2, tmp.3, rsp]
+  //           Movq(Var("i.2"), Var("tmp.4")),      [i.2, sum.1, rsp]
+  //           Movq(Var("tmp.4"), Var("i.2")),      [tmp.4, sum.1, rsp]
+  //           Subq(Imm(1), Var("i.2")),            [sum.1, rsp]
+  //           Jmp("loop_1"),                       [sum.1, i.2, rsp]
+  //         ],
+  //         Set(dict.from_list([])),
+  //         [],
+  //       ),
+  //     ),
+  //     #(
+  //       "loop_1",
+  //       Block(
+  //         [
+  //           Movq(Var("i.2"), Var("tmp.1")),
+  //           Cmpq(Imm(0), Var("tmp.1")),
+  //           JmpIf(G, "block_2"),
+  //           Jmp("block_1"),
+  //         ],
+  //         Set(dict.from_list([])),
+  //         [],
+  //       ),
+  //     ),
+  //     #(
+  //       "start",
+  //       Block(
+  //         [Movq(Imm(0), Var("sum.1")), Movq(Imm(5), Var("i.2")), Jmp("loop_1")],
+  //         Set(dict.from_list([])),
+  //         [],
+  //       ),
+  //     ),
+  //   ]),
+  //   Graph(
+  //     Graph(
+  //       dict.from_list([
+  //         #(
+  //           LocReg(R10),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R10),
+  //               Node(LocReg(R10), Some(6), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(R11),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R11),
+  //               Node(LocReg(R11), Some(-4), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(R12),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R12),
+  //               Node(LocReg(R12), Some(8), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(R13),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R13),
+  //               Node(LocReg(R13), Some(9), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(R14),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R14),
+  //               Node(LocReg(R14), Some(10), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(R15),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R15),
+  //               Node(LocReg(R15), Some(-5), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(R8),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R8),
+  //               Node(LocReg(R8), Some(4), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(R9),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(R9),
+  //               Node(LocReg(R9), Some(5), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rax),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rax),
+  //               Node(LocReg(Rax), Some(-1), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rbp),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rbp),
+  //               Node(LocReg(Rbp), Some(-3), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rbx),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rbx),
+  //               Node(LocReg(Rbx), Some(7), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rcx),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rcx),
+  //               Node(LocReg(Rcx), Some(0), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rdi),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rdi),
+  //               Node(LocReg(Rdi), Some(3), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rdx),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rdx),
+  //               Node(LocReg(Rdx), Some(1), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rsi),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rsi),
+  //               Node(LocReg(Rsi), Some(2), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //         #(
+  //           LocReg(Rsp),
+  //           Context(
+  //             dict.from_list([]),
+  //             Node(
+  //               LocReg(Rsp),
+  //               Node(LocReg(Rsp), Some(-2), Set(dict.from_list([]))),
+  //             ),
+  //           ),
+  //         ),
+  //       ]),
+  //     ),
+  //   ),
+  // )
+}
+
+fn parsed(input: String) -> l.Program {
+  input
+  |> tokens
+  |> should.be_ok
+  |> parse
+  |> should.be_ok
+}
+// fn debug(term: a) {
+//   io.println(string.inspect(term))
+// }
