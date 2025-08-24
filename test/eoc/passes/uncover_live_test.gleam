@@ -13,9 +13,7 @@ import eoc/passes/uncover_get
 import eoc/passes/uncover_live
 import eoc/passes/uniquify
 import gleam/dict
-import gleam/io
 import gleam/set
-import gleam/string
 import gleeunit/should
 
 pub fn uncover_live_figure_35_test() {
@@ -480,6 +478,3 @@ fn parsed(input: String) -> l.Program {
   |> parse
   |> should.be_ok
 }
-// fn debug(term: a) {
-//   io.println(string.inspect(term))
-// }

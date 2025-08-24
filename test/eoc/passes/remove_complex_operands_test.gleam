@@ -4,6 +4,7 @@ import eoc/langs/l_while.{Lt}
 import eoc/langs/l_while_get as l
 import eoc/passes/parse.{parse, tokens}
 import eoc/passes/remove_complex_operands.{remove_complex_operands}
+import eoc/passes/shrink
 import eoc/passes/uncover_get
 import eoc/passes/uniquify
 import gleeunit/should
@@ -139,31 +140,31 @@ pub fn rco_loops_test() {
 
   let p2 =
     l_mon.Program(l_mon.Let(
-      "x2",
+      "x2.1",
       l_mon.Atomic(l_mon.Int(10)),
       l_mon.Let(
-        "y3",
+        "y3.2",
         l_mon.Atomic(l_mon.Int(0)),
         l_mon.Let(
           "tmp.3",
           l_mon.Let(
             "tmp.1",
             l_mon.Begin(
-              [l_mon.SetBang("y3", l_mon.Prim(l_mon.Read))],
-              l_mon.GetBang("x2"),
+              [l_mon.SetBang("y3.2", l_mon.Prim(l_mon.Read))],
+              l_mon.GetBang("x2.1"),
             ),
             l_mon.Let(
               "tmp.2",
               l_mon.Begin(
-                [l_mon.SetBang("x2", l_mon.Prim(l_mon.Read))],
-                l_mon.GetBang("y3"),
+                [l_mon.SetBang("x2.1", l_mon.Prim(l_mon.Read))],
+                l_mon.GetBang("y3.2"),
               ),
               l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Var("tmp.2"))),
             ),
           ),
           l_mon.Let(
             "tmp.4",
-            l_mon.GetBang("x2"),
+            l_mon.GetBang("x2.1"),
             l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.3"), l_mon.Var("tmp.4"))),
           ),
         ),
@@ -179,5 +180,7 @@ fn parsed(input: String) -> l.Program {
   |> should.be_ok
   |> parse
   |> should.be_ok
+  |> shrink.shrink
+  |> uniquify.uniquify
   |> uncover_get.uncover_get
 }
