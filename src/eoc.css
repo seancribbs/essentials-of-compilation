@@ -1,1 +1,4 @@
 @import "tailwindcss";
+@layer components {
+    @import "./eoc/ui/button";
+}

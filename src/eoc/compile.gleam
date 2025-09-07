@@ -15,6 +15,19 @@ import eoc/passes/uniquify
 import gleam/result
 import gleam/string
 
+pub fn interpret(input: String) -> Result(String, String) {
+  use tokens <- result.try(result.map_error(parse.tokens(input), string.inspect))
+  use program <- result.map(result.map_error(
+    parse.parse(tokens),
+    string.inspect,
+  ))
+  case l.interpret(program) {
+    l.BoolValue(v:) -> string.inspect(v)
+    l.IntValue(v:) -> string.inspect(v)
+    l.VoidValue -> "void"
+  }
+}
+
 pub fn compile(input: String) -> Result(String, String) {
   use tokens <- result.try(result.map_error(parse.tokens(input), string.inspect))
   use program <- result.try(result.map_error(

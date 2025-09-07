@@ -1,11 +1,13 @@
+import eoc/ui/button.{button}
 import gleam/result
 import lustre
-import lustre/attribute.{type Attribute, class}
+import lustre/attribute.{type Attribute, class, style}
 import lustre/element.{type Element, text}
-import lustre/element/html.{button, div, textarea}
+import lustre/element/html.{div, textarea}
 import lustre/event
 
 import eoc/compile
+import eoc/ui/theme
 
 pub fn main() {
   let app = lustre.simple(init, update, view)
@@ -21,6 +23,7 @@ type Model {
 type Msg {
   InputUpdated(input: String)
   Compile
+  Interpet
 }
 
 fn init(_args) -> Model {
@@ -32,34 +35,59 @@ fn update(model: Model, msg: Msg) {
     InputUpdated(input) -> Model(..model, input:)
     Compile ->
       Model(..model, output: result.unwrap_both(compile.compile(model.input)))
+    Interpet ->
+      Model(..model, output: result.unwrap_both(compile.interpret(model.input)))
   }
 }
 
 fn view(model: Model) -> Element(Msg) {
-  div([class("max-w-xl mx-auto my-5")], [
-    div([class("flex flex-row gap-2 flex-wrap")], [
+  use <- theme.inject(theme.default())
+  div([class("my-1 px-3")], [
+    div([class("p-2 flex flex-row")], [
+      html.h1(
+        [
+          theme.use_base(),
+          style("font-family", theme.font.heading),
+          style("font-size", theme.spacing.lg),
+          class("mr-2"),
+        ],
+        [text("Elements of Compilation")],
+      ),
+      button(
+        [
+          theme.use_primary(),
+          class("mr-2"),
+          event.on_click(Compile),
+        ],
+        [text("Compile")],
+      ),
+      button(
+        [
+          theme.use_secondary(),
+          event.on_click(Interpet),
+        ],
+        [text("Interpet")],
+      ),
+    ]),
+    div([class("w-screen flex flex-row gap-2 h-svh")], [
       code_component([event.on_change(InputUpdated)], model.input),
       code_component([attribute.readonly(True)], model.output),
     ]),
-    button(
-      [
-        class("rounded-md px-3 py-1 bg-green-400 shadow-sm"),
-        event.on_click(Compile),
-      ],
-      [text("Compile")],
-    ),
   ])
 }
 
 fn code_component(attrs: List(Attribute(Msg)), body: String) -> Element(Msg) {
-  textarea(
-    [
-      class(
-        "resize-y field-sizing-fixed size-max border border-slate-300 font-mono caret-black",
-      ),
-      attribute.autocomplete("off"),
-      ..attrs
-    ],
-    body,
-  )
+  div([class("grow")], [
+    textarea(
+      [
+        style("font-family", theme.font.code),
+        style("font-size", theme.spacing.lg),
+        style("background-color", theme.colour.bg_subtle),
+        class("resize-none h-full w-full focus:border-none"),
+        attribute.autocomplete("off"),
+        ..attrs
+      ],
+      body,
+    ),
+  ])
 }
