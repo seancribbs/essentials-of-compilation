@@ -1,4 +1,4 @@
-import eoc/langs/l_while.{Eq, Gt, Gte, Lt, Lte} as l
+import eoc/langs/l_tup.{Eq, Gt, Gte, Lt, Lte} as l
 import eoc/passes/parse.{
   type Token, And, Boolean, Cmp, Identifier, If, Integer, Keyword, LBracket,
   LParen, Let, Minus, Not, Or, Plus, RBracket, RParen, Read, parse, tokens,

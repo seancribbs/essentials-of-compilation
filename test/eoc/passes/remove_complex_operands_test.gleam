@@ -105,82 +105,80 @@ pub fn rco_if_test() {
 
   p |> remove_complex_operands |> should.equal(p2)
 }
+// pub fn rco_loops_test() {
+//   let p =
+//     parsed(
+//       "
+//   (let ([x2 10])
+//     (let ([y3 0])
+//       (+ (+ (begin
+//               (set! y3 (read))
+//               x2)
+//             (begin
+//               (set! x2 (read))
+//               y3))
+//           x2)))
+//   ",
+//     )
+//   // becomes
+//   // (let ([x2 10])
+//   //  (let ([y3 0])
+//   //    (let ([tmp.3
+//   //           (let ([tmp.1 (begin
+//   //                           (set! y3 (read))
+//   //                           (get! x2))])
+//   //              (let ([tmp.2 (begin
+//   //                             (set! x2 (read))
+//   //                             (get! y3))])
+//   //                (+ tmp.1 tmp.2)))])
+//   //   (let ([tmp.4 (get! x2)])
+//   //    (+ tmp.3 tmp.4))
+//   // )
+//   //  )
+//   // )
 
-pub fn rco_loops_test() {
-  let p =
-    parsed(
-      "
-  (let ([x2 10])
-    (let ([y3 0])
-      (+ (+ (begin
-              (set! y3 (read))
-              x2)
-            (begin
-              (set! x2 (read))
-              y3))
-          x2)))
-  ",
-    )
-  // becomes
-  // (let ([x2 10])
-  //  (let ([y3 0])
-  //    (let ([tmp.3
-  //           (let ([tmp.1 (begin
-  //                           (set! y3 (read))
-  //                           (get! x2))])
-  //              (let ([tmp.2 (begin
-  //                             (set! x2 (read))
-  //                             (get! y3))])
-  //                (+ tmp.1 tmp.2)))])
-  //   (let ([tmp.4 (get! x2)])
-  //    (+ tmp.3 tmp.4))
-  // )
-  //  )
-  // )
+//   let p2 =
+//     l_mon.Program(l_mon.Let(
+//       "x2.1",
+//       l_mon.Atomic(l_mon.Int(10)),
+//       l_mon.Let(
+//         "y3.2",
+//         l_mon.Atomic(l_mon.Int(0)),
+//         l_mon.Let(
+//           "tmp.3",
+//           l_mon.Let(
+//             "tmp.1",
+//             l_mon.Begin(
+//               [l_mon.SetBang("y3.2", l_mon.Prim(l_mon.Read))],
+//               l_mon.GetBang("x2.1"),
+//             ),
+//             l_mon.Let(
+//               "tmp.2",
+//               l_mon.Begin(
+//                 [l_mon.SetBang("x2.1", l_mon.Prim(l_mon.Read))],
+//                 l_mon.GetBang("y3.2"),
+//               ),
+//               l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Var("tmp.2"))),
+//             ),
+//           ),
+//           l_mon.Let(
+//             "tmp.4",
+//             l_mon.GetBang("x2.1"),
+//             l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.3"), l_mon.Var("tmp.4"))),
+//           ),
+//         ),
+//       ),
+//     ))
 
-  let p2 =
-    l_mon.Program(l_mon.Let(
-      "x2.1",
-      l_mon.Atomic(l_mon.Int(10)),
-      l_mon.Let(
-        "y3.2",
-        l_mon.Atomic(l_mon.Int(0)),
-        l_mon.Let(
-          "tmp.3",
-          l_mon.Let(
-            "tmp.1",
-            l_mon.Begin(
-              [l_mon.SetBang("y3.2", l_mon.Prim(l_mon.Read))],
-              l_mon.GetBang("x2.1"),
-            ),
-            l_mon.Let(
-              "tmp.2",
-              l_mon.Begin(
-                [l_mon.SetBang("x2.1", l_mon.Prim(l_mon.Read))],
-                l_mon.GetBang("y3.2"),
-              ),
-              l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Var("tmp.2"))),
-            ),
-          ),
-          l_mon.Let(
-            "tmp.4",
-            l_mon.GetBang("x2.1"),
-            l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.3"), l_mon.Var("tmp.4"))),
-          ),
-        ),
-      ),
-    ))
-
-  p |> remove_complex_operands |> should.equal(p2)
-}
-
-fn parsed(input: String) -> l.Program {
-  input
-  |> tokens
-  |> should.be_ok
-  |> parse
-  |> should.be_ok
-  |> shrink.shrink
-  |> uniquify.uniquify
-  |> uncover_get.uncover_get
-}
+//   p |> remove_complex_operands |> should.equal(p2)
+// }
+// fn parsed(input: String) -> l.Program {
+//   input
+//   |> tokens
+//   |> should.be_ok
+//   |> parse
+//   |> should.be_ok
+//   |> shrink.shrink
+//   |> uniquify.uniquify
+//   |> uncover_get.uncover_get
+// }

@@ -1,4 +1,4 @@
-import eoc/langs/l_while as lang
+import eoc/langs/l_tup as lang
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/set
@@ -30,6 +30,10 @@ pub type Keyword {
   Begin
   While
   Void
+  Vector
+  VectorRef
+  VectorSet
+  VectorLength
 }
 
 pub fn tokens(input: String) -> Result(List(lexer.Token(Token)), lexer.Error) {
@@ -66,6 +70,10 @@ pub fn tokens(input: String) -> Result(List(lexer.Token(Token)), lexer.Error) {
             "begin" -> Keyword(Begin)
             "while" -> Keyword(While)
             "void" -> Keyword(Void)
+            "vector" -> Keyword(Vector)
+            "vector-ref" -> Keyword(VectorRef)
+            "vector-set!" -> Keyword(VectorSet)
+            "vector-length" -> Keyword(VectorLength)
             id -> Identifier(id)
           }
         },
@@ -161,6 +169,10 @@ fn primitive() -> Parser(lang.Expr, Token, Nil) {
       and_op(),
       or_op(),
       not_op(),
+      vector_op(),
+      vector_length_op(),
+      vector_ref_op(),
+      vector_set_op(),
     ]),
   )
 
@@ -198,6 +210,37 @@ fn plus_op() -> Parser(lang.PrimOp, Token, Nil) {
   use arg2 <- do(expression())
 
   return(lang.Plus(arg1, arg2))
+}
+
+fn vector_op() -> Parser(lang.PrimOp, Token, Nil) {
+  use _ <- do(nibble.token(Keyword(Vector)))
+  use fields <- do(nibble.many(expression()))
+
+  return(lang.Vector(fields))
+}
+
+fn vector_length_op() -> Parser(lang.PrimOp, Token, Nil) {
+  use _ <- do(nibble.token(Keyword(VectorLength)))
+  use arg1 <- do(expression())
+
+  return(lang.VectorLength(arg1))
+}
+
+fn vector_ref_op() -> Parser(lang.PrimOp, Token, Nil) {
+  use _ <- do(nibble.token(Keyword(VectorRef)))
+  use arg1 <- do(expression())
+  use arg2 <- do(expression())
+
+  return(lang.VectorRef(arg1, arg2))
+}
+
+fn vector_set_op() -> Parser(lang.PrimOp, Token, Nil) {
+  use _ <- do(nibble.token(Keyword(VectorSet)))
+  use arg1 <- do(expression())
+  use arg2 <- do(expression())
+  use arg3 <- do(expression())
+
+  return(lang.VectorSet(arg1, arg2, arg3))
 }
 
 fn cmp_inner() -> Parser(lang.Cmp, Token, Nil) {

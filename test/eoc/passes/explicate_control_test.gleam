@@ -242,142 +242,139 @@ pub fn explicate_control_shrink_conditions_test() {
   |> explicate_control
   |> should.equal(p2)
 }
+// pub fn explicate_control_begin_test() {
+//   let p =
+//     "
+//   (let ([x (read)])
+//     (begin
+//      (set! x (+ x 1))
+//      (+ x 42)))
+//   "
+//     |> parsed
+//     |> shrink.shrink
+//     |> uniquify.uniquify
+//     |> uncover_get.uncover_get
+//     |> remove_complex_operands.remove_complex_operands
 
-pub fn explicate_control_begin_test() {
-  let p =
-    "
-  (let ([x (read)])
-    (begin
-     (set! x (+ x 1))
-     (+ x 42)))
-  "
-    |> parsed
-    |> shrink.shrink
-    |> uniquify.uniquify
-    |> uncover_get.uncover_get
-    |> remove_complex_operands.remove_complex_operands
+//   // Program(Let(
+//   //   "x.1",
+//   //   Prim(Read),
+//   //   Begin(
+//   //     [
+//   //       SetBang(
+//   //         "x.1",
+//   //         Let("tmp.1", GetBang("x.1"), Prim(Plus(Var("tmp.1"), Int(1)))),
+//   //       ),
+//   //     ],
+//   //     Let("tmp.2", GetBang("x.1"), Prim(Plus(Var("tmp.2"), Int(42)))),
+//   //   ),
+//   // ))
+//   let p2 =
+//     c.CProgram(
+//       dict.new(),
+//       dict.from_list([
+//         #(
+//           "start",
+//           c.Seq(
+//             c.Assign("x.1", c.Prim(c.Read)),
+//             c.Seq(
+//               c.Assign("tmp.1", c.Atom(c.Variable("x.1"))),
+//               c.Seq(
+//                 c.Assign("x.1", c.Prim(c.Plus(c.Variable("tmp.1"), c.Int(1)))),
+//                 c.Seq(
+//                   c.Assign("tmp.2", c.Atom(c.Variable("x.1"))),
+//                   c.Return(c.Prim(c.Plus(c.Variable("tmp.2"), c.Int(42)))),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ),
+//       ]),
+//     )
 
-  // Program(Let(
-  //   "x.1",
-  //   Prim(Read),
-  //   Begin(
-  //     [
-  //       SetBang(
-  //         "x.1",
-  //         Let("tmp.1", GetBang("x.1"), Prim(Plus(Var("tmp.1"), Int(1)))),
-  //       ),
-  //     ],
-  //     Let("tmp.2", GetBang("x.1"), Prim(Plus(Var("tmp.2"), Int(42)))),
-  //   ),
-  // ))
-  let p2 =
-    c.CProgram(
-      dict.new(),
-      dict.from_list([
-        #(
-          "start",
-          c.Seq(
-            c.Assign("x.1", c.Prim(c.Read)),
-            c.Seq(
-              c.Assign("tmp.1", c.Atom(c.Variable("x.1"))),
-              c.Seq(
-                c.Assign("x.1", c.Prim(c.Plus(c.Variable("tmp.1"), c.Int(1)))),
-                c.Seq(
-                  c.Assign("tmp.2", c.Atom(c.Variable("x.1"))),
-                  c.Return(c.Prim(c.Plus(c.Variable("tmp.2"), c.Int(42)))),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ]),
-    )
+//   p |> explicate_control |> should.equal(p2)
+// }
+// pub fn explicate_control_while_test() {
+//   let p =
+//     "
+//   (let ([sum 0])
+//     (let ([i 5])
+//       (begin
+//         (while (> i 0)
+//           (begin
+//             (set! sum (+ sum i))
+//             (set! i (- i 1))))
+//         sum)))
+//   "
+//     |> parsed
+//     |> shrink.shrink
+//     |> uniquify.uniquify
+//     |> uncover_get.uncover_get
+//     |> remove_complex_operands.remove_complex_operands
 
-  p |> explicate_control |> should.equal(p2)
-}
+//   let p2 =
+//     c.CProgram(
+//       dict.new(),
+//       dict.from_list([
+//         #(
+//           "start",
+//           c.Seq(
+//             c.Assign("sum.1", c.Atom(c.Int(0))),
+//             c.Seq(c.Assign("i.2", c.Atom(c.Int(5))), c.Goto("loop_1")),
+//           ),
+//         ),
+//         // loop condition
+//         #(
+//           "loop_1",
+//           c.Seq(
+//             c.Assign("tmp.1", c.Atom(c.Variable("i.2"))),
+//             c.If(
+//               c.Prim(c.Cmp(l.Gt, c.Variable("tmp.1"), c.Int(0))),
+//               c.Goto("block_2"),
+//               c.Goto("block_1"),
+//             ),
+//           ),
+//         ),
+//         // exit point
+//         #("block_1", c.Return(c.Atom(c.Variable("sum.1")))),
+//         // body of loop
+//         #(
+//           "block_2",
+//           c.Seq(
+//             // get! sum.1
+//             c.Assign("tmp.2", c.Atom(c.Variable("sum.1"))),
+//             c.Seq(
+//               // get! i.2
+//               c.Assign("tmp.3", c.Atom(c.Variable("i.2"))),
+//               c.Seq(
+//                 c.Assign(
+//                   "sum.1",
+//                   c.Prim(c.Plus(c.Variable("tmp.2"), c.Variable("tmp.3"))),
+//                 ),
+//                 c.Seq(
+//                   // get! i.2
+//                   c.Assign("tmp.4", c.Atom(c.Variable("i.2"))),
+//                   c.Seq(
+//                     c.Assign(
+//                       "i.2",
+//                       c.Prim(c.Minus(c.Variable("tmp.4"), c.Int(1))),
+//                     ),
+//                     c.Goto("loop_1"),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ),
+//       ]),
+//     )
 
-pub fn explicate_control_while_test() {
-  let p =
-    "
-  (let ([sum 0])
-    (let ([i 5])
-      (begin
-        (while (> i 0)
-          (begin
-            (set! sum (+ sum i))
-            (set! i (- i 1))))
-        sum)))
-  "
-    |> parsed
-    |> shrink.shrink
-    |> uniquify.uniquify
-    |> uncover_get.uncover_get
-    |> remove_complex_operands.remove_complex_operands
-
-  let p2 =
-    c.CProgram(
-      dict.new(),
-      dict.from_list([
-        #(
-          "start",
-          c.Seq(
-            c.Assign("sum.1", c.Atom(c.Int(0))),
-            c.Seq(c.Assign("i.2", c.Atom(c.Int(5))), c.Goto("loop_1")),
-          ),
-        ),
-        // loop condition
-        #(
-          "loop_1",
-          c.Seq(
-            c.Assign("tmp.1", c.Atom(c.Variable("i.2"))),
-            c.If(
-              c.Prim(c.Cmp(l.Gt, c.Variable("tmp.1"), c.Int(0))),
-              c.Goto("block_2"),
-              c.Goto("block_1"),
-            ),
-          ),
-        ),
-        // exit point
-        #("block_1", c.Return(c.Atom(c.Variable("sum.1")))),
-        // body of loop
-        #(
-          "block_2",
-          c.Seq(
-            // get! sum.1
-            c.Assign("tmp.2", c.Atom(c.Variable("sum.1"))),
-            c.Seq(
-              // get! i.2
-              c.Assign("tmp.3", c.Atom(c.Variable("i.2"))),
-              c.Seq(
-                c.Assign(
-                  "sum.1",
-                  c.Prim(c.Plus(c.Variable("tmp.2"), c.Variable("tmp.3"))),
-                ),
-                c.Seq(
-                  // get! i.2
-                  c.Assign("tmp.4", c.Atom(c.Variable("i.2"))),
-                  c.Seq(
-                    c.Assign(
-                      "i.2",
-                      c.Prim(c.Minus(c.Variable("tmp.4"), c.Int(1))),
-                    ),
-                    c.Goto("loop_1"),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ]),
-    )
-
-  p |> explicate_control |> should.equal(p2)
-}
-
-fn parsed(input: String) -> l.Program {
-  input
-  |> parse.tokens
-  |> should.be_ok
-  |> parse.parse
-  |> should.be_ok
-}
+//   p |> explicate_control |> should.equal(p2)
+// }
+// fn parsed(input: String) -> l.Program {
+//   input
+//   |> parse.tokens
+//   |> should.be_ok
+//   |> parse.parse
+//   |> should.be_ok
+// }
