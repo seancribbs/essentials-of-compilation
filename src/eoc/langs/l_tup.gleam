@@ -52,6 +52,7 @@ pub type Expr {
   SetBang(var: String, value: Expr)
   Begin(stmts: List(Expr), result: Expr)
   WhileLoop(condition: Expr, body: Expr)
+  HasType(value: Expr, t: Type)
 }
 
 pub type Program {
@@ -137,6 +138,7 @@ fn interpret_exp(e: Expr, env: Env) -> #(IValue, Env) {
         _ -> panic as "invalid boolean expression"
       }
     }
+    HasType(value:, t: _) -> interpret_exp(value, env)
   }
 }
 
@@ -270,6 +272,10 @@ pub fn type_check_exp(e: Expr, env: TypeEnv) -> Result(#(Expr, Type), TypeError)
         Error(_) -> Error(UnboundVariable(v))
       }
     }
+    Prim(Vector(e)) -> {
+      use #(op, t) <- result.map(type_check_op(Vector(e), env))
+      #(HasType(value: Prim(op), t:), t)
+    }
     Prim(p) -> {
       use #(op, t) <- result.map(type_check_op(p, env))
       #(Prim(op), t)
@@ -315,6 +321,9 @@ pub fn type_check_exp(e: Expr, env: TypeEnv) -> Result(#(Expr, Type), TypeError)
       use _ <- result.try(check_type_equal(BooleanT, tc, c1))
       use #(b1, _) <- result.map(type_check_exp(body, env))
       #(WhileLoop(condition: c1, body: b1), VoidT)
+    }
+    HasType(value: _, t:) -> {
+      Ok(#(e, t))
     }
   }
 }
