@@ -5,8 +5,8 @@ import gleam/int
 import gleam/list
 import gleam/pair
 
-import eoc/langs/l_mon_while as l_mon
-import eoc/langs/l_while_get as l
+import eoc/langs/l_alloc as l
+import eoc/langs/l_mon_alloc as l_mon
 
 pub fn remove_complex_operands(input: l.Program) -> l_mon.Program {
   let #(rco, _) = rco_exp(input.body, 0)
@@ -86,6 +86,23 @@ fn rco_atom(
         new_counter,
       )
     }
+    l.Allocate(amount:, t:) -> {
+      let #(new_var, new_counter) = new_var(counter)
+      #(
+        l_mon.Var(new_var),
+        [#(new_var, l_mon.Allocate(amount:, t:))],
+        new_counter,
+      )
+    }
+    l.Collect(amount:) -> {
+      let #(new_var, new_counter) = new_var(counter)
+      #(l_mon.Var(new_var), [#(new_var, l_mon.Collect(amount:))], new_counter)
+    }
+    l.GlobalValue(name:) -> {
+      let #(new_var, new_counter) = new_var(counter)
+      #(l_mon.Var(new_var), [#(new_var, l_mon.GlobalValue(name:))], new_counter)
+    }
+    l.HasType(value:, t: _) -> rco_atom(value, counter)
   }
 }
 
@@ -189,6 +206,44 @@ fn rco_exp(input: l.Expr, counter: Int) -> #(l_mon.Expr, Int) {
       let #(condition1, counter1) = rco_exp(condition, counter)
       let #(body1, counter2) = rco_exp(body, counter1)
       #(l_mon.WhileLoop(condition1, body1), counter2)
+    }
+    l.Allocate(amount:, t:) -> #(l_mon.Allocate(amount:, t:), counter)
+    l.Collect(amount:) -> #(l_mon.Collect(amount:), counter)
+    l.GlobalValue(name:) -> #(l_mon.GlobalValue(name:), counter)
+    l.HasType(value:, t: _) -> rco_exp(value, counter)
+    l.Prim(op: l.VectorLength(v:)) -> {
+      let #(atm, bindings, new_counter) = rco_atom(v, counter)
+      let new_expr =
+        list.fold(bindings, l_mon.Prim(l_mon.VectorLength(atm)), fn(exp, pair) {
+          l_mon.Let(pair.0, pair.1, exp)
+        })
+      #(new_expr, new_counter)
+    }
+    l.Prim(op: l.VectorRef(v:, index:)) -> {
+      let #(atm_v, bindings, new_counter) = rco_atom(v, counter)
+      let #(atm_i, bindings1, new_counter) = rco_atom(index, new_counter)
+      let new_expr =
+        bindings
+        |> list.append(bindings1)
+        |> list.fold_right(
+          l_mon.Prim(l_mon.VectorRef(atm_v, atm_i)),
+          fn(exp, pair) { l_mon.Let(pair.0, pair.1, exp) },
+        )
+      #(new_expr, new_counter)
+    }
+    l.Prim(op: l.VectorSet(v:, index:, value:)) -> {
+      let #(atm_v, bindings, new_counter) = rco_atom(v, counter)
+      let #(atm_i, bindings1, new_counter) = rco_atom(index, new_counter)
+      let #(atm_x, bindings2, new_counter) = rco_atom(value, new_counter)
+      let new_expr =
+        bindings
+        |> list.append(bindings1)
+        |> list.append(bindings2)
+        |> list.fold_right(
+          l_mon.Prim(l_mon.VectorSet(atm_v, atm_i, atm_x)),
+          fn(exp, pair) { l_mon.Let(pair.0, pair.1, exp) },
+        )
+      #(new_expr, new_counter)
     }
   }
 }

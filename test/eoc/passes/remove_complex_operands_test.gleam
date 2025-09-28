@@ -1,7 +1,8 @@
 // import gleeunit
-import eoc/langs/l_mon_while as l_mon
-import eoc/langs/l_while.{Lt}
-import eoc/langs/l_while_get as l
+import eoc/langs/l_alloc as l
+import eoc/langs/l_mon_alloc as l_mon
+import eoc/langs/l_tup.{Lt, type_check_program}
+import eoc/passes/expose_allocation
 import eoc/passes/parse.{parse, tokens}
 import eoc/passes/remove_complex_operands.{remove_complex_operands}
 import eoc/passes/shrink
@@ -105,80 +106,120 @@ pub fn rco_if_test() {
 
   p |> remove_complex_operands |> should.equal(p2)
 }
-// pub fn rco_loops_test() {
-//   let p =
-//     parsed(
-//       "
-//   (let ([x2 10])
-//     (let ([y3 0])
-//       (+ (+ (begin
-//               (set! y3 (read))
-//               x2)
-//             (begin
-//               (set! x2 (read))
-//               y3))
-//           x2)))
-//   ",
-//     )
-//   // becomes
-//   // (let ([x2 10])
-//   //  (let ([y3 0])
-//   //    (let ([tmp.3
-//   //           (let ([tmp.1 (begin
-//   //                           (set! y3 (read))
-//   //                           (get! x2))])
-//   //              (let ([tmp.2 (begin
-//   //                             (set! x2 (read))
-//   //                             (get! y3))])
-//   //                (+ tmp.1 tmp.2)))])
-//   //   (let ([tmp.4 (get! x2)])
-//   //    (+ tmp.3 tmp.4))
-//   // )
-//   //  )
-//   // )
 
-//   let p2 =
-//     l_mon.Program(l_mon.Let(
-//       "x2.1",
-//       l_mon.Atomic(l_mon.Int(10)),
-//       l_mon.Let(
-//         "y3.2",
-//         l_mon.Atomic(l_mon.Int(0)),
-//         l_mon.Let(
-//           "tmp.3",
-//           l_mon.Let(
-//             "tmp.1",
-//             l_mon.Begin(
-//               [l_mon.SetBang("y3.2", l_mon.Prim(l_mon.Read))],
-//               l_mon.GetBang("x2.1"),
-//             ),
-//             l_mon.Let(
-//               "tmp.2",
-//               l_mon.Begin(
-//                 [l_mon.SetBang("x2.1", l_mon.Prim(l_mon.Read))],
-//                 l_mon.GetBang("y3.2"),
-//               ),
-//               l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Var("tmp.2"))),
-//             ),
-//           ),
-//           l_mon.Let(
-//             "tmp.4",
-//             l_mon.GetBang("x2.1"),
-//             l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.3"), l_mon.Var("tmp.4"))),
-//           ),
-//         ),
-//       ),
-//     ))
+pub fn rco_loops_test() {
+  let p =
+    parsed(
+      "
+  (let ([x2 10])
+    (let ([y3 0])
+      (+ (+ (begin
+              (set! y3 (read))
+              x2)
+            (begin
+              (set! x2 (read))
+              y3))
+          x2)))
+  ",
+    )
+  // becomes
+  // (let ([x2 10])
+  //  (let ([y3 0])
+  //    (let ([tmp.3
+  //           (let ([tmp.1 (begin
+  //                           (set! y3 (read))
+  //                           (get! x2))])
+  //              (let ([tmp.2 (begin
+  //                             (set! x2 (read))
+  //                             (get! y3))])
+  //                (+ tmp.1 tmp.2)))])
+  //   (let ([tmp.4 (get! x2)])
+  //    (+ tmp.3 tmp.4))
+  // )
+  //  )
+  // )
 
-//   p |> remove_complex_operands |> should.equal(p2)
-// }
-// fn parsed(input: String) -> l.Program {
-//   input
-//   |> tokens
-//   |> should.be_ok
-//   |> parse
-//   |> should.be_ok
-//   |> shrink.shrink
-//   |> uniquify.uniquify
-//   |> uncover_get.uncover_get
-// }
+  let p2 =
+    l_mon.Program(l_mon.Let(
+      "x2.1",
+      l_mon.Atomic(l_mon.Int(10)),
+      l_mon.Let(
+        "y3.2",
+        l_mon.Atomic(l_mon.Int(0)),
+        l_mon.Let(
+          "tmp.3",
+          l_mon.Let(
+            "tmp.1",
+            l_mon.Begin(
+              [l_mon.SetBang("y3.2", l_mon.Prim(l_mon.Read))],
+              l_mon.GetBang("x2.1"),
+            ),
+            l_mon.Let(
+              "tmp.2",
+              l_mon.Begin(
+                [l_mon.SetBang("x2.1", l_mon.Prim(l_mon.Read))],
+                l_mon.GetBang("y3.2"),
+              ),
+              l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Var("tmp.2"))),
+            ),
+          ),
+          l_mon.Let(
+            "tmp.4",
+            l_mon.GetBang("x2.1"),
+            l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.3"), l_mon.Var("tmp.4"))),
+          ),
+        ),
+      ),
+    ))
+
+  p |> remove_complex_operands |> should.equal(p2)
+}
+
+pub fn rco_tuple_test() {
+  // GlobalValue is complex
+  let p =
+    l.Program(l.If(
+      l.Prim(l.Cmp(
+        Lt,
+        l.Prim(l.Plus(l.GlobalValue("free_ptr"), l.Int(16))),
+        l.GlobalValue("fromspace_end"),
+      )),
+      l.Int(42),
+      l.Int(43),
+    ))
+
+  let p2 =
+    l_mon.Program(l_mon.If(
+      l_mon.Let(
+        "tmp.2",
+        l_mon.Let(
+          "tmp.1",
+          l_mon.GlobalValue("free_ptr"),
+          l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Int(16))),
+        ),
+        l_mon.Let(
+          "tmp.3",
+          l_mon.GlobalValue("fromspace_end"),
+          l_mon.Prim(l_mon.Cmp(Lt, l_mon.Var("tmp.2"), l_mon.Var("tmp.3"))),
+        ),
+      ),
+      l_mon.Atomic(l_mon.Int(42)),
+      l_mon.Atomic(l_mon.Int(43)),
+    ))
+
+  p |> remove_complex_operands |> should.equal(p2)
+}
+
+fn parsed(input: String) -> l.Program {
+  input
+  |> tokens
+  |> should.be_ok
+  |> parse
+  |> should.be_ok
+  |> type_check_program
+  |> should.be_ok
+  |> shrink.shrink
+  |> uniquify.uniquify
+  |> expose_allocation.expose_allocation
+  |> uncover_get.uncover_get
+}
