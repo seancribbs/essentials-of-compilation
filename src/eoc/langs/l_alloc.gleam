@@ -37,6 +37,7 @@ pub type Expr {
   Let(var: String, binding: Expr, expr: Expr)
   If(condition: Expr, if_true: Expr, if_false: Expr)
   SetBang(var: String, value: Expr)
+  GetBang(var: String)
   Begin(stmts: List(Expr), result: Expr)
   WhileLoop(condition: Expr, body: Expr)
   HasType(value: Expr, t: Type)
@@ -48,62 +49,3 @@ pub type Expr {
 pub type Program {
   Program(body: Expr)
 }
-// fn dummy() {
-//   Program(
-//     Prim(VectorRef(
-//       Prim(VectorRef(
-//         Let(
-//           "f5",
-//           Let(
-//             "f2",
-//             Int(42),
-//             Let(
-//               "_4",
-//               If(
-//                 Prim(Cmp(
-//                   Lt,
-//                   Prim(Plus(GlobalValue("free_ptr"), Int(16))),
-//                   GlobalValue("fromspace_end"),
-//                 )),
-//                 Prim(Void),
-//                 Collect(16),
-//               ),
-//               Let(
-//                 "alloc1",
-//                 Allocate(1, VectorT([IntegerT])),
-//                 Let(
-//                   "_3",
-//                   Prim(VectorSet(Var("alloc1"), Int(0), Var("f2"))),
-//                   Var("alloc1"),
-//                 ),
-//               ),
-//             ),
-//           ),
-//           Let(
-//             "_7",
-//             If(
-//               Prim(Cmp(
-//                 Lt,
-//                 Prim(Plus(GlobalValue("free_ptr"), Int(16))),
-//                 GlobalValue("fromspace_end"),
-//               )),
-//               Prim(Void),
-//               Collect(16),
-//             ),
-//             Let(
-//               "alloc0",
-//               Allocate(1, VectorT([VectorT([IntegerT])])),
-//               Let(
-//                 "_6",
-//                 Prim(VectorSet(Var("alloc0"), Int(0), Var("f5"))),
-//                 Var("alloc0"),
-//               ),
-//             ),
-//           ),
-//         ),
-//         Int(0),
-//       )),
-//       Int(0),
-//     )),
-//   )
-// }

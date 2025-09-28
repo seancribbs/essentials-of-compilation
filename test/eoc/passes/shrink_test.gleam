@@ -1,4 +1,4 @@
-import eoc/langs/l_while.{
+import eoc/langs/l_tup.{
   And, Bool, BoolValue, BooleanT, Cmp, Eq, If, Int, IntValue, IntegerT, Let, Lt,
   Negate, Not, Or, Plus, Prim, Program, Read, TypeError, UnboundVariable, Var,
   interpret, type_check_program,

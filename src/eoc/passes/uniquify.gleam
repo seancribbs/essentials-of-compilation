@@ -1,4 +1,4 @@
-import eoc/langs/l_while as l
+import eoc/langs/l_tup as l
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -87,6 +87,32 @@ fn uniquify_exp(
 
     l.Prim(op: l.Void) -> #(l.Prim(l.Void), counter)
 
+    l.Prim(op: l.Vector(fields:)) -> {
+      let #(counter1, fields1) =
+        list.map_fold(fields, counter, fn(c, stmt) {
+          pair.swap(uniquify_exp(stmt, env, c))
+        })
+      #(l.Prim(l.Vector(fields1)), counter1)
+    }
+
+    l.Prim(op: l.VectorLength(v:)) -> {
+      let #(v1, counter1) = uniquify_exp(v, env, counter)
+      #(l.Prim(l.VectorLength(v1)), counter1)
+    }
+
+    l.Prim(op: l.VectorRef(v:, index:)) -> {
+      let #(v1, counter1) = uniquify_exp(v, env, counter)
+      let #(index1, counter2) = uniquify_exp(index, env, counter1)
+      #(l.Prim(l.VectorRef(v1, index1)), counter2)
+    }
+
+    l.Prim(op: l.VectorSet(v:, index:, value:)) -> {
+      let #(v1, counter1) = uniquify_exp(v, env, counter)
+      let #(index1, counter2) = uniquify_exp(index, env, counter1)
+      let #(value1, counter3) = uniquify_exp(value, env, counter2)
+      #(l.Prim(l.VectorSet(v1, index1, value1)), counter3)
+    }
+
     l.SetBang(var:, value:) -> {
       let #(value1, counter1) = uniquify_exp(value, env, counter)
       #(l.SetBang(get_var(env, var), value: value1), counter1)
@@ -105,6 +131,11 @@ fn uniquify_exp(
       let #(condition1, counter1) = uniquify_exp(condition, env, counter)
       let #(body1, counter2) = uniquify_exp(body, env, counter1)
       #(l.WhileLoop(condition1, body1), counter2)
+    }
+
+    l.HasType(value:, t:) -> {
+      let #(value1, counter1) = uniquify_exp(value, env, counter)
+      #(l.HasType(value: value1, t:), counter1)
     }
   }
 }
