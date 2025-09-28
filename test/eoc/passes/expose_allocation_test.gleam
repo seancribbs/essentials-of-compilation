@@ -17,7 +17,72 @@ fn parsed(input: String) -> l.Program {
 pub fn expose_allocation_test() {
   let p = parsed("(vector-ref (vector-ref (vector (vector 42)) 0) 0)")
 
-  echo expose_allocation.expose_allocation(p)
+  let p2 =
+    la.Program(
+      la.Prim(la.VectorRef(
+        la.Prim(la.VectorRef(
+          la.Let(
+            "vecinit5",
+            la.Let(
+              "vecinit1",
+              la.Int(42),
+              la.Let(
+                "_4",
+                la.If(
+                  la.Prim(la.Cmp(
+                    l.Lt,
+                    la.Prim(la.Plus(la.GlobalValue("free_ptr"), la.Int(16))),
+                    la.GlobalValue("fromspace_end"),
+                  )),
+                  la.Prim(la.Void),
+                  la.Collect(16),
+                ),
+                la.Let(
+                  "alloc2",
+                  la.Allocate(1, l.VectorT([l.IntegerT])),
+                  la.Let(
+                    "_3",
+                    la.Prim(la.VectorSet(
+                      la.Var("alloc2"),
+                      la.Int(0),
+                      la.Var("vecinit1"),
+                    )),
+                    la.Var("alloc2"),
+                  ),
+                ),
+              ),
+            ),
+            la.Let(
+              "_8",
+              la.If(
+                la.Prim(la.Cmp(
+                  l.Lt,
+                  la.Prim(la.Plus(la.GlobalValue("free_ptr"), la.Int(16))),
+                  la.GlobalValue("fromspace_end"),
+                )),
+                la.Prim(la.Void),
+                la.Collect(16),
+              ),
+              la.Let(
+                "alloc6",
+                la.Allocate(1, l.VectorT([l.VectorT([l.IntegerT])])),
+                la.Let(
+                  "_7",
+                  la.Prim(la.VectorSet(
+                    la.Var("alloc6"),
+                    la.Int(0),
+                    la.Var("vecinit5"),
+                  )),
+                  la.Var("alloc6"),
+                ),
+              ),
+            ),
+          ),
+          la.Int(0),
+        )),
+        la.Int(0),
+      )),
+    )
 
-  should.fail
+  p |> expose_allocation.expose_allocation |> should.equal(p2)
 }
