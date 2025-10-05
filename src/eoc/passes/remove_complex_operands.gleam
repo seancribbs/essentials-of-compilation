@@ -1,6 +1,7 @@
 // remove_complex_operands (ensures atomic operands of primitive ops)
 //    Lwhile -> LMonWhile
 
+import eoc/langs/l_tup.{Eq}
 import gleam/int
 import gleam/list
 import gleam/pair
@@ -116,6 +117,19 @@ fn rco_exp(input: l.Expr, counter: Int) -> #(l_mon.Expr, Int) {
       let #(binding, new_counter) = rco_exp(b, counter)
       let #(expr, new_counter1) = rco_exp(e, new_counter)
       #(l_mon.Let(v, binding, expr), new_counter1)
+    }
+
+    // NOTE: If we don't extract this into a new binding here, we have to deal with it
+    // in explicate_control, where we don't have the capacity to generate fresh variables
+    l.If(condition: l.Prim(l.VectorRef(v:, index:)), if_true:, if_false:) -> {
+      rco_exp(
+        l.If(
+          l.Prim(l.Cmp(Eq, l.Prim(l.VectorRef(v:, index:)), l.Bool(True))),
+          if_true,
+          if_false,
+        ),
+        counter,
+      )
     }
 
     l.If(condition:, if_true:, if_false:) -> {

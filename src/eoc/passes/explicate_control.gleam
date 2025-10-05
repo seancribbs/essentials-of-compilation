@@ -1,6 +1,6 @@
-import eoc/langs/c_loop as c
-import eoc/langs/l_mon_while as l_mon
-import eoc/langs/l_while as l
+import eoc/langs/c_tup as c
+import eoc/langs/l_mon_alloc as l_mon
+import eoc/langs/l_tup as l
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -63,6 +63,24 @@ fn explicate_tail(input: l_mon.Expr, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
       c.Return(c.Prim(c.Not(convert_atm(value)))),
       blocks,
     )
+    l_mon.Prim(op: l_mon.VectorLength(v:)) -> #(
+      c.Return(c.Prim(c.VectorLength(convert_atm(v)))),
+      blocks,
+    )
+    l_mon.Prim(op: l_mon.VectorRef(v:, index:)) -> #(
+      c.Return(c.Prim(c.VectorRef(convert_atm(v), convert_atm(index)))),
+      blocks,
+    )
+    l_mon.Prim(op: l_mon.VectorSet(v:, index:, value:)) -> #(
+      c.Return(
+        c.Prim(c.VectorSet(
+          convert_atm(v),
+          convert_atm(index),
+          convert_atm(value),
+        )),
+      ),
+      blocks,
+    )
     l_mon.GetBang(var:) -> #(c.Return(c.Atom(c.Variable(var))), blocks)
     l_mon.SetBang(var:, value:) -> {
       let tail = c.Return(c.Atom(c.Void))
@@ -92,6 +110,10 @@ fn explicate_tail(input: l_mon.Expr, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
       // Jump into the loop
       #(loop_start, blocks3)
     }
+    l_mon.Allocate(amount: _, t: _)
+    | l_mon.Collect(amount: _)
+    | l_mon.GlobalValue(name: _) ->
+      panic as "unexpected GC internal in tail position"
   }
 }
 
@@ -152,6 +174,40 @@ fn explicate_assign(
     l_mon.Prim(op: l_mon.Not(value:)) -> {
       #(c.Seq(c.Assign(v, c.Prim(c.Not(convert_atm(value)))), cont), blocks)
     }
+    l_mon.Prim(op: l_mon.VectorLength(vector)) -> {
+      #(
+        c.Seq(c.Assign(v, c.Prim(c.VectorLength(convert_atm(vector)))), cont),
+        blocks,
+      )
+    }
+    l_mon.Prim(op: l_mon.VectorRef(v: vector, index:)) -> {
+      #(
+        c.Seq(
+          c.Assign(
+            v,
+            c.Prim(c.VectorRef(convert_atm(vector), convert_atm(index))),
+          ),
+          cont,
+        ),
+        blocks,
+      )
+    }
+    l_mon.Prim(op: l_mon.VectorSet(v: vector, index:, value:)) -> {
+      #(
+        c.Seq(
+          c.Assign(
+            v,
+            c.Prim(c.VectorSet(
+              convert_atm(vector),
+              convert_atm(index),
+              convert_atm(value),
+            )),
+          ),
+          cont,
+        ),
+        blocks,
+      )
+    }
     // v1 := ...b
     // v := ...e
     // ...cont
@@ -207,6 +263,17 @@ fn explicate_assign(
       // Jump into the loop
       #(loop_start, blocks4)
     }
+    l_mon.Allocate(amount:, t:) -> {
+      #(c.Seq(c.Assign(v, c.Allocate(amount, t)), cont), blocks)
+    }
+    l_mon.GlobalValue(name:) -> #(
+      c.Seq(c.Assign(v, c.GlobalValue(name)), cont),
+      blocks,
+    )
+    // NOTE: This essentially throws away the assignment, but
+    // Collect is generated from the compiler, not the user so
+    // we can discard the assignment.
+    l_mon.Collect(amount:) -> #(c.Seq(c.Collect(amount), cont), blocks)
   }
 }
 
@@ -281,8 +348,13 @@ fn explicate_pred(
     // l_mon.Prim(op: l_mon.Negate(value:)) -> todo
     // l_mon.Prim(op: l_mon.Plus(a:, b:)) -> todo
     // l_mon.Prim(op: l_mon.Read) -> todo
+    // l_mon.Prim(op: l_mon.VectorLength(v:)) -> todo
+    // l_mon.Prim(op: l_mon.VectorSet(v:, index:, value:)) -> todo
     // l_mon.WhileLoop(condition:,body:) -> todo
     // l_mon.SetBang(var:, expr:) -> todo
+    // l_mon.Collect(amount:) -> todo
+    // l_mon.Allocate(amount:, t:) -> todo
+    // l_mon.GlobalValue(name:) -> todo
   }
 }
 
@@ -331,6 +403,12 @@ fn explicate_effect(
       // Jump into the loop
       #(loop_start, blocks4)
     }
+    l_mon.Collect(amount:) -> #(c.Seq(c.Collect(amount), cont), blocks)
+
+    l_mon.Allocate(amount: _, t: _) ->
+      panic as "unexpected allocate in effect position"
+    l_mon.GlobalValue(name: _) ->
+      panic as "unexpected global_value in effect position"
   }
 }
 

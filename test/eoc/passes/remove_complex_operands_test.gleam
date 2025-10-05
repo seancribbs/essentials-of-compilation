@@ -210,6 +210,86 @@ pub fn rco_tuple_test() {
   p |> remove_complex_operands |> should.equal(p2)
 }
 
+pub fn rco_transform_vector_ref_condition_test() {
+  let p =
+    "
+(let ([v1 (vector 42 #t)])
+  (if (vector-ref v1 1)
+    5
+    (vector-ref v1 0)))
+"
+    |> parsed()
+
+  let p2 =
+    l_mon.Program(l_mon.Let(
+      "v1.1",
+      l_mon.Let(
+        "vecinit1",
+        l_mon.Atomic(l_mon.Int(42)),
+        l_mon.Let(
+          "vecinit2",
+          l_mon.Atomic(l_mon.Bool(True)),
+          l_mon.Let(
+            "_6",
+            l_mon.If(
+              l_mon.Let(
+                "tmp.2",
+                l_mon.Let(
+                  "tmp.1",
+                  l_mon.GlobalValue("free_ptr"),
+                  l_mon.Prim(l_mon.Plus(l_mon.Var("tmp.1"), l_mon.Int(24))),
+                ),
+                l_mon.Let(
+                  "tmp.3",
+                  l_mon.GlobalValue("fromspace_end"),
+                  l_mon.Prim(l_mon.Cmp(
+                    Lt,
+                    l_mon.Var("tmp.2"),
+                    l_mon.Var("tmp.3"),
+                  )),
+                ),
+              ),
+              l_mon.Atomic(l_mon.Void),
+              l_mon.Collect(24),
+            ),
+            l_mon.Let(
+              "alloc3",
+              l_mon.Allocate(2, l_tup.VectorT([l_tup.IntegerT, l_tup.BooleanT])),
+              l_mon.Let(
+                "_5",
+                l_mon.Prim(l_mon.VectorSet(
+                  l_mon.Var("alloc3"),
+                  l_mon.Int(0),
+                  l_mon.Var("vecinit1"),
+                )),
+                l_mon.Let(
+                  "_4",
+                  l_mon.Prim(l_mon.VectorSet(
+                    l_mon.Var("alloc3"),
+                    l_mon.Int(1),
+                    l_mon.Var("vecinit2"),
+                  )),
+                  l_mon.Atomic(l_mon.Var("alloc3")),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      l_mon.If(
+        l_mon.Let(
+          "tmp.4",
+          l_mon.Prim(l_mon.VectorRef(l_mon.Var("v1.1"), l_mon.Int(1))),
+          l_mon.Prim(l_mon.Cmp(l_tup.Eq, l_mon.Var("tmp.4"), l_mon.Bool(True))),
+        ),
+        l_mon.Atomic(l_mon.Int(5)),
+        l_mon.Prim(l_mon.VectorRef(l_mon.Var("v1.1"), l_mon.Int(0))),
+      ),
+    ))
+
+  p |> remove_complex_operands |> should.equal(p2)
+}
+
 fn parsed(input: String) -> l.Program {
   input
   |> tokens

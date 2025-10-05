@@ -1,5 +1,10 @@
 import eoc/langs/l_tup as l
+import eoc/passes/expose_allocation
 import eoc/passes/parse
+import eoc/passes/remove_complex_operands
+import eoc/passes/shrink
+import eoc/passes/uncover_get
+import eoc/passes/uniquify
 import gleeunit/should
 
 fn parsed(input: String) -> l.Program {
@@ -10,7 +15,20 @@ fn parsed(input: String) -> l.Program {
   |> should.be_ok()
 }
 
-fn l_tup_interp_test() {
+pub fn l_tup_vector_ref_pred_test() {
+  let p =
+    "
+(let ([v1 (vector 42 #t)])
+  (if (vector-ref v1 1)
+    5
+    (vector-ref v1 0)))
+"
+    |> parsed()
+
+  p |> l.interpret() |> should.equal(l.IntValue(5))
+}
+
+pub fn l_tup_interp_test() {
   "
     (let ([t1 (vector 3 7)])
       (let ([t2 t1])
@@ -24,7 +42,7 @@ fn l_tup_interp_test() {
   |> should.equal(l.IntValue(42))
 }
 
-fn l_tup_alias_interp_test() {
+pub fn l_tup_alias_interp_test() {
   "
   (let ([t1 (vector 3 7)])
     (let ([t2 t1])
@@ -36,7 +54,7 @@ fn l_tup_alias_interp_test() {
   |> should.equal(l.IntValue(42))
 }
 
-fn l_tup_lifetime_interp_test() {
+pub fn l_tup_lifetime_interp_test() {
   "
   (let ([v (vector (vector 44))])
     (let ([x (let ([w (vector 42)])
