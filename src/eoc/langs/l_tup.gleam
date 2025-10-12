@@ -336,8 +336,8 @@ pub fn type_check_op(
     Read -> Ok(#(Read, IntegerT))
     Negate(e) -> {
       use #(e1, te) <- result.try(type_check_exp(e, env))
-      use _ <- result.map(check_type_equal(BooleanT, te, e1))
-      #(Negate(e1), BooleanT)
+      use _ <- result.map(check_type_equal(IntegerT, te, e1))
+      #(Negate(e1), IntegerT)
     }
     Not(e) -> {
       use #(e1, te) <- result.try(type_check_exp(e, env))
