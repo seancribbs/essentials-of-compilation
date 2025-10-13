@@ -1,4 +1,5 @@
 import eoc/ui/button.{button}
+import gleam/list
 import gleam/result
 import lustre
 import lustre/attribute.{type Attribute, class, style}
@@ -6,7 +7,7 @@ import lustre/element.{type Element, text}
 import lustre/element/html.{div, textarea}
 import lustre/event
 
-import eoc/compile
+import eoc/compile.{type Pass, pass_order, pass_to_string, string_to_pass}
 import eoc/ui/theme
 
 pub fn main() {
@@ -17,26 +18,31 @@ pub fn main() {
 }
 
 type Model {
-  Model(input: String, output: String)
+  Model(input: String, output: String, pass: Pass)
 }
 
 type Msg {
   InputUpdated(input: String)
+  PassSelected(pass: String)
   Compile
   Interpet
 }
 
 fn init(_args) -> Model {
-  Model("", "")
+  Model("", "", compile.ExplicateControl)
 }
 
 fn update(model: Model, msg: Msg) {
   case msg {
     InputUpdated(input) -> Model(..model, input:)
     Compile ->
-      Model(..model, output: result.unwrap_both(compile.compile(model.input)))
+      Model(
+        ..model,
+        output: result.unwrap_both(compile.compile(model.input, model.pass)),
+      )
     Interpet ->
       Model(..model, output: result.unwrap_both(compile.interpret(model.input)))
+    PassSelected(pass:) -> Model(..model, pass: string_to_pass(pass))
   }
 }
 
@@ -51,7 +57,21 @@ fn view(model: Model) -> Element(Msg) {
           style("font-size", theme.spacing.lg),
           class("mr-2"),
         ],
-        [text("Elements of Compilation")],
+        [text("Essentials of Compilation")],
+      ),
+      html.select(
+        [
+          theme.use_primary(),
+          class("mr-2"),
+          event.on_change(PassSelected),
+        ],
+        pass_order
+          |> list.map(fn(p) {
+            html.option(
+              [attribute.selected(model.pass == p)],
+              pass_to_string(p),
+            )
+          }),
       ),
       button(
         [

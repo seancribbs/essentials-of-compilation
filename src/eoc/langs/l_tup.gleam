@@ -1,4 +1,6 @@
+import eoc/langs/pretty.{parenthesize}
 import eoc/runtime
+import glam/doc
 import gleam/dict
 import gleam/list
 import gleam/pair
@@ -451,5 +453,160 @@ fn is_vector_type(e: Expr, t: Type) -> Result(List(Type), TypeError) {
   case t {
     VectorT(ts) -> Ok(ts)
     _ -> Error(TypeError(t, VectorT([]), e))
+  }
+}
+
+pub fn format_program(p: Program) -> doc.Document {
+  format_expr(p.body)
+}
+
+fn format_expr(e: Expr) -> doc.Document {
+  case e {
+    Bool(value:) ->
+      case value {
+        False -> doc.from_string("#f")
+        True -> doc.from_string("#t")
+      }
+    Var(name:) -> doc.from_string(name)
+    Int(value:) -> pretty.int_to_doc(value)
+    Begin(stmts:, result:) ->
+      stmts
+      |> list.map(format_expr)
+      |> list.append([format_expr(result)])
+      |> doc.concat_join(with: [doc.space])
+      |> doc.force_break
+      |> doc.prepend_docs([doc.from_string("begin"), doc.space])
+      |> parenthesize()
+
+    HasType(value:, t:) ->
+      [doc.from_string("has-type"), format_expr(value), format_type(t)]
+      |> doc.concat_join(with: [doc.flex_space])
+      |> parenthesize
+
+    If(condition:, if_true:, if_false:) ->
+      [
+        doc.concat([
+          doc.from_string("if"),
+          doc.from_string(" "),
+          format_expr(condition),
+        ]),
+        format_expr(if_true),
+        format_expr(if_false),
+      ]
+      |> doc.concat_join(with: [doc.line])
+      |> parenthesize
+    Let(var:, binding:, expr:) ->
+      [
+        doc.concat([
+          doc.from_string("let"),
+          doc.from_string(" (["),
+          doc.from_string(var),
+          doc.from_string(" "),
+          format_expr(binding),
+          doc.from_string("])"),
+        ]),
+        format_expr(expr),
+      ]
+      |> doc.concat_join(with: [doc.space])
+      |> parenthesize
+    WhileLoop(condition:, body:) ->
+      [
+        doc.concat([
+          doc.from_string("while"),
+          doc.from_string(" "),
+          format_expr(condition),
+        ]),
+        format_expr(body),
+      ]
+      |> doc.concat_join(with: [doc.space])
+      |> doc.force_break
+      |> parenthesize
+
+    SetBang(var:, value:) ->
+      [
+        doc.from_string("set!"),
+        doc.from_string(var),
+        format_expr(value),
+      ]
+      |> doc.concat_join(with: [doc.space])
+      |> parenthesize
+
+    Prim(op:) -> op |> format_op |> parenthesize
+  }
+}
+
+fn format_op(op: PrimOp) -> doc.Document {
+  case op {
+    Cmp(op:, a:, b:) -> [
+      format_cmp(op),
+      format_expr(a),
+      format_expr(b),
+    ]
+    Minus(a:, b:) -> [
+      doc.from_string("-"),
+      format_expr(a),
+      format_expr(b),
+    ]
+    Negate(value:) -> [
+      doc.from_string("-"),
+      format_expr(value),
+    ]
+    Not(a:) -> [doc.from_string("not"), format_expr(a)]
+    Plus(a:, b:) -> [
+      doc.from_string("+"),
+      format_expr(a),
+      format_expr(b),
+    ]
+    Read -> [doc.from_string("read")]
+    VectorLength(v:) -> [
+      doc.from_string("vector-length"),
+      format_expr(v),
+    ]
+    VectorRef(v:, index:) -> [
+      doc.from_string("vector-ref"),
+      format_expr(v),
+      format_expr(index),
+    ]
+    VectorSet(v:, index:, value:) -> [
+      doc.from_string("vector-set!"),
+      format_expr(v),
+      format_expr(index),
+      format_expr(value),
+    ]
+    And(a:, b:) -> [
+      doc.from_string("and"),
+      format_expr(a),
+      format_expr(b),
+    ]
+    Or(a:, b:) -> [doc.from_string("or"), format_expr(a), format_expr(b)]
+    Vector(fields:) -> [
+      doc.from_string("vector"),
+      ..list.map(fields, format_expr)
+    ]
+    Void -> [doc.from_string("void")]
+  }
+  |> doc.concat_join(with: [doc.space])
+}
+
+pub fn format_cmp(op: Cmp) -> doc.Document {
+  case op {
+    Eq -> "eq?"
+    Gt -> ">"
+    Gte -> ">="
+    Lt -> "<"
+    Lte -> "<="
+  }
+  |> doc.from_string
+}
+
+pub fn format_type(t: Type) -> doc.Document {
+  case t {
+    BooleanT -> doc.from_string("Boolean")
+    IntegerT -> doc.from_string("Integer")
+    VectorT(fields) ->
+      [doc.from_string("Vector"), ..list.map(fields, format_type)]
+      |> doc.concat_join(with: [doc.flex_space])
+      |> parenthesize
+    VoidT -> doc.from_string("Void")
   }
 }

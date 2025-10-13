@@ -1,1257 +1,3 @@
-var __create = Object.create;
-var __defProp = Object.defineProperty;
-var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __commonJS = (cb, mod) => function __require() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
-};
-var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-  }
-  return to;
-};
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
-
-// node_modules/@dagrejs/graphlib/lib/graph.js
-var require_graph = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/graph.js"(exports, module) {
-    "use strict";
-    var DEFAULT_EDGE_NAME = "\0";
-    var GRAPH_NODE = "\0";
-    var EDGE_KEY_DELIM = "";
-    var Graph4 = class {
-      _isDirected = true;
-      _isMultigraph = false;
-      _isCompound = false;
-      // Label for the graph itself
-      _label;
-      // Defaults to be set when creating a new node
-      _defaultNodeLabelFn = () => void 0;
-      // Defaults to be set when creating a new edge
-      _defaultEdgeLabelFn = () => void 0;
-      // v -> label
-      _nodes = {};
-      // v -> edgeObj
-      _in = {};
-      // u -> v -> Number
-      _preds = {};
-      // v -> edgeObj
-      _out = {};
-      // v -> w -> Number
-      _sucs = {};
-      // e -> edgeObj
-      _edgeObjs = {};
-      // e -> label
-      _edgeLabels = {};
-      /* Number of nodes in the graph. Should only be changed by the implementation. */
-      _nodeCount = 0;
-      /* Number of edges in the graph. Should only be changed by the implementation. */
-      _edgeCount = 0;
-      _parent;
-      _children;
-      constructor(opts) {
-        if (opts) {
-          this._isDirected = Object.hasOwn(opts, "directed") ? opts.directed : true;
-          this._isMultigraph = Object.hasOwn(opts, "multigraph") ? opts.multigraph : false;
-          this._isCompound = Object.hasOwn(opts, "compound") ? opts.compound : false;
-        }
-        if (this._isCompound) {
-          this._parent = {};
-          this._children = {};
-          this._children[GRAPH_NODE] = {};
-        }
-      }
-      /* === Graph functions ========= */
-      /**
-       * Whether graph was created with 'directed' flag set to true or not.
-       */
-      isDirected() {
-        return this._isDirected;
-      }
-      /**
-       * Whether graph was created with 'multigraph' flag set to true or not.
-       */
-      isMultigraph() {
-        return this._isMultigraph;
-      }
-      /**
-       * Whether graph was created with 'compound' flag set to true or not.
-       */
-      isCompound() {
-        return this._isCompound;
-      }
-      /**
-       * Sets the label of the graph.
-       */
-      setGraph(label) {
-        this._label = label;
-        return this;
-      }
-      /**
-       * Gets the graph label.
-       */
-      graph() {
-        return this._label;
-      }
-      /* === Node functions ========== */
-      /**
-       * Sets the default node label. If newDefault is a function, it will be
-       * invoked ach time when setting a label for a node. Otherwise, this label
-       * will be assigned as default label in case if no label was specified while
-       * setting a node.
-       * Complexity: O(1).
-       */
-      setDefaultNodeLabel(newDefault) {
-        this._defaultNodeLabelFn = newDefault;
-        if (typeof newDefault !== "function") {
-          this._defaultNodeLabelFn = () => newDefault;
-        }
-        return this;
-      }
-      /**
-       * Gets the number of nodes in the graph.
-       * Complexity: O(1).
-       */
-      nodeCount() {
-        return this._nodeCount;
-      }
-      /**
-       * Gets all nodes of the graph. Note, the in case of compound graph subnodes are
-       * not included in list.
-       * Complexity: O(1).
-       */
-      nodes() {
-        return Object.keys(this._nodes);
-      }
-      /**
-       * Gets list of nodes without in-edges.
-       * Complexity: O(|V|).
-       */
-      sources() {
-        var self = this;
-        return this.nodes().filter((v) => Object.keys(self._in[v]).length === 0);
-      }
-      /**
-       * Gets list of nodes without out-edges.
-       * Complexity: O(|V|).
-       */
-      sinks() {
-        var self = this;
-        return this.nodes().filter((v) => Object.keys(self._out[v]).length === 0);
-      }
-      /**
-       * Invokes setNode method for each node in names list.
-       * Complexity: O(|names|).
-       */
-      setNodes(vs, value) {
-        var args = arguments;
-        var self = this;
-        vs.forEach(function(v) {
-          if (args.length > 1) {
-            self.setNode(v, value);
-          } else {
-            self.setNode(v);
-          }
-        });
-        return this;
-      }
-      /**
-       * Creates or updates the value for the node v in the graph. If label is supplied
-       * it is set as the value for the node. If label is not supplied and the node was
-       * created by this call then the default node label will be assigned.
-       * Complexity: O(1).
-       */
-      setNode(v, value) {
-        if (Object.hasOwn(this._nodes, v)) {
-          if (arguments.length > 1) {
-            this._nodes[v] = value;
-          }
-          return this;
-        }
-        this._nodes[v] = arguments.length > 1 ? value : this._defaultNodeLabelFn(v);
-        if (this._isCompound) {
-          this._parent[v] = GRAPH_NODE;
-          this._children[v] = {};
-          this._children[GRAPH_NODE][v] = true;
-        }
-        this._in[v] = {};
-        this._preds[v] = {};
-        this._out[v] = {};
-        this._sucs[v] = {};
-        ++this._nodeCount;
-        return this;
-      }
-      /**
-       * Gets the label of node with specified name.
-       * Complexity: O(|V|).
-       */
-      node(v) {
-        return this._nodes[v];
-      }
-      /**
-       * Detects whether graph has a node with specified name or not.
-       */
-      hasNode(v) {
-        return Object.hasOwn(this._nodes, v);
-      }
-      /**
-       * Remove the node with the name from the graph or do nothing if the node is not in
-       * the graph. If the node was removed this function also removes any incident
-       * edges.
-       * Complexity: O(1).
-       */
-      removeNode(v) {
-        var self = this;
-        if (Object.hasOwn(this._nodes, v)) {
-          var removeEdge = (e) => self.removeEdge(self._edgeObjs[e]);
-          delete this._nodes[v];
-          if (this._isCompound) {
-            this._removeFromParentsChildList(v);
-            delete this._parent[v];
-            this.children(v).forEach(function(child) {
-              self.setParent(child);
-            });
-            delete this._children[v];
-          }
-          Object.keys(this._in[v]).forEach(removeEdge);
-          delete this._in[v];
-          delete this._preds[v];
-          Object.keys(this._out[v]).forEach(removeEdge);
-          delete this._out[v];
-          delete this._sucs[v];
-          --this._nodeCount;
-        }
-        return this;
-      }
-      /**
-       * Sets node p as a parent for node v if it is defined, or removes the
-       * parent for v if p is undefined. Method throws an exception in case of
-       * invoking it in context of noncompound graph.
-       * Average-case complexity: O(1).
-       */
-      setParent(v, parent) {
-        if (!this._isCompound) {
-          throw new Error("Cannot set parent in a non-compound graph");
-        }
-        if (parent === void 0) {
-          parent = GRAPH_NODE;
-        } else {
-          parent += "";
-          for (var ancestor = parent; ancestor !== void 0; ancestor = this.parent(ancestor)) {
-            if (ancestor === v) {
-              throw new Error("Setting " + parent + " as parent of " + v + " would create a cycle");
-            }
-          }
-          this.setNode(parent);
-        }
-        this.setNode(v);
-        this._removeFromParentsChildList(v);
-        this._parent[v] = parent;
-        this._children[parent][v] = true;
-        return this;
-      }
-      _removeFromParentsChildList(v) {
-        delete this._children[this._parent[v]][v];
-      }
-      /**
-       * Gets parent node for node v.
-       * Complexity: O(1).
-       */
-      parent(v) {
-        if (this._isCompound) {
-          var parent = this._parent[v];
-          if (parent !== GRAPH_NODE) {
-            return parent;
-          }
-        }
-      }
-      /**
-       * Gets list of direct children of node v.
-       * Complexity: O(1).
-       */
-      children(v = GRAPH_NODE) {
-        if (this._isCompound) {
-          var children = this._children[v];
-          if (children) {
-            return Object.keys(children);
-          }
-        } else if (v === GRAPH_NODE) {
-          return this.nodes();
-        } else if (this.hasNode(v)) {
-          return [];
-        }
-      }
-      /**
-       * Return all nodes that are predecessors of the specified node or undefined if node v is not in
-       * the graph. Behavior is undefined for undirected graphs - use neighbors instead.
-       * Complexity: O(|V|).
-       */
-      predecessors(v) {
-        var predsV = this._preds[v];
-        if (predsV) {
-          return Object.keys(predsV);
-        }
-      }
-      /**
-       * Return all nodes that are successors of the specified node or undefined if node v is not in
-       * the graph. Behavior is undefined for undirected graphs - use neighbors instead.
-       * Complexity: O(|V|).
-       */
-      successors(v) {
-        var sucsV = this._sucs[v];
-        if (sucsV) {
-          return Object.keys(sucsV);
-        }
-      }
-      /**
-       * Return all nodes that are predecessors or successors of the specified node or undefined if
-       * node v is not in the graph.
-       * Complexity: O(|V|).
-       */
-      neighbors(v) {
-        var preds = this.predecessors(v);
-        if (preds) {
-          const union2 = new Set(preds);
-          for (var succ of this.successors(v)) {
-            union2.add(succ);
-          }
-          return Array.from(union2.values());
-        }
-      }
-      isLeaf(v) {
-        var neighbors;
-        if (this.isDirected()) {
-          neighbors = this.successors(v);
-        } else {
-          neighbors = this.neighbors(v);
-        }
-        return neighbors.length === 0;
-      }
-      /**
-       * Creates new graph with nodes filtered via filter. Edges incident to rejected node
-       * are also removed. In case of compound graph, if parent is rejected by filter,
-       * than all its children are rejected too.
-       * Average-case complexity: O(|E|+|V|).
-       */
-      filterNodes(filter2) {
-        var copy = new this.constructor({
-          directed: this._isDirected,
-          multigraph: this._isMultigraph,
-          compound: this._isCompound
-        });
-        copy.setGraph(this.graph());
-        var self = this;
-        Object.entries(this._nodes).forEach(function([v, value]) {
-          if (filter2(v)) {
-            copy.setNode(v, value);
-          }
-        });
-        Object.values(this._edgeObjs).forEach(function(e) {
-          if (copy.hasNode(e.v) && copy.hasNode(e.w)) {
-            copy.setEdge(e, self.edge(e));
-          }
-        });
-        var parents = {};
-        function findParent(v) {
-          var parent = self.parent(v);
-          if (parent === void 0 || copy.hasNode(parent)) {
-            parents[v] = parent;
-            return parent;
-          } else if (parent in parents) {
-            return parents[parent];
-          } else {
-            return findParent(parent);
-          }
-        }
-        if (this._isCompound) {
-          copy.nodes().forEach((v) => copy.setParent(v, findParent(v)));
-        }
-        return copy;
-      }
-      /* === Edge functions ========== */
-      /**
-       * Sets the default edge label or factory function. This label will be
-       * assigned as default label in case if no label was specified while setting
-       * an edge or this function will be invoked each time when setting an edge
-       * with no label specified and returned value * will be used as a label for edge.
-       * Complexity: O(1).
-       */
-      setDefaultEdgeLabel(newDefault) {
-        this._defaultEdgeLabelFn = newDefault;
-        if (typeof newDefault !== "function") {
-          this._defaultEdgeLabelFn = () => newDefault;
-        }
-        return this;
-      }
-      /**
-       * Gets the number of edges in the graph.
-       * Complexity: O(1).
-       */
-      edgeCount() {
-        return this._edgeCount;
-      }
-      /**
-       * Gets edges of the graph. In case of compound graph subgraphs are not considered.
-       * Complexity: O(|E|).
-       */
-      edges() {
-        return Object.values(this._edgeObjs);
-      }
-      /**
-       * Establish an edges path over the nodes in nodes list. If some edge is already
-       * exists, it will update its label, otherwise it will create an edge between pair
-       * of nodes with label provided or default label if no label provided.
-       * Complexity: O(|nodes|).
-       */
-      setPath(vs, value) {
-        var self = this;
-        var args = arguments;
-        vs.reduce(function(v, w) {
-          if (args.length > 1) {
-            self.setEdge(v, w, value);
-          } else {
-            self.setEdge(v, w);
-          }
-          return w;
-        });
-        return this;
-      }
-      /**
-       * Creates or updates the label for the edge (v, w) with the optionally supplied
-       * name. If label is supplied it is set as the value for the edge. If label is not
-       * supplied and the edge was created by this call then the default edge label will
-       * be assigned. The name parameter is only useful with multigraphs.
-       */
-      setEdge() {
-        var v, w, name, value;
-        var valueSpecified = false;
-        var arg0 = arguments[0];
-        if (typeof arg0 === "object" && arg0 !== null && "v" in arg0) {
-          v = arg0.v;
-          w = arg0.w;
-          name = arg0.name;
-          if (arguments.length === 2) {
-            value = arguments[1];
-            valueSpecified = true;
-          }
-        } else {
-          v = arg0;
-          w = arguments[1];
-          name = arguments[3];
-          if (arguments.length > 2) {
-            value = arguments[2];
-            valueSpecified = true;
-          }
-        }
-        v = "" + v;
-        w = "" + w;
-        if (name !== void 0) {
-          name = "" + name;
-        }
-        var e = edgeArgsToId(this._isDirected, v, w, name);
-        if (Object.hasOwn(this._edgeLabels, e)) {
-          if (valueSpecified) {
-            this._edgeLabels[e] = value;
-          }
-          return this;
-        }
-        if (name !== void 0 && !this._isMultigraph) {
-          throw new Error("Cannot set a named edge when isMultigraph = false");
-        }
-        this.setNode(v);
-        this.setNode(w);
-        this._edgeLabels[e] = valueSpecified ? value : this._defaultEdgeLabelFn(v, w, name);
-        var edgeObj = edgeArgsToObj(this._isDirected, v, w, name);
-        v = edgeObj.v;
-        w = edgeObj.w;
-        Object.freeze(edgeObj);
-        this._edgeObjs[e] = edgeObj;
-        incrementOrInitEntry(this._preds[w], v);
-        incrementOrInitEntry(this._sucs[v], w);
-        this._in[w][e] = edgeObj;
-        this._out[v][e] = edgeObj;
-        this._edgeCount++;
-        return this;
-      }
-      /**
-       * Gets the label for the specified edge.
-       * Complexity: O(1).
-       */
-      edge(v, w, name) {
-        var e = arguments.length === 1 ? edgeObjToId(this._isDirected, arguments[0]) : edgeArgsToId(this._isDirected, v, w, name);
-        return this._edgeLabels[e];
-      }
-      /**
-       * Gets the label for the specified edge and converts it to an object.
-       * Complexity: O(1)
-       */
-      edgeAsObj() {
-        const edge = this.edge(...arguments);
-        if (typeof edge !== "object") {
-          return { label: edge };
-        }
-        return edge;
-      }
-      /**
-       * Detects whether the graph contains specified edge or not. No subgraphs are considered.
-       * Complexity: O(1).
-       */
-      hasEdge(v, w, name) {
-        var e = arguments.length === 1 ? edgeObjToId(this._isDirected, arguments[0]) : edgeArgsToId(this._isDirected, v, w, name);
-        return Object.hasOwn(this._edgeLabels, e);
-      }
-      /**
-       * Removes the specified edge from the graph. No subgraphs are considered.
-       * Complexity: O(1).
-       */
-      removeEdge(v, w, name) {
-        var e = arguments.length === 1 ? edgeObjToId(this._isDirected, arguments[0]) : edgeArgsToId(this._isDirected, v, w, name);
-        var edge = this._edgeObjs[e];
-        if (edge) {
-          v = edge.v;
-          w = edge.w;
-          delete this._edgeLabels[e];
-          delete this._edgeObjs[e];
-          decrementOrRemoveEntry(this._preds[w], v);
-          decrementOrRemoveEntry(this._sucs[v], w);
-          delete this._in[w][e];
-          delete this._out[v][e];
-          this._edgeCount--;
-        }
-        return this;
-      }
-      /**
-       * Return all edges that point to the node v. Optionally filters those edges down to just those
-       * coming from node u. Behavior is undefined for undirected graphs - use nodeEdges instead.
-       * Complexity: O(|E|).
-       */
-      inEdges(v, u) {
-        var inV = this._in[v];
-        if (inV) {
-          var edges = Object.values(inV);
-          if (!u) {
-            return edges;
-          }
-          return edges.filter((edge) => edge.v === u);
-        }
-      }
-      /**
-       * Return all edges that are pointed at by node v. Optionally filters those edges down to just
-       * those point to w. Behavior is undefined for undirected graphs - use nodeEdges instead.
-       * Complexity: O(|E|).
-       */
-      outEdges(v, w) {
-        var outV = this._out[v];
-        if (outV) {
-          var edges = Object.values(outV);
-          if (!w) {
-            return edges;
-          }
-          return edges.filter((edge) => edge.w === w);
-        }
-      }
-      /**
-       * Returns all edges to or from node v regardless of direction. Optionally filters those edges
-       * down to just those between nodes v and w regardless of direction.
-       * Complexity: O(|E|).
-       */
-      nodeEdges(v, w) {
-        var inEdges = this.inEdges(v, w);
-        if (inEdges) {
-          return inEdges.concat(this.outEdges(v, w));
-        }
-      }
-    };
-    function incrementOrInitEntry(map7, k) {
-      if (map7[k]) {
-        map7[k]++;
-      } else {
-        map7[k] = 1;
-      }
-    }
-    function decrementOrRemoveEntry(map7, k) {
-      if (!--map7[k]) {
-        delete map7[k];
-      }
-    }
-    function edgeArgsToId(isDirected, v_, w_, name) {
-      var v = "" + v_;
-      var w = "" + w_;
-      if (!isDirected && v > w) {
-        var tmp = v;
-        v = w;
-        w = tmp;
-      }
-      return v + EDGE_KEY_DELIM + w + EDGE_KEY_DELIM + (name === void 0 ? DEFAULT_EDGE_NAME : name);
-    }
-    function edgeArgsToObj(isDirected, v_, w_, name) {
-      var v = "" + v_;
-      var w = "" + w_;
-      if (!isDirected && v > w) {
-        var tmp = v;
-        v = w;
-        w = tmp;
-      }
-      var edgeObj = { v, w };
-      if (name) {
-        edgeObj.name = name;
-      }
-      return edgeObj;
-    }
-    function edgeObjToId(isDirected, edgeObj) {
-      return edgeArgsToId(isDirected, edgeObj.v, edgeObj.w, edgeObj.name);
-    }
-    module.exports = Graph4;
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/version.js
-var require_version = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/version.js"(exports, module) {
-    module.exports = "2.2.4";
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/index.js
-var require_lib = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/index.js"(exports, module) {
-    module.exports = {
-      Graph: require_graph(),
-      version: require_version()
-    };
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/json.js
-var require_json = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/json.js"(exports, module) {
-    var Graph4 = require_graph();
-    module.exports = {
-      write,
-      read
-    };
-    function write(g) {
-      var json2 = {
-        options: {
-          directed: g.isDirected(),
-          multigraph: g.isMultigraph(),
-          compound: g.isCompound()
-        },
-        nodes: writeNodes(g),
-        edges: writeEdges(g)
-      };
-      if (g.graph() !== void 0) {
-        json2.value = structuredClone(g.graph());
-      }
-      return json2;
-    }
-    function writeNodes(g) {
-      return g.nodes().map(function(v) {
-        var nodeValue = g.node(v);
-        var parent = g.parent(v);
-        var node = { v };
-        if (nodeValue !== void 0) {
-          node.value = nodeValue;
-        }
-        if (parent !== void 0) {
-          node.parent = parent;
-        }
-        return node;
-      });
-    }
-    function writeEdges(g) {
-      return g.edges().map(function(e) {
-        var edgeValue = g.edge(e);
-        var edge = { v: e.v, w: e.w };
-        if (e.name !== void 0) {
-          edge.name = e.name;
-        }
-        if (edgeValue !== void 0) {
-          edge.value = edgeValue;
-        }
-        return edge;
-      });
-    }
-    function read(json2) {
-      var g = new Graph4(json2.options).setGraph(json2.value);
-      json2.nodes.forEach(function(entry) {
-        g.setNode(entry.v, entry.value);
-        if (entry.parent) {
-          g.setParent(entry.v, entry.parent);
-        }
-      });
-      json2.edges.forEach(function(entry) {
-        g.setEdge({ v: entry.v, w: entry.w, name: entry.name }, entry.value);
-      });
-      return g;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/components.js
-var require_components = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/components.js"(exports, module) {
-    module.exports = components;
-    function components(g) {
-      var visited = {};
-      var cmpts = [];
-      var cmpt;
-      function dfs(v) {
-        if (Object.hasOwn(visited, v)) return;
-        visited[v] = true;
-        cmpt.push(v);
-        g.successors(v).forEach(dfs);
-        g.predecessors(v).forEach(dfs);
-      }
-      g.nodes().forEach(function(v) {
-        cmpt = [];
-        dfs(v);
-        if (cmpt.length) {
-          cmpts.push(cmpt);
-        }
-      });
-      return cmpts;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/data/priority-queue.js
-var require_priority_queue = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/data/priority-queue.js"(exports, module) {
-    var PriorityQueue = class {
-      _arr = [];
-      _keyIndices = {};
-      /**
-       * Returns the number of elements in the queue. Takes `O(1)` time.
-       */
-      size() {
-        return this._arr.length;
-      }
-      /**
-       * Returns the keys that are in the queue. Takes `O(n)` time.
-       */
-      keys() {
-        return this._arr.map(function(x) {
-          return x.key;
-        });
-      }
-      /**
-       * Returns `true` if **key** is in the queue and `false` if not.
-       */
-      has(key) {
-        return Object.hasOwn(this._keyIndices, key);
-      }
-      /**
-       * Returns the priority for **key**. If **key** is not present in the queue
-       * then this function returns `undefined`. Takes `O(1)` time.
-       *
-       * @param {Object} key
-       */
-      priority(key) {
-        var index4 = this._keyIndices[key];
-        if (index4 !== void 0) {
-          return this._arr[index4].priority;
-        }
-      }
-      /**
-       * Returns the key for the minimum element in this queue. If the queue is
-       * empty this function throws an Error. Takes `O(1)` time.
-       */
-      min() {
-        if (this.size() === 0) {
-          throw new Error("Queue underflow");
-        }
-        return this._arr[0].key;
-      }
-      /**
-       * Inserts a new key into the priority queue. If the key already exists in
-       * the queue this function returns `false`; otherwise it will return `true`.
-       * Takes `O(n)` time.
-       *
-       * @param {Object} key the key to add
-       * @param {Number} priority the initial priority for the key
-       */
-      add(key, priority) {
-        var keyIndices = this._keyIndices;
-        key = String(key);
-        if (!Object.hasOwn(keyIndices, key)) {
-          var arr = this._arr;
-          var index4 = arr.length;
-          keyIndices[key] = index4;
-          arr.push({ key, priority });
-          this._decrease(index4);
-          return true;
-        }
-        return false;
-      }
-      /**
-       * Removes and returns the smallest key in the queue. Takes `O(log n)` time.
-       */
-      removeMin() {
-        this._swap(0, this._arr.length - 1);
-        var min3 = this._arr.pop();
-        delete this._keyIndices[min3.key];
-        this._heapify(0);
-        return min3.key;
-      }
-      /**
-       * Decreases the priority for **key** to **priority**. If the new priority is
-       * greater than the previous priority, this function will throw an Error.
-       *
-       * @param {Object} key the key for which to raise priority
-       * @param {Number} priority the new priority for the key
-       */
-      decrease(key, priority) {
-        var index4 = this._keyIndices[key];
-        if (priority > this._arr[index4].priority) {
-          throw new Error("New priority is greater than current priority. Key: " + key + " Old: " + this._arr[index4].priority + " New: " + priority);
-        }
-        this._arr[index4].priority = priority;
-        this._decrease(index4);
-      }
-      _heapify(i) {
-        var arr = this._arr;
-        var l = 2 * i;
-        var r = l + 1;
-        var largest = i;
-        if (l < arr.length) {
-          largest = arr[l].priority < arr[largest].priority ? l : largest;
-          if (r < arr.length) {
-            largest = arr[r].priority < arr[largest].priority ? r : largest;
-          }
-          if (largest !== i) {
-            this._swap(i, largest);
-            this._heapify(largest);
-          }
-        }
-      }
-      _decrease(index4) {
-        var arr = this._arr;
-        var priority = arr[index4].priority;
-        var parent;
-        while (index4 !== 0) {
-          parent = index4 >> 1;
-          if (arr[parent].priority < priority) {
-            break;
-          }
-          this._swap(index4, parent);
-          index4 = parent;
-        }
-      }
-      _swap(i, j) {
-        var arr = this._arr;
-        var keyIndices = this._keyIndices;
-        var origArrI = arr[i];
-        var origArrJ = arr[j];
-        arr[i] = origArrJ;
-        arr[j] = origArrI;
-        keyIndices[origArrJ.key] = i;
-        keyIndices[origArrI.key] = j;
-      }
-    };
-    module.exports = PriorityQueue;
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/dijkstra.js
-var require_dijkstra = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/dijkstra.js"(exports, module) {
-    var PriorityQueue = require_priority_queue();
-    module.exports = dijkstra;
-    var DEFAULT_WEIGHT_FUNC = () => 1;
-    function dijkstra(g, source, weightFn, edgeFn) {
-      return runDijkstra(
-        g,
-        String(source),
-        weightFn || DEFAULT_WEIGHT_FUNC,
-        edgeFn || function(v) {
-          return g.outEdges(v);
-        }
-      );
-    }
-    function runDijkstra(g, source, weightFn, edgeFn) {
-      var results = {};
-      var pq = new PriorityQueue();
-      var v, vEntry;
-      var updateNeighbors = function(edge) {
-        var w = edge.v !== v ? edge.v : edge.w;
-        var wEntry = results[w];
-        var weight = weightFn(edge);
-        var distance = vEntry.distance + weight;
-        if (weight < 0) {
-          throw new Error("dijkstra does not allow negative edge weights. Bad edge: " + edge + " Weight: " + weight);
-        }
-        if (distance < wEntry.distance) {
-          wEntry.distance = distance;
-          wEntry.predecessor = v;
-          pq.decrease(w, distance);
-        }
-      };
-      g.nodes().forEach(function(v2) {
-        var distance = v2 === source ? 0 : Number.POSITIVE_INFINITY;
-        results[v2] = { distance };
-        pq.add(v2, distance);
-      });
-      while (pq.size() > 0) {
-        v = pq.removeMin();
-        vEntry = results[v];
-        if (vEntry.distance === Number.POSITIVE_INFINITY) {
-          break;
-        }
-        edgeFn(v).forEach(updateNeighbors);
-      }
-      return results;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/dijkstra-all.js
-var require_dijkstra_all = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/dijkstra-all.js"(exports, module) {
-    var dijkstra = require_dijkstra();
-    module.exports = dijkstraAll;
-    function dijkstraAll(g, weightFunc, edgeFunc) {
-      return g.nodes().reduce(function(acc, v) {
-        acc[v] = dijkstra(g, v, weightFunc, edgeFunc);
-        return acc;
-      }, {});
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/tarjan.js
-var require_tarjan = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/tarjan.js"(exports, module) {
-    module.exports = tarjan;
-    function tarjan(g) {
-      var index4 = 0;
-      var stack = [];
-      var visited = {};
-      var results = [];
-      function dfs(v) {
-        var entry = visited[v] = {
-          onStack: true,
-          lowlink: index4,
-          index: index4++
-        };
-        stack.push(v);
-        g.successors(v).forEach(function(w2) {
-          if (!Object.hasOwn(visited, w2)) {
-            dfs(w2);
-            entry.lowlink = Math.min(entry.lowlink, visited[w2].lowlink);
-          } else if (visited[w2].onStack) {
-            entry.lowlink = Math.min(entry.lowlink, visited[w2].index);
-          }
-        });
-        if (entry.lowlink === entry.index) {
-          var cmpt = [];
-          var w;
-          do {
-            w = stack.pop();
-            visited[w].onStack = false;
-            cmpt.push(w);
-          } while (v !== w);
-          results.push(cmpt);
-        }
-      }
-      g.nodes().forEach(function(v) {
-        if (!Object.hasOwn(visited, v)) {
-          dfs(v);
-        }
-      });
-      return results;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/find-cycles.js
-var require_find_cycles = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/find-cycles.js"(exports, module) {
-    var tarjan = require_tarjan();
-    module.exports = findCycles;
-    function findCycles(g) {
-      return tarjan(g).filter(function(cmpt) {
-        return cmpt.length > 1 || cmpt.length === 1 && g.hasEdge(cmpt[0], cmpt[0]);
-      });
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/floyd-warshall.js
-var require_floyd_warshall = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/floyd-warshall.js"(exports, module) {
-    module.exports = floydWarshall;
-    var DEFAULT_WEIGHT_FUNC = () => 1;
-    function floydWarshall(g, weightFn, edgeFn) {
-      return runFloydWarshall(
-        g,
-        weightFn || DEFAULT_WEIGHT_FUNC,
-        edgeFn || function(v) {
-          return g.outEdges(v);
-        }
-      );
-    }
-    function runFloydWarshall(g, weightFn, edgeFn) {
-      var results = {};
-      var nodes2 = g.nodes();
-      nodes2.forEach(function(v) {
-        results[v] = {};
-        results[v][v] = { distance: 0 };
-        nodes2.forEach(function(w) {
-          if (v !== w) {
-            results[v][w] = { distance: Number.POSITIVE_INFINITY };
-          }
-        });
-        edgeFn(v).forEach(function(edge) {
-          var w = edge.v === v ? edge.w : edge.v;
-          var d = weightFn(edge);
-          results[v][w] = { distance: d, predecessor: v };
-        });
-      });
-      nodes2.forEach(function(k) {
-        var rowK = results[k];
-        nodes2.forEach(function(i) {
-          var rowI = results[i];
-          nodes2.forEach(function(j) {
-            var ik = rowI[k];
-            var kj = rowK[j];
-            var ij = rowI[j];
-            var altDistance = ik.distance + kj.distance;
-            if (altDistance < ij.distance) {
-              ij.distance = altDistance;
-              ij.predecessor = kj.predecessor;
-            }
-          });
-        });
-      });
-      return results;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/topsort.js
-var require_topsort = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/topsort.js"(exports, module) {
-    function topsort(g) {
-      var visited = {};
-      var stack = {};
-      var results = [];
-      function visit(node) {
-        if (Object.hasOwn(stack, node)) {
-          throw new CycleException();
-        }
-        if (!Object.hasOwn(visited, node)) {
-          stack[node] = true;
-          visited[node] = true;
-          g.predecessors(node).forEach(visit);
-          delete stack[node];
-          results.push(node);
-        }
-      }
-      g.sinks().forEach(visit);
-      if (Object.keys(visited).length !== g.nodeCount()) {
-        throw new CycleException();
-      }
-      return results;
-    }
-    var CycleException = class extends Error {
-      constructor() {
-        super(...arguments);
-      }
-    };
-    module.exports = topsort;
-    topsort.CycleException = CycleException;
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/is-acyclic.js
-var require_is_acyclic = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/is-acyclic.js"(exports, module) {
-    var topsort = require_topsort();
-    module.exports = isAcyclic;
-    function isAcyclic(g) {
-      try {
-        topsort(g);
-      } catch (e) {
-        if (e instanceof topsort.CycleException) {
-          return false;
-        }
-        throw e;
-      }
-      return true;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/dfs.js
-var require_dfs = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/dfs.js"(exports, module) {
-    module.exports = dfs;
-    function dfs(g, vs, order2) {
-      if (!Array.isArray(vs)) {
-        vs = [vs];
-      }
-      var navigation = g.isDirected() ? (v) => g.successors(v) : (v) => g.neighbors(v);
-      var orderFunc = order2 === "post" ? postOrderDfs : preOrderDfs;
-      var acc = [];
-      var visited = {};
-      vs.forEach((v) => {
-        if (!g.hasNode(v)) {
-          throw new Error("Graph does not have node: " + v);
-        }
-        orderFunc(v, navigation, visited, acc);
-      });
-      return acc;
-    }
-    function postOrderDfs(v, navigation, visited, acc) {
-      var stack = [[v, false]];
-      while (stack.length > 0) {
-        var curr = stack.pop();
-        if (curr[1]) {
-          acc.push(curr[0]);
-        } else {
-          if (!Object.hasOwn(visited, curr[0])) {
-            visited[curr[0]] = true;
-            stack.push([curr[0], true]);
-            forEachRight(navigation(curr[0]), (w) => stack.push([w, false]));
-          }
-        }
-      }
-    }
-    function preOrderDfs(v, navigation, visited, acc) {
-      var stack = [v];
-      while (stack.length > 0) {
-        var curr = stack.pop();
-        if (!Object.hasOwn(visited, curr)) {
-          visited[curr] = true;
-          acc.push(curr);
-          forEachRight(navigation(curr), (w) => stack.push(w));
-        }
-      }
-    }
-    function forEachRight(array4, iteratee) {
-      var length3 = array4.length;
-      while (length3--) {
-        iteratee(array4[length3], length3, array4);
-      }
-      return array4;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/postorder.js
-var require_postorder = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/postorder.js"(exports, module) {
-    var dfs = require_dfs();
-    module.exports = postorder;
-    function postorder(g, vs) {
-      return dfs(g, vs, "post");
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/preorder.js
-var require_preorder = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/preorder.js"(exports, module) {
-    var dfs = require_dfs();
-    module.exports = preorder;
-    function preorder(g, vs) {
-      return dfs(g, vs, "pre");
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/prim.js
-var require_prim = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/prim.js"(exports, module) {
-    var Graph4 = require_graph();
-    var PriorityQueue = require_priority_queue();
-    module.exports = prim;
-    function prim(g, weightFunc) {
-      var result = new Graph4();
-      var parents = {};
-      var pq = new PriorityQueue();
-      var v;
-      function updateNeighbors(edge) {
-        var w = edge.v === v ? edge.w : edge.v;
-        var pri = pq.priority(w);
-        if (pri !== void 0) {
-          var edgeWeight = weightFunc(edge);
-          if (edgeWeight < pri) {
-            parents[w] = v;
-            pq.decrease(w, edgeWeight);
-          }
-        }
-      }
-      if (g.nodeCount() === 0) {
-        return result;
-      }
-      g.nodes().forEach(function(v2) {
-        pq.add(v2, Number.POSITIVE_INFINITY);
-        result.setNode(v2);
-      });
-      pq.decrease(g.nodes()[0], 0);
-      var init2 = false;
-      while (pq.size() > 0) {
-        v = pq.removeMin();
-        if (Object.hasOwn(parents, v)) {
-          result.setEdge(v, parents[v]);
-        } else if (init2) {
-          throw new Error("Input graph is not connected: " + g);
-        } else {
-          init2 = true;
-        }
-        g.nodeEdges(v).forEach(updateNeighbors);
-      }
-      return result;
-    }
-  }
-});
-
-// node_modules/@dagrejs/graphlib/lib/alg/index.js
-var require_alg = __commonJS({
-  "node_modules/@dagrejs/graphlib/lib/alg/index.js"(exports, module) {
-    module.exports = {
-      components: require_components(),
-      dijkstra: require_dijkstra(),
-      dijkstraAll: require_dijkstra_all(),
-      findCycles: require_find_cycles(),
-      floydWarshall: require_floyd_warshall(),
-      isAcyclic: require_is_acyclic(),
-      postorder: require_postorder(),
-      preorder: require_preorder(),
-      prim: require_prim(),
-      tarjan: require_tarjan(),
-      topsort: require_topsort()
-    };
-  }
-});
-
-// node_modules/@dagrejs/graphlib/index.js
-var require_graphlib = __commonJS({
-  "node_modules/@dagrejs/graphlib/index.js"(exports, module) {
-    var lib = require_lib();
-    module.exports = {
-      Graph: lib.Graph,
-      json: require_json(),
-      alg: require_alg(),
-      version: lib.version
-    };
-  }
-});
-
 // build/dev/javascript/prelude.mjs
 var CustomType = class {
   withFields(fields) {
@@ -1290,12 +36,12 @@ var List = class {
   // @internal
   countLength() {
     let current = this;
-    let length3 = 0;
+    let length4 = 0;
     while (current) {
       current = current.tail;
-      length3++;
+      length4++;
     }
-    return length3 - 1;
+    return length4 - 1;
   }
 };
 function prepend(element4, tail) {
@@ -1542,7 +288,7 @@ var Ok = class extends Result {
     return true;
   }
 };
-var Error2 = class extends Result {
+var Error = class extends Result {
   constructor(detail) {
     super();
     this[0] = detail;
@@ -1622,12 +368,12 @@ function divideFloat(a2, b) {
     return a2 / b;
   }
 }
-function makeError(variant, file, module, line, fn, message, extra) {
+function makeError(variant, file, module, line2, fn, message, extra) {
   let error = new globalThis.Error(message);
   error.gleam_error = variant;
   error.file = file;
   error.module = module;
-  error.line = line;
+  error.line = line2;
   error.function = fn;
   error.fn = fn;
   for (let k in extra) error[k] = extra[k];
@@ -1643,12 +389,12 @@ var Some = class extends CustomType {
 };
 var None = class extends CustomType {
 };
-function then$(option, fun) {
-  if (option instanceof Some) {
-    let x = option[0];
+function then$(option2, fun) {
+  if (option2 instanceof Some) {
+    let x = option2[0];
     return fun(x);
   } else {
-    return option;
+    return option2;
   }
 }
 
@@ -1946,22 +692,22 @@ function assocIndex(root3, shift, hash, key, val, addedLeaf) {
   } else {
     const n = root3.array.length;
     if (n >= MAX_INDEX_NODE) {
-      const nodes2 = new Array(32);
+      const nodes = new Array(32);
       const jdx = mask(hash, shift);
-      nodes2[jdx] = assocIndex(EMPTY, shift + SHIFT, hash, key, val, addedLeaf);
+      nodes[jdx] = assocIndex(EMPTY, shift + SHIFT, hash, key, val, addedLeaf);
       let j = 0;
       let bitmap = root3.bitmap;
       for (let i = 0; i < 32; i++) {
         if ((bitmap & 1) !== 0) {
           const node = root3.array[j++];
-          nodes2[i] = node;
+          nodes[i] = node;
         }
         bitmap = bitmap >>> 1;
       }
       return {
         type: ARRAY_NODE,
         size: n + 1,
-        array: nodes2
+        array: nodes
       };
     } else {
       const newArray = spliceIn(root3.array, idx, {
@@ -1992,12 +738,12 @@ function assocCollision(root3, shift, hash, key, val, addedLeaf) {
         array: cloneAndSet(root3.array, idx, { type: ENTRY, k: key, v: val })
       };
     }
-    const size4 = root3.array.length;
+    const size3 = root3.array.length;
     addedLeaf.val = true;
     return {
       type: COLLISION_NODE,
       hash,
-      array: cloneAndSet(root3.array, size4, { type: ENTRY, k: key, v: val })
+      array: cloneAndSet(root3.array, size3, { type: ENTRY, k: key, v: val })
     };
   }
   return assoc(
@@ -2014,8 +760,8 @@ function assocCollision(root3, shift, hash, key, val, addedLeaf) {
   );
 }
 function collisionIndexOf(root3, key) {
-  const size4 = root3.array.length;
-  for (let i = 0; i < size4; i++) {
+  const size3 = root3.array.length;
+  for (let i = 0; i < size3; i++) {
     if (isEqual(key, root3.array[i].k)) {
       return i;
     }
@@ -2198,8 +944,8 @@ function forEach(root3, fn) {
     return;
   }
   const items = root3.array;
-  const size4 = items.length;
-  for (let i = 0; i < size4; i++) {
+  const size3 = items.length;
+  for (let i = 0; i < size3; i++) {
     const item = items[i];
     if (item === void 0) {
       continue;
@@ -2245,9 +991,9 @@ var Dict = class _Dict {
    * @param {undefined | Node<K,V>} root
    * @param {number} size
    */
-  constructor(root3, size4) {
+  constructor(root3, size3) {
     this.root = root3;
-    this.size = size4;
+    this.size = size3;
   }
   /**
    * @template NotFound
@@ -2378,7 +1124,7 @@ function round2(x) {
 }
 function divide(a2, b) {
   if (b === 0) {
-    return new Error2(void 0);
+    return new Error(void 0);
   } else {
     let b$1 = b;
     return new Ok(divideFloat(a2, b$1));
@@ -2386,19 +1132,6 @@ function divide(a2, b) {
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/int.mjs
-function compare(a2, b) {
-  let $ = a2 === b;
-  if ($) {
-    return new Eq();
-  } else {
-    let $1 = a2 < b;
-    if ($1) {
-      return new Lt();
-    } else {
-      return new Gt();
-    }
-  }
-}
 function min(a2, b) {
   let $ = a2 < b;
   if ($) {
@@ -2416,35 +1149,12 @@ function max(a2, b) {
   }
 }
 
-// build/dev/javascript/gleam_stdlib/gleam/string_tree.mjs
-function append(tree, second2) {
-  return add(tree, identity(second2));
-}
-function join(trees, sep) {
-  let _pipe = trees;
-  let _pipe$1 = intersperse(_pipe, identity(sep));
-  return concat(_pipe$1);
-}
-
 // build/dev/javascript/gleam_stdlib/gleam/string.mjs
 function replace(string5, pattern, substitute) {
   let _pipe = string5;
   let _pipe$1 = identity(_pipe);
   let _pipe$2 = string_replace(_pipe$1, pattern, substitute);
   return identity(_pipe$2);
-}
-function compare2(a2, b) {
-  let $ = a2 === b;
-  if ($) {
-    return new Eq();
-  } else {
-    let $1 = less_than(a2, b);
-    if ($1) {
-      return new Lt();
-    } else {
-      return new Gt();
-    }
-  }
 }
 function concat_loop(loop$strings, loop$accumulator) {
   while (true) {
@@ -2462,6 +1172,24 @@ function concat_loop(loop$strings, loop$accumulator) {
 }
 function concat2(strings) {
   return concat_loop(strings, "");
+}
+function repeat_loop(loop$string, loop$times, loop$acc) {
+  while (true) {
+    let string5 = loop$string;
+    let times = loop$times;
+    let acc = loop$acc;
+    let $ = times <= 0;
+    if ($) {
+      return acc;
+    } else {
+      loop$string = string5;
+      loop$times = times - 1;
+      loop$acc = acc + string5;
+    }
+  }
+}
+function repeat(string5, times) {
+  return repeat_loop(string5, times, "");
 }
 function inspect2(term) {
   let _pipe = inspect(term);
@@ -2492,7 +1220,7 @@ function run(data, decoder2) {
   if (errors instanceof Empty) {
     return new Ok(maybe_invalid_data);
   } else {
-    return new Error2(errors);
+    return new Error(errors);
   }
 }
 function success(data) {
@@ -2603,7 +1331,7 @@ function push_path(layer, path) {
       return new DecodeError(
         error.expected,
         error.found,
-        append3(path$1, error.path)
+        append2(path$1, error.path)
       );
     }
   );
@@ -2677,7 +1405,7 @@ function subfield(field_path, field_decoder, next2) {
       let errors2;
       out$1 = $1[0];
       errors2 = $1[1];
-      return [out$1, append3(errors1, errors2)];
+      return [out$1, append2(errors1, errors2)];
     }
   );
 }
@@ -2692,7 +1420,7 @@ function parse_int(value) {
   if (/^[-+]?(\d+)$/.test(value)) {
     return new Ok(parseInt(value));
   } else {
-    return new Error2(Nil);
+    return new Error(Nil);
   }
 }
 function to_string(term) {
@@ -2700,6 +1428,21 @@ function to_string(term) {
 }
 function string_replace(string5, target, substitute) {
   return string5.replaceAll(target, substitute);
+}
+function string_length(string5) {
+  if (string5 === "") {
+    return 0;
+  }
+  const iterator = graphemes_iterator(string5);
+  if (iterator) {
+    let i = 0;
+    for (const _ of iterator) {
+      i++;
+    }
+    return i;
+  } else {
+    return string5.match(/./gsu).length;
+  }
 }
 function graphemes(string5) {
   const iterator = graphemes_iterator(string5);
@@ -2715,19 +1458,6 @@ function graphemes_iterator(string5) {
     segmenter ||= new Intl.Segmenter();
     return segmenter.segment(string5)[Symbol.iterator]();
   }
-}
-function less_than(a2, b) {
-  return a2 < b;
-}
-function add(a2, b) {
-  return a2 + b;
-}
-function concat(xs) {
-  let result = "";
-  for (const x of xs) {
-    result = result + x;
-  }
-  return result;
 }
 function starts_with(haystack, needle) {
   return haystack.startsWith(needle);
@@ -2768,13 +1498,10 @@ function map_size(map7) {
 function map_to_list(map7) {
   return List.fromArray(map7.entries());
 }
-function map_remove(key, map7) {
-  return map7.delete(key);
-}
 function map_get(map7, key) {
   const value = map7.get(key, NOT_FOUND);
   if (value === NOT_FOUND) {
-    return new Error2(Nil);
+    return new Error(Nil);
   }
   return new Ok(value);
 }
@@ -2993,102 +1720,26 @@ function index2(data, key) {
       if (i === key) return new Ok(new Some(value));
       i++;
     }
-    return new Error2("Indexable");
+    return new Error("Indexable");
   }
   if (key_is_int && Array.isArray(data) || data && typeof data === "object" || data && Object.getPrototypeOf(data) === Object.prototype) {
     if (key in data) return new Ok(new Some(data[key]));
     return new Ok(new None());
   }
-  return new Error2(key_is_int ? "Indexable" : "Dict");
+  return new Error(key_is_int ? "Indexable" : "Dict");
 }
 function int(data) {
   if (Number.isInteger(data)) return new Ok(data);
-  return new Error2(0);
+  return new Error(0);
 }
 function string(data) {
   if (typeof data === "string") return new Ok(data);
-  return new Error2("");
+  return new Error("");
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/dict.mjs
-function do_has_key(key, dict3) {
-  return !isEqual(map_get(dict3, key), new Error2(void 0));
-}
-function has_key(dict3, key) {
-  return do_has_key(key, dict3);
-}
 function insert(dict3, key, value) {
   return map_insert(key, value, dict3);
-}
-function from_list_loop(loop$list, loop$initial) {
-  while (true) {
-    let list4 = loop$list;
-    let initial = loop$initial;
-    if (list4 instanceof Empty) {
-      return initial;
-    } else {
-      let rest = list4.tail;
-      let key = list4.head[0];
-      let value = list4.head[1];
-      loop$list = rest;
-      loop$initial = insert(initial, key, value);
-    }
-  }
-}
-function from_list(list4) {
-  return from_list_loop(list4, new_map());
-}
-function reverse_and_concat(loop$remaining, loop$accumulator) {
-  while (true) {
-    let remaining = loop$remaining;
-    let accumulator = loop$accumulator;
-    if (remaining instanceof Empty) {
-      return accumulator;
-    } else {
-      let first3 = remaining.head;
-      let rest = remaining.tail;
-      loop$remaining = rest;
-      loop$accumulator = prepend(first3, accumulator);
-    }
-  }
-}
-function do_keys_loop(loop$list, loop$acc) {
-  while (true) {
-    let list4 = loop$list;
-    let acc = loop$acc;
-    if (list4 instanceof Empty) {
-      return reverse_and_concat(acc, toList([]));
-    } else {
-      let rest = list4.tail;
-      let key = list4.head[0];
-      loop$list = rest;
-      loop$acc = prepend(key, acc);
-    }
-  }
-}
-function keys(dict3) {
-  return do_keys_loop(map_to_list(dict3), toList([]));
-}
-function do_values_loop(loop$list, loop$acc) {
-  while (true) {
-    let list4 = loop$list;
-    let acc = loop$acc;
-    if (list4 instanceof Empty) {
-      return reverse_and_concat(acc, toList([]));
-    } else {
-      let rest = list4.tail;
-      let value = list4.head[1];
-      loop$list = rest;
-      loop$acc = prepend(value, acc);
-    }
-  }
-}
-function values(dict3) {
-  let list_of_pairs = map_to_list(dict3);
-  return do_values_loop(list_of_pairs, toList([]));
-}
-function delete$(dict3, key) {
-  return map_remove(key, dict3);
 }
 function fold_loop(loop$list, loop$initial, loop$fun) {
   while (true) {
@@ -3110,15 +1761,6 @@ function fold_loop(loop$list, loop$initial, loop$fun) {
 function fold(dict3, initial, fun) {
   return fold_loop(map_to_list(dict3), initial, fun);
 }
-function do_map_values(f, dict3) {
-  let f$1 = (dict4, k, v) => {
-    return insert(dict4, k, f(k, v));
-  };
-  return fold(dict3, new_map(), f$1);
-}
-function map_values(dict3, fun) {
-  return do_map_values(fun, dict3);
-}
 
 // build/dev/javascript/gleam_stdlib/gleam/list.mjs
 var Continue = class extends CustomType {
@@ -3137,6 +1779,22 @@ var Ascending = class extends CustomType {
 };
 var Descending = class extends CustomType {
 };
+function length_loop(loop$list, loop$count) {
+  while (true) {
+    let list4 = loop$list;
+    let count = loop$count;
+    if (list4 instanceof Empty) {
+      return count;
+    } else {
+      let list$1 = list4.tail;
+      loop$list = list$1;
+      loop$count = count + 1;
+    }
+  }
+}
+function length2(list4) {
+  return length_loop(list4, 0);
+}
 function reverse_and_prepend(loop$prefix, loop$suffix) {
   while (true) {
     let prefix = loop$prefix;
@@ -3156,39 +1814,11 @@ function reverse(list4) {
 }
 function first(list4) {
   if (list4 instanceof Empty) {
-    return new Error2(void 0);
+    return new Error(void 0);
   } else {
     let first$1 = list4.head;
     return new Ok(first$1);
   }
-}
-function filter_map_loop(loop$list, loop$fun, loop$acc) {
-  while (true) {
-    let list4 = loop$list;
-    let fun = loop$fun;
-    let acc = loop$acc;
-    if (list4 instanceof Empty) {
-      return reverse(acc);
-    } else {
-      let first$1 = list4.head;
-      let rest$1 = list4.tail;
-      let _block;
-      let $ = fun(first$1);
-      if ($ instanceof Ok) {
-        let first$2 = $[0];
-        _block = prepend(first$2, acc);
-      } else {
-        _block = acc;
-      }
-      let new_acc = _block;
-      loop$list = rest$1;
-      loop$fun = fun;
-      loop$acc = new_acc;
-    }
-  }
-}
-function filter_map(list4, fun) {
-  return filter_map_loop(list4, fun, toList([]));
 }
 function map_loop(loop$list, loop$fun, loop$acc) {
   while (true) {
@@ -3235,66 +1865,40 @@ function map_fold_loop(loop$list, loop$fun, loop$acc, loop$list_acc) {
 function map_fold(list4, initial, fun) {
   return map_fold_loop(list4, fun, initial, toList([]));
 }
-function take_loop(loop$list, loop$n, loop$acc) {
+function drop(loop$list, loop$n) {
   while (true) {
     let list4 = loop$list;
     let n = loop$n;
-    let acc = loop$acc;
     let $ = n <= 0;
     if ($) {
-      return reverse(acc);
+      return list4;
     } else {
       if (list4 instanceof Empty) {
-        return reverse(acc);
+        return list4;
       } else {
-        let first$1 = list4.head;
         let rest$1 = list4.tail;
         loop$list = rest$1;
         loop$n = n - 1;
-        loop$acc = prepend(first$1, acc);
       }
     }
   }
 }
-function take(list4, n) {
-  return take_loop(list4, n, toList([]));
-}
 function append_loop(loop$first, loop$second) {
   while (true) {
     let first3 = loop$first;
-    let second2 = loop$second;
+    let second = loop$second;
     if (first3 instanceof Empty) {
-      return second2;
+      return second;
     } else {
       let first$1 = first3.head;
       let rest$1 = first3.tail;
       loop$first = rest$1;
-      loop$second = prepend(first$1, second2);
+      loop$second = prepend(first$1, second);
     }
   }
 }
-function append3(first3, second2) {
-  return append_loop(reverse(first3), second2);
-}
-function flatten_loop(loop$lists, loop$acc) {
-  while (true) {
-    let lists = loop$lists;
-    let acc = loop$acc;
-    if (lists instanceof Empty) {
-      return reverse(acc);
-    } else {
-      let list4 = lists.head;
-      let further_lists = lists.tail;
-      loop$lists = further_lists;
-      loop$acc = reverse_and_prepend(list4, acc);
-    }
-  }
-}
-function flatten(lists) {
-  return flatten_loop(lists, toList([]));
-}
-function flat_map(list4, fun) {
-  return flatten(map(list4, fun));
+function append2(first3, second) {
+  return append_loop(reverse(first3), second);
 }
 function fold2(loop$list, loop$initial, loop$fun) {
   while (true) {
@@ -3344,29 +1948,6 @@ function fold_until(loop$list, loop$initial, loop$fun) {
     }
   }
 }
-function zip_loop(loop$one, loop$other, loop$acc) {
-  while (true) {
-    let one = loop$one;
-    let other = loop$other;
-    let acc = loop$acc;
-    if (other instanceof Empty) {
-      return reverse(acc);
-    } else if (one instanceof Empty) {
-      return reverse(acc);
-    } else {
-      let first_other = other.head;
-      let rest_other = other.tail;
-      let first_one = one.head;
-      let rest_one = one.tail;
-      loop$one = rest_one;
-      loop$other = rest_other;
-      loop$acc = prepend([first_one, first_other], acc);
-    }
-  }
-}
-function zip(list4, other) {
-  return zip_loop(list4, other, toList([]));
-}
 function intersperse_loop(loop$list, loop$separator, loop$acc) {
   while (true) {
     let list4 = loop$list;
@@ -3400,7 +1981,7 @@ function intersperse(list4, elem) {
 function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$prev, loop$acc) {
   while (true) {
     let list4 = loop$list;
-    let compare5 = loop$compare;
+    let compare4 = loop$compare;
     let growing = loop$growing;
     let direction = loop$direction;
     let prev = loop$prev;
@@ -3415,18 +1996,18 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
     } else {
       let new$1 = list4.head;
       let rest$1 = list4.tail;
-      let $ = compare5(prev, new$1);
+      let $ = compare4(prev, new$1);
       if (direction instanceof Ascending) {
         if ($ instanceof Lt) {
           loop$list = rest$1;
-          loop$compare = compare5;
+          loop$compare = compare4;
           loop$growing = growing$1;
           loop$direction = direction;
           loop$prev = new$1;
           loop$acc = acc;
         } else if ($ instanceof Eq) {
           loop$list = rest$1;
-          loop$compare = compare5;
+          loop$compare = compare4;
           loop$growing = growing$1;
           loop$direction = direction;
           loop$prev = new$1;
@@ -3445,7 +2026,7 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
             let next2 = rest$1.head;
             let rest$2 = rest$1.tail;
             let _block$1;
-            let $1 = compare5(new$1, next2);
+            let $1 = compare4(new$1, next2);
             if ($1 instanceof Lt) {
               _block$1 = new Ascending();
             } else if ($1 instanceof Eq) {
@@ -3455,7 +2036,7 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
             }
             let direction$1 = _block$1;
             loop$list = rest$2;
-            loop$compare = compare5;
+            loop$compare = compare4;
             loop$growing = toList([new$1]);
             loop$direction = direction$1;
             loop$prev = next2;
@@ -3476,7 +2057,7 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
           let next2 = rest$1.head;
           let rest$2 = rest$1.tail;
           let _block$1;
-          let $1 = compare5(new$1, next2);
+          let $1 = compare4(new$1, next2);
           if ($1 instanceof Lt) {
             _block$1 = new Ascending();
           } else if ($1 instanceof Eq) {
@@ -3486,7 +2067,7 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
           }
           let direction$1 = _block$1;
           loop$list = rest$2;
-          loop$compare = compare5;
+          loop$compare = compare4;
           loop$growing = toList([new$1]);
           loop$direction = direction$1;
           loop$prev = next2;
@@ -3506,7 +2087,7 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
           let next2 = rest$1.head;
           let rest$2 = rest$1.tail;
           let _block$1;
-          let $1 = compare5(new$1, next2);
+          let $1 = compare4(new$1, next2);
           if ($1 instanceof Lt) {
             _block$1 = new Ascending();
           } else if ($1 instanceof Eq) {
@@ -3516,7 +2097,7 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
           }
           let direction$1 = _block$1;
           loop$list = rest$2;
-          loop$compare = compare5;
+          loop$compare = compare4;
           loop$growing = toList([new$1]);
           loop$direction = direction$1;
           loop$prev = next2;
@@ -3524,7 +2105,7 @@ function sequences(loop$list, loop$compare, loop$growing, loop$direction, loop$p
         }
       } else {
         loop$list = rest$1;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$growing = growing$1;
         loop$direction = direction;
         loop$prev = new$1;
@@ -3537,7 +2118,7 @@ function merge_ascendings(loop$list1, loop$list2, loop$compare, loop$acc) {
   while (true) {
     let list1 = loop$list1;
     let list22 = loop$list2;
-    let compare5 = loop$compare;
+    let compare4 = loop$compare;
     let acc = loop$acc;
     if (list1 instanceof Empty) {
       let list4 = list22;
@@ -3550,21 +2131,21 @@ function merge_ascendings(loop$list1, loop$list2, loop$compare, loop$acc) {
       let rest1 = list1.tail;
       let first22 = list22.head;
       let rest2 = list22.tail;
-      let $ = compare5(first1, first22);
+      let $ = compare4(first1, first22);
       if ($ instanceof Lt) {
         loop$list1 = rest1;
         loop$list2 = list22;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(first1, acc);
       } else if ($ instanceof Eq) {
         loop$list1 = list1;
         loop$list2 = rest2;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(first22, acc);
       } else {
         loop$list1 = list1;
         loop$list2 = rest2;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(first22, acc);
       }
     }
@@ -3573,7 +2154,7 @@ function merge_ascendings(loop$list1, loop$list2, loop$compare, loop$acc) {
 function merge_ascending_pairs(loop$sequences, loop$compare, loop$acc) {
   while (true) {
     let sequences2 = loop$sequences;
-    let compare5 = loop$compare;
+    let compare4 = loop$compare;
     let acc = loop$acc;
     if (sequences2 instanceof Empty) {
       return reverse(acc);
@@ -3589,11 +2170,11 @@ function merge_ascending_pairs(loop$sequences, loop$compare, loop$acc) {
         let descending = merge_ascendings(
           ascending1,
           ascending2,
-          compare5,
+          compare4,
           toList([])
         );
         loop$sequences = rest$1;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(descending, acc);
       }
     }
@@ -3603,7 +2184,7 @@ function merge_descendings(loop$list1, loop$list2, loop$compare, loop$acc) {
   while (true) {
     let list1 = loop$list1;
     let list22 = loop$list2;
-    let compare5 = loop$compare;
+    let compare4 = loop$compare;
     let acc = loop$acc;
     if (list1 instanceof Empty) {
       let list4 = list22;
@@ -3616,21 +2197,21 @@ function merge_descendings(loop$list1, loop$list2, loop$compare, loop$acc) {
       let rest1 = list1.tail;
       let first22 = list22.head;
       let rest2 = list22.tail;
-      let $ = compare5(first1, first22);
+      let $ = compare4(first1, first22);
       if ($ instanceof Lt) {
         loop$list1 = list1;
         loop$list2 = rest2;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(first22, acc);
       } else if ($ instanceof Eq) {
         loop$list1 = rest1;
         loop$list2 = list22;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(first1, acc);
       } else {
         loop$list1 = rest1;
         loop$list2 = list22;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(first1, acc);
       }
     }
@@ -3639,7 +2220,7 @@ function merge_descendings(loop$list1, loop$list2, loop$compare, loop$acc) {
 function merge_descending_pairs(loop$sequences, loop$compare, loop$acc) {
   while (true) {
     let sequences2 = loop$sequences;
-    let compare5 = loop$compare;
+    let compare4 = loop$compare;
     let acc = loop$acc;
     if (sequences2 instanceof Empty) {
       return reverse(acc);
@@ -3655,11 +2236,11 @@ function merge_descending_pairs(loop$sequences, loop$compare, loop$acc) {
         let ascending = merge_descendings(
           descending1,
           descending2,
-          compare5,
+          compare4,
           toList([])
         );
         loop$sequences = rest$1;
-        loop$compare = compare5;
+        loop$compare = compare4;
         loop$acc = prepend(ascending, acc);
       }
     }
@@ -3669,7 +2250,7 @@ function merge_all(loop$sequences, loop$direction, loop$compare) {
   while (true) {
     let sequences2 = loop$sequences;
     let direction = loop$direction;
-    let compare5 = loop$compare;
+    let compare4 = loop$compare;
     if (sequences2 instanceof Empty) {
       return sequences2;
     } else if (direction instanceof Ascending) {
@@ -3678,10 +2259,10 @@ function merge_all(loop$sequences, loop$direction, loop$compare) {
         let sequence2 = sequences2.head;
         return sequence2;
       } else {
-        let sequences$1 = merge_ascending_pairs(sequences2, compare5, toList([]));
+        let sequences$1 = merge_ascending_pairs(sequences2, compare4, toList([]));
         loop$sequences = sequences$1;
         loop$direction = new Descending();
-        loop$compare = compare5;
+        loop$compare = compare4;
       }
     } else {
       let $ = sequences2.tail;
@@ -3689,15 +2270,15 @@ function merge_all(loop$sequences, loop$direction, loop$compare) {
         let sequence2 = sequences2.head;
         return reverse(sequence2);
       } else {
-        let sequences$1 = merge_descending_pairs(sequences2, compare5, toList([]));
+        let sequences$1 = merge_descending_pairs(sequences2, compare4, toList([]));
         loop$sequences = sequences$1;
         loop$direction = new Ascending();
-        loop$compare = compare5;
+        loop$compare = compare4;
       }
     }
   }
 }
-function sort(list4, compare5) {
+function sort(list4, compare4) {
   if (list4 instanceof Empty) {
     return list4;
   } else {
@@ -3709,7 +2290,7 @@ function sort(list4, compare5) {
       let y = $.head;
       let rest$1 = $.tail;
       let _block;
-      let $1 = compare5(x, y);
+      let $1 = compare4(x, y);
       if ($1 instanceof Lt) {
         _block = new Ascending();
       } else if ($1 instanceof Eq) {
@@ -3720,51 +2301,39 @@ function sort(list4, compare5) {
       let direction = _block;
       let sequences$1 = sequences(
         rest$1,
-        compare5,
+        compare4,
         toList([x]),
         direction,
         y,
         toList([])
       );
-      return merge_all(sequences$1, new Ascending(), compare5);
+      return merge_all(sequences$1, new Ascending(), compare4);
     }
   }
 }
-function max_loop(loop$list, loop$compare, loop$max) {
+function split_loop(loop$list, loop$n, loop$taken) {
   while (true) {
     let list4 = loop$list;
-    let compare5 = loop$compare;
-    let max4 = loop$max;
-    if (list4 instanceof Empty) {
-      return max4;
+    let n = loop$n;
+    let taken = loop$taken;
+    let $ = n <= 0;
+    if ($) {
+      return [reverse(taken), list4];
     } else {
-      let first$1 = list4.head;
-      let rest$1 = list4.tail;
-      let $ = compare5(first$1, max4);
-      if ($ instanceof Lt) {
-        loop$list = rest$1;
-        loop$compare = compare5;
-        loop$max = max4;
-      } else if ($ instanceof Eq) {
-        loop$list = rest$1;
-        loop$compare = compare5;
-        loop$max = max4;
+      if (list4 instanceof Empty) {
+        return [reverse(taken), toList([])];
       } else {
+        let first$1 = list4.head;
+        let rest$1 = list4.tail;
         loop$list = rest$1;
-        loop$compare = compare5;
-        loop$max = first$1;
+        loop$n = n - 1;
+        loop$taken = prepend(first$1, taken);
       }
     }
   }
 }
-function max2(list4, compare5) {
-  if (list4 instanceof Empty) {
-    return new Error2(void 0);
-  } else {
-    let first$1 = list4.head;
-    let rest$1 = list4.tail;
-    return new Ok(max_loop(rest$1, compare5, first$1));
-  }
+function split2(list4, index4) {
+  return split_loop(list4, index4, toList([]));
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/result.mjs
@@ -3788,7 +2357,7 @@ function map_error(result, fun) {
     return result;
   } else {
     let error = result[0];
-    return new Error2(fun(error));
+    return new Error(fun(error));
   }
 }
 function try$(result, fun) {
@@ -3797,14 +2366,6 @@ function try$(result, fun) {
     return fun(x);
   } else {
     return result;
-  }
-}
-function unwrap(result, default$2) {
-  if (result instanceof Ok) {
-    let v = result[0];
-    return v;
-  } else {
-    return default$2;
   }
 }
 function unwrap_both(result) {
@@ -3854,38 +2415,23 @@ var Set2 = class extends CustomType {
 function new$() {
   return new Set2(new_map());
 }
-function size(set) {
-  return map_size(set.dict);
-}
 function contains(set, member) {
   let _pipe = set.dict;
   let _pipe$1 = map_get(_pipe, member);
   return is_ok(_pipe$1);
-}
-function delete$2(set, member) {
-  return new Set2(delete$(set.dict, member));
-}
-function to_list(set) {
-  return keys(set.dict);
 }
 function fold3(set, initial, reducer) {
   return fold(set.dict, initial, (a2, k, _) => {
     return reducer(a2, k);
   });
 }
-function drop(set, disallowed) {
-  return fold2(disallowed, set, delete$2);
-}
-function order(first3, second2) {
-  let $ = map_size(first3.dict) > map_size(second2.dict);
+function order(first3, second) {
+  let $ = map_size(first3.dict) > map_size(second.dict);
   if ($) {
-    return [first3, second2];
+    return [first3, second];
   } else {
-    return [second2, first3];
+    return [second, first3];
   }
-}
-function difference(first3, second2) {
-  return drop(first3, to_list(second2));
 }
 var token = void 0;
 function insert2(set, member) {
@@ -3901,8 +2447,8 @@ function from_list2(members) {
   );
   return new Set2(dict3);
 }
-function union(first3, second2) {
-  let $ = order(first3, second2);
+function union(first3, second) {
+  let $ = order(first3, second);
   let larger;
   let smaller;
   larger = $[0];
@@ -3925,7 +2471,7 @@ var option_none = /* @__PURE__ */ new None();
 var GT = /* @__PURE__ */ new Gt();
 var LT = /* @__PURE__ */ new Lt();
 var EQ = /* @__PURE__ */ new Eq();
-function compare4(a2, b) {
+function compare3(a2, b) {
   if (a2.name === b.name) {
     return EQ;
   } else if (a2.name < b.name) {
@@ -4099,7 +2645,7 @@ function prepare(attributes) {
     } else {
       let _pipe = attributes;
       let _pipe$1 = sort(_pipe, (a2, b) => {
-        return compare4(b, a2);
+        return compare3(b, a2);
       });
       return merge(_pipe$1, empty_list);
     }
@@ -4163,6 +2709,9 @@ function autocomplete(value) {
 function readonly(is_readonly) {
   return boolean_attribute("readonly", is_readonly);
 }
+function selected(is_selected) {
+  return boolean_attribute("selected", is_selected);
+}
 function role(name) {
   return attribute2("role", name);
 }
@@ -4194,7 +2743,7 @@ function get(map7, key) {
   if (value != null) {
     return new Ok(value);
   } else {
-    return new Error2(void 0);
+    return new Error(void 0);
   }
 }
 function has_key2(map7, key) {
@@ -4571,7 +3120,7 @@ function handle(events, path, name, event4) {
     let handler = $[0];
     return [events$1, run(event4, handler)];
   } else {
-    return [events$1, new Error2(toList([]))];
+    return [events$1, new Error(toList([]))];
   }
 }
 function has_dispatched_events(events, path) {
@@ -4792,6 +3341,12 @@ function div(attrs, children) {
 function button(attrs, children) {
   return element2("button", attrs, children);
 }
+function option(attrs, label) {
+  return element2("option", attrs, toList([text2(label)]));
+}
+function select(attrs, children) {
+  return element2("select", attrs, children);
+}
 function textarea(attrs, content) {
   return element2(
     "textarea",
@@ -4929,10 +3484,10 @@ function diff_attributes(loop$controlled, loop$path, loop$mapper, loop$events, l
     let mapper = loop$mapper;
     let events = loop$events;
     let old = loop$old;
-    let new$12 = loop$new;
+    let new$10 = loop$new;
     let added = loop$added;
     let removed = loop$removed;
-    if (new$12 instanceof Empty) {
+    if (new$10 instanceof Empty) {
       if (old instanceof Empty) {
         return new AttributeChange(added, removed, events);
       } else {
@@ -4948,7 +3503,7 @@ function diff_attributes(loop$controlled, loop$path, loop$mapper, loop$events, l
           loop$mapper = mapper;
           loop$events = events$1;
           loop$old = old$1;
-          loop$new = new$12;
+          loop$new = new$10;
           loop$added = added;
           loop$removed = removed$1;
         } else {
@@ -4960,16 +3515,16 @@ function diff_attributes(loop$controlled, loop$path, loop$mapper, loop$events, l
           loop$mapper = mapper;
           loop$events = events;
           loop$old = old$1;
-          loop$new = new$12;
+          loop$new = new$10;
           loop$added = added;
           loop$removed = removed$1;
         }
       }
     } else if (old instanceof Empty) {
-      let $ = new$12.head;
+      let $ = new$10.head;
       if ($ instanceof Event2) {
         let next2 = $;
-        let new$1 = new$12.tail;
+        let new$1 = new$10.tail;
         let name = $.name;
         let handler = $.handler;
         let added$1 = prepend(next2, added);
@@ -4984,7 +3539,7 @@ function diff_attributes(loop$controlled, loop$path, loop$mapper, loop$events, l
         loop$removed = removed;
       } else {
         let next2 = $;
-        let new$1 = new$12.tail;
+        let new$1 = new$10.tail;
         let added$1 = prepend(next2, added);
         loop$controlled = controlled;
         loop$path = path;
@@ -4996,11 +3551,11 @@ function diff_attributes(loop$controlled, loop$path, loop$mapper, loop$events, l
         loop$removed = removed;
       }
     } else {
-      let next2 = new$12.head;
-      let remaining_new = new$12.tail;
+      let next2 = new$10.head;
+      let remaining_new = new$10.tail;
       let prev = old.head;
       let remaining_old = old.tail;
-      let $ = compare4(prev, next2);
+      let $ = compare3(prev, next2);
       if ($ instanceof Lt) {
         if (prev instanceof Event2) {
           let name = prev.name;
@@ -5011,7 +3566,7 @@ function diff_attributes(loop$controlled, loop$path, loop$mapper, loop$events, l
           loop$mapper = mapper;
           loop$events = events$1;
           loop$old = remaining_old;
-          loop$new = new$12;
+          loop$new = new$10;
           loop$added = added;
           loop$removed = removed$1;
         } else {
@@ -5021,7 +3576,7 @@ function diff_attributes(loop$controlled, loop$path, loop$mapper, loop$events, l
           loop$mapper = mapper;
           loop$events = events;
           loop$old = remaining_old;
-          loop$new = new$12;
+          loop$new = new$10;
           loop$added = added;
           loop$removed = removed$1;
         }
@@ -5213,7 +3768,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
   while (true) {
     let old = loop$old;
     let old_keyed = loop$old_keyed;
-    let new$12 = loop$new;
+    let new$10 = loop$new;
     let new_keyed = loop$new_keyed;
     let moved = loop$moved;
     let moved_offset = loop$moved_offset;
@@ -5225,7 +3780,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
     let children = loop$children;
     let mapper = loop$mapper;
     let events = loop$events;
-    if (new$12 instanceof Empty) {
+    if (new$10 instanceof Empty) {
       if (old instanceof Empty) {
         return new Diff(
           new Patch(patch_index, removed, changes, children),
@@ -5245,7 +3800,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
         let events$1 = remove_child(events, path, node_index, prev);
         loop$old = old$1;
         loop$old_keyed = old_keyed;
-        loop$new = new$12;
+        loop$new = new$10;
         loop$new_keyed = new_keyed;
         loop$moved = moved;
         loop$moved_offset = moved_offset;
@@ -5264,30 +3819,30 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
         mapper,
         path,
         node_index,
-        new$12
+        new$10
       );
-      let insert5 = insert4(new$12, node_index - moved_offset);
+      let insert5 = insert4(new$10, node_index - moved_offset);
       let changes$1 = prepend(insert5, changes);
       return new Diff(
         new Patch(patch_index, removed, changes$1, children),
         events$1
       );
     } else {
-      let next2 = new$12.head;
+      let next2 = new$10.head;
       let prev = old.head;
       if (prev.key !== next2.key) {
-        let new_remaining = new$12.tail;
+        let new_remaining = new$10.tail;
         let old_remaining = old.tail;
         let next_did_exist = get(old_keyed, next2.key);
         let prev_does_exist = has_key2(new_keyed, prev.key);
         if (next_did_exist instanceof Ok) {
           if (prev_does_exist) {
-            let match2 = next_did_exist[0];
+            let match = next_did_exist[0];
             let $ = has_key2(moved, prev.key);
             if ($) {
               loop$old = old_remaining;
               loop$old_keyed = old_keyed;
-              loop$new = new$12;
+              loop$new = new$10;
               loop$new_keyed = new_keyed;
               loop$moved = moved;
               loop$moved_offset = moved_offset - 1;
@@ -5307,9 +3862,9 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
               );
               let moved$1 = insert3(moved, next2.key, void 0);
               let moved_offset$1 = moved_offset + 1;
-              loop$old = prepend(match2, old);
+              loop$old = prepend(match, old);
               loop$old_keyed = old_keyed;
-              loop$new = new$12;
+              loop$new = new$10;
               loop$new_keyed = new_keyed;
               loop$moved = moved$1;
               loop$moved_offset = moved_offset$1;
@@ -5329,7 +3884,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             let moved_offset$1 = moved_offset - 1;
             loop$old = old_remaining;
             loop$old_keyed = old_keyed;
-            loop$new = new$12;
+            loop$new = new$10;
             loop$new_keyed = new_keyed;
             loop$moved = moved;
             loop$moved_offset = moved_offset$1;
@@ -5392,10 +3947,10 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
       } else {
         let $ = old.head;
         if ($ instanceof Fragment) {
-          let $1 = new$12.head;
+          let $1 = new$10.head;
           if ($1 instanceof Fragment) {
             let next$1 = $1;
-            let new$1 = new$12.tail;
+            let new$1 = new$10.tail;
             let prev$1 = $;
             let old$1 = old.tail;
             let composed_mapper = compose_mapper(mapper, next$1.mapper);
@@ -5451,7 +4006,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             loop$events = child.events;
           } else {
             let next$1 = $1;
-            let new_remaining = new$12.tail;
+            let new_remaining = new$10.tail;
             let prev$1 = $;
             let old_remaining = old.tail;
             let change = replace2(node_index - moved_offset, next$1);
@@ -5482,12 +4037,12 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             loop$events = events$1;
           }
         } else if ($ instanceof Element) {
-          let $1 = new$12.head;
+          let $1 = new$10.head;
           if ($1 instanceof Element) {
             let next$1 = $1;
             let prev$1 = $;
             if (prev$1.namespace === next$1.namespace && prev$1.tag === next$1.tag) {
-              let new$1 = new$12.tail;
+              let new$1 = new$10.tail;
               let old$1 = old.tail;
               let composed_mapper = compose_mapper(
                 mapper,
@@ -5574,7 +4129,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
               loop$events = child.events;
             } else {
               let next$2 = $1;
-              let new_remaining = new$12.tail;
+              let new_remaining = new$10.tail;
               let prev$2 = $;
               let old_remaining = old.tail;
               let change = replace2(node_index - moved_offset, next$2);
@@ -5611,7 +4166,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             }
           } else {
             let next$1 = $1;
-            let new_remaining = new$12.tail;
+            let new_remaining = new$10.tail;
             let prev$1 = $;
             let old_remaining = old.tail;
             let change = replace2(node_index - moved_offset, next$1);
@@ -5642,12 +4197,12 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             loop$events = events$1;
           }
         } else if ($ instanceof Text) {
-          let $1 = new$12.head;
+          let $1 = new$10.head;
           if ($1 instanceof Text) {
             let next$1 = $1;
             let prev$1 = $;
             if (prev$1.content === next$1.content) {
-              let new$1 = new$12.tail;
+              let new$1 = new$10.tail;
               let old$1 = old.tail;
               loop$old = old$1;
               loop$old_keyed = old_keyed;
@@ -5665,7 +4220,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
               loop$events = events;
             } else {
               let next$2 = $1;
-              let new$1 = new$12.tail;
+              let new$1 = new$10.tail;
               let old$1 = old.tail;
               let child = new$5(
                 node_index,
@@ -5690,7 +4245,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             }
           } else {
             let next$1 = $1;
-            let new_remaining = new$12.tail;
+            let new_remaining = new$10.tail;
             let prev$1 = $;
             let old_remaining = old.tail;
             let change = replace2(node_index - moved_offset, next$1);
@@ -5721,10 +4276,10 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             loop$events = events$1;
           }
         } else {
-          let $1 = new$12.head;
+          let $1 = new$10.head;
           if ($1 instanceof UnsafeInnerHtml) {
             let next$1 = $1;
-            let new$1 = new$12.tail;
+            let new$1 = new$10.tail;
             let prev$1 = $;
             let old$1 = old.tail;
             let composed_mapper = compose_mapper(mapper, next$1.mapper);
@@ -5789,7 +4344,7 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
             loop$events = events$1;
           } else {
             let next$1 = $1;
-            let new_remaining = new$12.tail;
+            let new_remaining = new$10.tail;
             let prev$1 = $;
             let old_remaining = old.tail;
             let change = replace2(node_index - moved_offset, next$1);
@@ -5824,11 +4379,11 @@ function do_diff(loop$old, loop$old_keyed, loop$new, loop$new_keyed, loop$moved,
     }
   }
 }
-function diff(events, old, new$12) {
+function diff(events, old, new$10) {
   return do_diff(
     toList([old]),
     empty2(),
-    toList([new$12]),
+    toList([new$10]),
     empty2(),
     empty2(),
     0,
@@ -6653,7 +5208,7 @@ function listAppend(a2, b) {
   } else if (b instanceof Empty) {
     return a2;
   } else {
-    return append3(a2, b);
+    return append2(a2, b);
   }
 }
 
@@ -6706,8 +5261,8 @@ function new$6(options) {
   return fold2(
     options,
     init2,
-    (config, option) => {
-      return option.apply(config);
+    (config, option2) => {
+      return option2.apply(config);
     }
   );
 }
@@ -6740,9 +5295,9 @@ var Spa = class {
   }
 };
 var start = ({ init: init2, update: update4, view: view2 }, selector, flags) => {
-  if (!is_browser()) return new Error2(new NotABrowser());
+  if (!is_browser()) return new Error(new NotABrowser());
   const root3 = selector instanceof HTMLElement ? selector : document().querySelector(selector);
-  if (!root3) return new Error2(new ElementNotFound(selector));
+  if (!root3) return new Error(new ElementNotFound(selector));
   return new Ok(new Spa(root3, init2(flags), update4, view2));
 };
 
@@ -6779,7 +5334,7 @@ function simple(init2, update4, view2) {
 function start3(app, selector, start_args) {
   return guard(
     !is_browser(),
-    new Error2(new NotABrowser()),
+    new Error(new NotABrowser()),
     () => {
       return start(app, selector, start_args);
     }
@@ -6790,11 +5345,6 @@ function start3(app, selector, start_args) {
 function first2(pair2) {
   let a2;
   a2 = pair2[0];
-  return a2;
-}
-function second(pair2) {
-  let a2;
-  a2 = pair2[1];
   return a2;
 }
 function swap(pair2) {
@@ -6855,25 +5405,360 @@ function on_change(msg) {
   );
 }
 
+// build/dev/javascript/glam/glam/doc.mjs
+var Line = class extends CustomType {
+  constructor(size3) {
+    super();
+    this.size = size3;
+  }
+};
+var Concat = class extends CustomType {
+  constructor(docs) {
+    super();
+    this.docs = docs;
+  }
+};
+var Text2 = class extends CustomType {
+  constructor(text4, length4) {
+    super();
+    this.text = text4;
+    this.length = length4;
+  }
+};
+var Nest = class extends CustomType {
+  constructor(doc, indentation2) {
+    super();
+    this.doc = doc;
+    this.indentation = indentation2;
+  }
+};
+var ForceBreak = class extends CustomType {
+  constructor(doc) {
+    super();
+    this.doc = doc;
+  }
+};
+var Break = class extends CustomType {
+  constructor(unbroken, broken) {
+    super();
+    this.unbroken = unbroken;
+    this.broken = broken;
+  }
+};
+var FlexBreak = class extends CustomType {
+  constructor(unbroken, broken) {
+    super();
+    this.unbroken = unbroken;
+    this.broken = broken;
+  }
+};
+var Group = class extends CustomType {
+  constructor(doc) {
+    super();
+    this.doc = doc;
+  }
+};
+var Broken = class extends CustomType {
+};
+var ForceBroken = class extends CustomType {
+};
+var Unbroken = class extends CustomType {
+};
+function append4(first3, second) {
+  if (first3 instanceof Concat) {
+    let docs = first3.docs;
+    return new Concat(append2(docs, toList([second])));
+  } else {
+    return new Concat(toList([first3, second]));
+  }
+}
+function concat3(docs) {
+  return new Concat(docs);
+}
+function append_docs(first3, docs) {
+  return append4(first3, concat3(docs));
+}
+function force_break(doc) {
+  return new ForceBreak(doc);
+}
+function from_string(string5) {
+  return new Text2(string5, string_length(string5));
+}
+function group(doc) {
+  return new Group(doc);
+}
+function join2(docs, separator) {
+  return concat3(intersperse(docs, separator));
+}
+function concat_join(docs, separators) {
+  return join2(docs, concat3(separators));
+}
+function nest(doc, indentation2) {
+  return new Nest(doc, indentation2);
+}
+function prepend4(first3, second) {
+  if (first3 instanceof Concat) {
+    let docs = first3.docs;
+    return new Concat(prepend(second, docs));
+  } else {
+    return new Concat(toList([second, first3]));
+  }
+}
+function prepend_docs(first3, docs) {
+  return prepend4(first3, concat3(docs));
+}
+function fits(loop$docs, loop$max_width, loop$current_width) {
+  while (true) {
+    let docs = loop$docs;
+    let max_width = loop$max_width;
+    let current_width = loop$current_width;
+    if (current_width > max_width) {
+      return false;
+    } else if (docs instanceof Empty) {
+      return true;
+    } else {
+      let rest = docs.tail;
+      let indent = docs.head[0];
+      let mode = docs.head[1];
+      let doc = docs.head[2];
+      if (doc instanceof Line) {
+        return true;
+      } else if (doc instanceof Concat) {
+        let docs$1 = doc.docs;
+        let _pipe = map(docs$1, (doc2) => {
+          return [indent, mode, doc2];
+        });
+        let _pipe$1 = append2(_pipe, rest);
+        loop$docs = _pipe$1;
+        loop$max_width = max_width;
+        loop$current_width = current_width;
+      } else if (doc instanceof Text2) {
+        let length4 = doc.length;
+        loop$docs = rest;
+        loop$max_width = max_width;
+        loop$current_width = current_width + length4;
+      } else if (doc instanceof Nest) {
+        let doc$1 = doc.doc;
+        let i = doc.indentation;
+        let _pipe = prepend([indent + i, mode, doc$1], rest);
+        loop$docs = _pipe;
+        loop$max_width = max_width;
+        loop$current_width = current_width;
+      } else if (doc instanceof ForceBreak) {
+        return false;
+      } else if (doc instanceof Break) {
+        let unbroken = doc.unbroken;
+        if (mode instanceof Broken) {
+          return true;
+        } else if (mode instanceof ForceBroken) {
+          return true;
+        } else {
+          loop$docs = rest;
+          loop$max_width = max_width;
+          loop$current_width = current_width + string_length(unbroken);
+        }
+      } else if (doc instanceof FlexBreak) {
+        let unbroken = doc.unbroken;
+        if (mode instanceof Broken) {
+          return true;
+        } else if (mode instanceof ForceBroken) {
+          return true;
+        } else {
+          loop$docs = rest;
+          loop$max_width = max_width;
+          loop$current_width = current_width + string_length(unbroken);
+        }
+      } else {
+        let doc$1 = doc.doc;
+        loop$docs = prepend([indent, mode, doc$1], rest);
+        loop$max_width = max_width;
+        loop$current_width = current_width;
+      }
+    }
+  }
+}
+function indentation(size3) {
+  return repeat(" ", size3);
+}
+function do_to_string2(loop$acc, loop$max_width, loop$current_width, loop$docs) {
+  while (true) {
+    let acc = loop$acc;
+    let max_width = loop$max_width;
+    let current_width = loop$current_width;
+    let docs = loop$docs;
+    if (docs instanceof Empty) {
+      return acc;
+    } else {
+      let rest = docs.tail;
+      let indent = docs.head[0];
+      let mode = docs.head[1];
+      let doc = docs.head[2];
+      if (doc instanceof Line) {
+        let size3 = doc.size;
+        let _pipe = acc + repeat("\n", size3) + indentation(indent);
+        loop$acc = _pipe;
+        loop$max_width = max_width;
+        loop$current_width = indent;
+        loop$docs = rest;
+      } else if (doc instanceof Concat) {
+        let docs$1 = doc.docs;
+        let _block;
+        let _pipe = map(docs$1, (doc2) => {
+          return [indent, mode, doc2];
+        });
+        _block = append2(_pipe, rest);
+        let docs$2 = _block;
+        loop$acc = acc;
+        loop$max_width = max_width;
+        loop$current_width = current_width;
+        loop$docs = docs$2;
+      } else if (doc instanceof Text2) {
+        let text4 = doc.text;
+        let length4 = doc.length;
+        loop$acc = acc + text4;
+        loop$max_width = max_width;
+        loop$current_width = current_width + length4;
+        loop$docs = rest;
+      } else if (doc instanceof Nest) {
+        let doc$1 = doc.doc;
+        let i = doc.indentation;
+        let docs$1 = prepend([indent + i, mode, doc$1], rest);
+        loop$acc = acc;
+        loop$max_width = max_width;
+        loop$current_width = current_width;
+        loop$docs = docs$1;
+      } else if (doc instanceof ForceBreak) {
+        let doc$1 = doc.doc;
+        let docs$1 = prepend([indent, new ForceBroken(), doc$1], rest);
+        loop$acc = acc;
+        loop$max_width = max_width;
+        loop$current_width = current_width;
+        loop$docs = docs$1;
+      } else if (doc instanceof Break) {
+        let unbroken = doc.unbroken;
+        let broken = doc.broken;
+        if (mode instanceof Broken) {
+          let _pipe = acc + broken + "\n" + indentation(indent);
+          loop$acc = _pipe;
+          loop$max_width = max_width;
+          loop$current_width = indent;
+          loop$docs = rest;
+        } else if (mode instanceof ForceBroken) {
+          let _pipe = acc + broken + "\n" + indentation(indent);
+          loop$acc = _pipe;
+          loop$max_width = max_width;
+          loop$current_width = indent;
+          loop$docs = rest;
+        } else {
+          let new_width = current_width + string_length(unbroken);
+          loop$acc = acc + unbroken;
+          loop$max_width = max_width;
+          loop$current_width = new_width;
+          loop$docs = rest;
+        }
+      } else if (doc instanceof FlexBreak) {
+        let unbroken = doc.unbroken;
+        let broken = doc.broken;
+        let new_unbroken_width = current_width + string_length(unbroken);
+        let $ = fits(rest, max_width, new_unbroken_width);
+        if ($) {
+          let _pipe = acc + unbroken;
+          loop$acc = _pipe;
+          loop$max_width = max_width;
+          loop$current_width = new_unbroken_width;
+          loop$docs = rest;
+        } else {
+          let _pipe = acc + broken + "\n" + indentation(indent);
+          loop$acc = _pipe;
+          loop$max_width = max_width;
+          loop$current_width = indent;
+          loop$docs = rest;
+        }
+      } else {
+        let doc$1 = doc.doc;
+        let fits$1 = fits(
+          toList([[indent, new Unbroken(), doc$1]]),
+          max_width,
+          current_width
+        );
+        let _block;
+        if (fits$1) {
+          _block = new Unbroken();
+        } else {
+          _block = new Broken();
+        }
+        let new_mode = _block;
+        let docs$1 = prepend([indent, new_mode, doc$1], rest);
+        loop$acc = acc;
+        loop$max_width = max_width;
+        loop$current_width = current_width;
+        loop$docs = docs$1;
+      }
+    }
+  }
+}
+function to_string4(doc, limit) {
+  return do_to_string2("", limit, 0, toList([[0, new Unbroken(), doc]]));
+}
+var flex_space = /* @__PURE__ */ new FlexBreak(" ", "");
+var line = /* @__PURE__ */ new Line(1);
+var space = /* @__PURE__ */ new Break(" ", "");
+
+// build/dev/javascript/eoc/eoc/langs/pretty.mjs
+function parenthesize(document2) {
+  let _pipe = document2;
+  let _pipe$1 = prepend4(_pipe, from_string("("));
+  let _pipe$2 = append4(_pipe$1, from_string(")"));
+  let _pipe$3 = nest(_pipe$2, 2);
+  return group(_pipe$3);
+}
+function int_to_doc(i) {
+  let _pipe = i;
+  let _pipe$1 = to_string(_pipe);
+  return from_string(_pipe$1);
+}
+function with_indent(d, amount) {
+  return concat3(toList([from_string(repeat(" ", amount)), d]));
+}
+
 // build/dev/javascript/eoc/runtime_ffi.mjs
 function read_int() {
   return 0;
 }
 
-// build/dev/javascript/eoc/eoc/langs/l_while.mjs
-var FILEPATH = "src/eoc/langs/l_while.gleam";
+// build/dev/javascript/eoc/eoc/langs/l_tup.mjs
+var FILEPATH = "src/eoc/langs/l_tup.gleam";
 var IntegerT = class extends CustomType {
 };
 var BooleanT = class extends CustomType {
 };
 var VoidT = class extends CustomType {
 };
-var TypeError2 = class extends CustomType {
+var VectorT = class extends CustomType {
+  constructor($0) {
+    super();
+    this[0] = $0;
+  }
+};
+var TypeError = class extends CustomType {
   constructor(expected, actual, expression2) {
     super();
     this.expected = expected;
     this.actual = actual;
     this.expression = expression2;
+  }
+};
+var VectorIndexOutOfBounds = class extends CustomType {
+  constructor(actual, size3) {
+    super();
+    this.actual = actual;
+    this.size = size3;
+  }
+};
+var VectorIndexIsNotInteger = class extends CustomType {
+  constructor(expr) {
+    super();
+    this.expr = expr;
   }
 };
 var UnboundVariable = class extends CustomType {
@@ -6944,6 +5829,33 @@ var Not = class extends CustomType {
     this.a = a2;
   }
 };
+var Vector = class extends CustomType {
+  constructor(fields) {
+    super();
+    this.fields = fields;
+  }
+};
+var VectorLength = class extends CustomType {
+  constructor(v) {
+    super();
+    this.v = v;
+  }
+};
+var VectorRef = class extends CustomType {
+  constructor(v, index4) {
+    super();
+    this.v = v;
+    this.index = index4;
+  }
+};
+var VectorSet = class extends CustomType {
+  constructor(v, index4, value) {
+    super();
+    this.v = v;
+    this.index = index4;
+    this.value = value;
+  }
+};
 var Int = class extends CustomType {
   constructor(value) {
     super();
@@ -7005,10 +5917,24 @@ var WhileLoop = class extends CustomType {
     this.body = body;
   }
 };
+var HasType = class extends CustomType {
+  constructor(value, t) {
+    super();
+    this.value = value;
+    this.t = t;
+  }
+};
 var Program = class extends CustomType {
   constructor(body) {
     super();
     this.body = body;
+  }
+};
+var Env = class extends CustomType {
+  constructor(vars, heap) {
+    super();
+    this.vars = vars;
+    this.heap = heap;
   }
 };
 var IntValue = class extends CustomType {
@@ -7025,8 +5951,30 @@ var BoolValue = class extends CustomType {
 };
 var VoidValue = class extends CustomType {
 };
+var HeapRef = class extends CustomType {
+  constructor(i) {
+    super();
+    this.i = i;
+  }
+};
+function new_env() {
+  return new Env(new_map(), new_map());
+}
+function bind_var(e, v, value) {
+  return new Env(insert(e.vars, v, value), e.heap);
+}
+function get_heap(e, i) {
+  return map_get(e.heap, i);
+}
+function update_heap(e, i, fields) {
+  return new Env(e.vars, insert(e.heap, i, fields));
+}
+function allocate_vec(e, fields) {
+  let next2 = map_size(e.heap);
+  return [new HeapRef(next2), update_heap(e, next2, fields)];
+}
 function get_var(env, name) {
-  let $ = map_get(env, name);
+  let $ = map_get(env.vars, name);
   if ($ instanceof Ok) {
     let i = $[0];
     return i;
@@ -7034,8 +5982,8 @@ function get_var(env, name) {
     throw makeError(
       "panic",
       FILEPATH,
-      "eoc/langs/l_while",
-      182,
+      "eoc/langs/l_tup",
+      249,
       "get_var",
       "referenced unknown variable",
       {}
@@ -7047,8 +5995,235 @@ function check_type_equal(a2, b, e) {
   if ($) {
     return new Ok(void 0);
   } else {
-    return new Error2(new TypeError2(a2, b, e));
+    return new Error(new TypeError(a2, b, e));
   }
+}
+function check_vector_index(e, length4) {
+  if (e instanceof Int) {
+    let i = e.value;
+    if (i < length4) {
+      return new Ok(i);
+    } else {
+      let i$1 = e.value;
+      return new Error(new VectorIndexOutOfBounds(i$1, length4));
+    }
+  } else {
+    return new Error(new VectorIndexIsNotInteger(e));
+  }
+}
+function is_vector_type(e, t) {
+  if (t instanceof VectorT) {
+    let ts = t[0];
+    return new Ok(ts);
+  } else {
+    return new Error(new TypeError(t, new VectorT(toList([])), e));
+  }
+}
+function format_cmp(op) {
+  let _block;
+  if (op instanceof Eq2) {
+    _block = "eq?";
+  } else if (op instanceof Lt2) {
+    _block = "<";
+  } else if (op instanceof Lte) {
+    _block = "<=";
+  } else if (op instanceof Gt2) {
+    _block = ">";
+  } else {
+    _block = ">=";
+  }
+  let _pipe = _block;
+  return from_string(_pipe);
+}
+function format_type(t) {
+  if (t instanceof IntegerT) {
+    return from_string("Integer");
+  } else if (t instanceof BooleanT) {
+    return from_string("Boolean");
+  } else if (t instanceof VoidT) {
+    return from_string("Void");
+  } else {
+    let fields = t[0];
+    let _pipe = prepend(
+      from_string("Vector"),
+      map(fields, format_type)
+    );
+    let _pipe$1 = concat_join(_pipe, toList([flex_space]));
+    return parenthesize(_pipe$1);
+  }
+}
+function format_op(op) {
+  let _block;
+  if (op instanceof Read) {
+    _block = toList([from_string("read")]);
+  } else if (op instanceof Void) {
+    _block = toList([from_string("void")]);
+  } else if (op instanceof Negate) {
+    let value = op.value;
+    _block = toList([from_string("-"), format_expr(value)]);
+  } else if (op instanceof Plus) {
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([from_string("+"), format_expr(a2), format_expr(b)]);
+  } else if (op instanceof Minus) {
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([from_string("-"), format_expr(a2), format_expr(b)]);
+  } else if (op instanceof Cmp) {
+    let op$1 = op.op;
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([format_cmp(op$1), format_expr(a2), format_expr(b)]);
+  } else if (op instanceof And) {
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([from_string("and"), format_expr(a2), format_expr(b)]);
+  } else if (op instanceof Or) {
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([from_string("or"), format_expr(a2), format_expr(b)]);
+  } else if (op instanceof Not) {
+    let a2 = op.a;
+    _block = toList([from_string("not"), format_expr(a2)]);
+  } else if (op instanceof Vector) {
+    let fields = op.fields;
+    _block = prepend(
+      from_string("vector"),
+      map(fields, format_expr)
+    );
+  } else if (op instanceof VectorLength) {
+    let v = op.v;
+    _block = toList([from_string("vector-length"), format_expr(v)]);
+  } else if (op instanceof VectorRef) {
+    let v = op.v;
+    let index4 = op.index;
+    _block = toList([
+      from_string("vector-ref"),
+      format_expr(v),
+      format_expr(index4)
+    ]);
+  } else {
+    let v = op.v;
+    let index4 = op.index;
+    let value = op.value;
+    _block = toList([
+      from_string("vector-set!"),
+      format_expr(v),
+      format_expr(index4),
+      format_expr(value)
+    ]);
+  }
+  let _pipe = _block;
+  return concat_join(_pipe, toList([space]));
+}
+function format_expr(e) {
+  if (e instanceof Int) {
+    let value = e.value;
+    return int_to_doc(value);
+  } else if (e instanceof Bool) {
+    let value = e.value;
+    if (value) {
+      return from_string("#t");
+    } else {
+      return from_string("#f");
+    }
+  } else if (e instanceof Prim) {
+    let op = e.op;
+    let _pipe = op;
+    let _pipe$1 = format_op(_pipe);
+    return parenthesize(_pipe$1);
+  } else if (e instanceof Var) {
+    let name = e.name;
+    return from_string(name);
+  } else if (e instanceof Let) {
+    let var$2 = e.var;
+    let binding = e.binding;
+    let expr = e.expr;
+    let _pipe = toList([
+      concat3(
+        toList([
+          from_string("let"),
+          from_string(" (["),
+          from_string(var$2),
+          from_string(" "),
+          format_expr(binding),
+          from_string("])")
+        ])
+      ),
+      format_expr(expr)
+    ]);
+    let _pipe$1 = concat_join(_pipe, toList([space]));
+    return parenthesize(_pipe$1);
+  } else if (e instanceof If) {
+    let condition = e.condition;
+    let if_true = e.if_true;
+    let if_false = e.if_false;
+    let _pipe = toList([
+      concat3(
+        toList([
+          from_string("if"),
+          from_string(" "),
+          format_expr(condition)
+        ])
+      ),
+      format_expr(if_true),
+      format_expr(if_false)
+    ]);
+    let _pipe$1 = concat_join(_pipe, toList([line]));
+    return parenthesize(_pipe$1);
+  } else if (e instanceof SetBang) {
+    let var$2 = e.var;
+    let value = e.value;
+    let _pipe = toList([
+      from_string("set!"),
+      from_string(var$2),
+      format_expr(value)
+    ]);
+    let _pipe$1 = concat_join(_pipe, toList([space]));
+    return parenthesize(_pipe$1);
+  } else if (e instanceof Begin) {
+    let stmts = e.stmts;
+    let result = e.result;
+    let _pipe = stmts;
+    let _pipe$1 = map(_pipe, format_expr);
+    let _pipe$2 = append2(_pipe$1, toList([format_expr(result)]));
+    let _pipe$3 = concat_join(_pipe$2, toList([space]));
+    let _pipe$4 = force_break(_pipe$3);
+    let _pipe$5 = prepend_docs(
+      _pipe$4,
+      toList([from_string("begin"), space])
+    );
+    return parenthesize(_pipe$5);
+  } else if (e instanceof WhileLoop) {
+    let condition = e.condition;
+    let body = e.body;
+    let _pipe = toList([
+      concat3(
+        toList([
+          from_string("while"),
+          from_string(" "),
+          format_expr(condition)
+        ])
+      ),
+      format_expr(body)
+    ]);
+    let _pipe$1 = concat_join(_pipe, toList([space]));
+    let _pipe$2 = force_break(_pipe$1);
+    return parenthesize(_pipe$2);
+  } else {
+    let value = e.value;
+    let t = e.t;
+    let _pipe = toList([
+      from_string("has-type"),
+      format_expr(value),
+      format_type(t)
+    ]);
+    let _pipe$1 = concat_join(_pipe, toList([flex_space]));
+    return parenthesize(_pipe$1);
+  }
+}
+function format_program(p) {
+  return format_expr(p.body);
 }
 function type_check_op(p, env) {
   if (p instanceof Read) {
@@ -7065,9 +6240,9 @@ function type_check_op(p, env) {
         e1 = _use0[0];
         te = _use0[1];
         return map3(
-          check_type_equal(new BooleanT(), te, e1),
+          check_type_equal(new IntegerT(), te, e1),
           (_) => {
-            return [new Negate(e1), new BooleanT()];
+            return [new Negate(e1), new IntegerT()];
           }
         );
       }
@@ -7263,7 +6438,7 @@ function type_check_op(p, env) {
         );
       }
     );
-  } else {
+  } else if (p instanceof Not) {
     let e = p.a;
     return try$(
       type_check_exp(e, env),
@@ -7280,6 +6455,168 @@ function type_check_op(p, env) {
         );
       }
     );
+  } else if (p instanceof Vector) {
+    let exprs = p.fields;
+    let _block;
+    let _pipe = exprs;
+    let _pipe$1 = reverse(_pipe);
+    _block = fold_until(
+      _pipe$1,
+      new Ok([toList([]), toList([])]),
+      (acc, expr) => {
+        let $ = type_check_exp(expr, env);
+        if ($ instanceof Ok) {
+          let e1 = $[0][0];
+          let t1 = $[0][1];
+          return new Continue(
+            map3(
+              acc,
+              (ets) => {
+                return [prepend(e1, ets[0]), prepend(t1, ets[1])];
+              }
+            )
+          );
+        } else {
+          let e = $[0];
+          return new Stop(new Error(e));
+        }
+      }
+    );
+    let checked = _block;
+    return map3(
+      checked,
+      (_use0) => {
+        let exprs$1;
+        let types;
+        exprs$1 = _use0[0];
+        types = _use0[1];
+        return [new Vector(exprs$1), new VectorT(types)];
+      }
+    );
+  } else if (p instanceof VectorLength) {
+    let v = p.v;
+    return try$(
+      type_check_exp(v, env),
+      (_use0) => {
+        let e;
+        let t;
+        e = _use0[0];
+        t = _use0[1];
+        return map3(
+          is_vector_type(e, t),
+          (_) => {
+            return [new VectorLength(e), t];
+          }
+        );
+      }
+    );
+  } else if (p instanceof VectorRef) {
+    let v = p.v;
+    let index4 = p.index;
+    return try$(
+      type_check_exp(v, env),
+      (_use0) => {
+        let v1;
+        let t1;
+        v1 = _use0[0];
+        t1 = _use0[1];
+        return try$(
+          is_vector_type(v1, t1),
+          (item_types) => {
+            return map3(
+              check_vector_index(index4, length2(item_types)),
+              (i) => {
+                let $ = first(drop(item_types, i));
+                let item_type;
+                if ($ instanceof Ok) {
+                  item_type = $[0];
+                } else {
+                  throw makeError(
+                    "let_assert",
+                    FILEPATH,
+                    "eoc/langs/l_tup",
+                    418,
+                    "type_check_op",
+                    "Pattern match failed, no pattern matched the value.",
+                    {
+                      value: $,
+                      start: 12677,
+                      end: 12740,
+                      pattern_start: 12688,
+                      pattern_end: 12701
+                    }
+                  );
+                }
+                return [new VectorRef(v1, index4), item_type];
+              }
+            );
+          }
+        );
+      }
+    );
+  } else {
+    let v = p.v;
+    let index4 = p.index;
+    let value = p.value;
+    return try$(
+      type_check_exp(v, env),
+      (_use0) => {
+        let v1;
+        let t1;
+        v1 = _use0[0];
+        t1 = _use0[1];
+        return try$(
+          is_vector_type(v1, t1),
+          (item_types) => {
+            return try$(
+              check_vector_index(index4, length2(item_types)),
+              (i) => {
+                return try$(
+                  type_check_exp(value, env),
+                  (_use02) => {
+                    let val1;
+                    let vt1;
+                    val1 = _use02[0];
+                    vt1 = _use02[1];
+                    let $ = first(drop(item_types, i));
+                    let item_type;
+                    if ($ instanceof Ok) {
+                      item_type = $[0];
+                    } else {
+                      throw makeError(
+                        "let_assert",
+                        FILEPATH,
+                        "eoc/langs/l_tup",
+                        426,
+                        "type_check_op",
+                        "Pattern match failed, no pattern matched the value.",
+                        {
+                          value: $,
+                          start: 13093,
+                          end: 13156,
+                          pattern_start: 13104,
+                          pattern_end: 13117
+                        }
+                      );
+                    }
+                    return map3(
+                      check_type_equal(
+                        item_type,
+                        vt1,
+                        new Prim(new VectorSet(v1, index4, val1))
+                      ),
+                      (_) => {
+                        return [new VectorSet(v1, index4, val1), new VoidT()];
+                      }
+                    );
+                  }
+                );
+              }
+            );
+          }
+        );
+      }
+    );
   }
 }
 function type_check_exp(e, env) {
@@ -7288,17 +6625,32 @@ function type_check_exp(e, env) {
   } else if (e instanceof Bool) {
     return new Ok([e, new BooleanT()]);
   } else if (e instanceof Prim) {
-    let p = e.op;
-    return map3(
-      type_check_op(p, env),
-      (_use0) => {
-        let op;
-        let t;
-        op = _use0[0];
-        t = _use0[1];
-        return [new Prim(op), t];
-      }
-    );
+    let $ = e.op;
+    if ($ instanceof Vector) {
+      let e$1 = $.fields;
+      return map3(
+        type_check_op(new Vector(e$1), env),
+        (_use0) => {
+          let op;
+          let t;
+          op = _use0[0];
+          t = _use0[1];
+          return [new HasType(new Prim(op), t), t];
+        }
+      );
+    } else {
+      let p = $;
+      return map3(
+        type_check_op(p, env),
+        (_use0) => {
+          let op;
+          let t;
+          op = _use0[0];
+          t = _use0[1];
+          return [new Prim(op), t];
+        }
+      );
+    }
   } else if (e instanceof Var) {
     let v = e.name;
     let $ = map_get(env, v);
@@ -7306,7 +6658,7 @@ function type_check_exp(e, env) {
       let t = $[0];
       return new Ok([e, t]);
     } else {
-      return new Error2(new UnboundVariable(v));
+      return new Error(new UnboundVariable(v));
     }
   } else if (e instanceof Let) {
     let x = e.var;
@@ -7418,7 +6770,7 @@ function type_check_exp(e, env) {
           );
         } else {
           let e$1 = $[0];
-          return new Stop(new Error2(e$1));
+          return new Stop(new Error(e$1));
         }
       }
     );
@@ -7438,7 +6790,7 @@ function type_check_exp(e, env) {
         );
       }
     );
-  } else {
+  } else if (e instanceof WhileLoop) {
     let condition = e.condition;
     let body = e.body;
     return try$(
@@ -7463,6 +6815,9 @@ function type_check_exp(e, env) {
         );
       }
     );
+  } else {
+    let t = e.t;
+    return new Ok([e, t]);
   }
 }
 function type_check_program(p) {
@@ -7474,10 +6829,14 @@ function type_check_program(p) {
       return new Ok(new Program(expr));
     } else if ($1 instanceof BooleanT) {
       let expr = $[0][0];
-      return new Error2(new TypeError2(new IntegerT(), new BooleanT(), expr));
+      return new Error(new TypeError(new IntegerT(), new BooleanT(), expr));
+    } else if ($1 instanceof VoidT) {
+      let expr = $[0][0];
+      return new Error(new TypeError(new IntegerT(), new VoidT(), expr));
     } else {
       let expr = $[0][0];
-      return new Error2(new TypeError2(new IntegerT(), new VoidT(), expr));
+      let v = $1;
+      return new Error(new TypeError(new IntegerT(), v, expr));
     }
   } else {
     return $;
@@ -7501,16 +6860,16 @@ function interpret_op(op, env) {
       throw makeError(
         "let_assert",
         FILEPATH,
-        "eoc/langs/l_while",
-        112,
+        "eoc/langs/l_tup",
+        150,
         "interpret_op",
         "Pattern match failed, no pattern matched the value.",
         {
           value: $,
-          start: 2513,
-          end: 2566,
-          pattern_start: 2524,
-          pattern_end: 2542
+          start: 3504,
+          end: 3557,
+          pattern_start: 3515,
+          pattern_end: 3533
         }
       );
     }
@@ -7529,16 +6888,16 @@ function interpret_op(op, env) {
       throw makeError(
         "let_assert",
         FILEPATH,
-        "eoc/langs/l_while",
-        121,
+        "eoc/langs/l_tup",
+        159,
         "interpret_op",
         "Pattern match failed, no pattern matched the value.",
         {
           value: $,
-          start: 2804,
-          end: 2858,
-          pattern_start: 2815,
-          pattern_end: 2834
+          start: 3795,
+          end: 3849,
+          pattern_start: 3806,
+          pattern_end: 3825
         }
       );
     }
@@ -7553,16 +6912,16 @@ function interpret_op(op, env) {
       throw makeError(
         "let_assert",
         FILEPATH,
-        "eoc/langs/l_while",
-        122,
+        "eoc/langs/l_tup",
+        160,
         "interpret_op",
         "Pattern match failed, no pattern matched the value.",
         {
           value: $2,
-          start: 2865,
-          end: 2918,
-          pattern_start: 2876,
-          pattern_end: 2895
+          start: 3856,
+          end: 3909,
+          pattern_start: 3867,
+          pattern_end: 3886
         }
       );
     }
@@ -7581,16 +6940,16 @@ function interpret_op(op, env) {
       throw makeError(
         "let_assert",
         FILEPATH,
-        "eoc/langs/l_while",
-        116,
+        "eoc/langs/l_tup",
+        154,
         "interpret_op",
         "Pattern match failed, no pattern matched the value.",
         {
           value: $,
-          start: 2626,
-          end: 2680,
-          pattern_start: 2637,
-          pattern_end: 2656
+          start: 3617,
+          end: 3671,
+          pattern_start: 3628,
+          pattern_end: 3647
         }
       );
     }
@@ -7605,16 +6964,16 @@ function interpret_op(op, env) {
       throw makeError(
         "let_assert",
         FILEPATH,
-        "eoc/langs/l_while",
-        117,
+        "eoc/langs/l_tup",
+        155,
         "interpret_op",
         "Pattern match failed, no pattern matched the value.",
         {
           value: $2,
-          start: 2687,
-          end: 2740,
-          pattern_start: 2698,
-          pattern_end: 2717
+          start: 3678,
+          end: 3731,
+          pattern_start: 3689,
+          pattern_end: 3708
         }
       );
     }
@@ -7643,8 +7002,8 @@ function interpret_op(op, env) {
           throw makeError(
             "panic",
             FILEPATH,
-            "eoc/langs/l_while",
-            159,
+            "eoc/langs/l_tup",
+            198,
             "interpret_op",
             "mismatched types in eq? expression",
             {}
@@ -7659,21 +7018,37 @@ function interpret_op(op, env) {
           throw makeError(
             "panic",
             FILEPATH,
-            "eoc/langs/l_while",
-            159,
+            "eoc/langs/l_tup",
+            198,
             "interpret_op",
             "mismatched types in eq? expression",
             {}
           );
         }
-      } else if (av instanceof VoidValue) {
-        return [new BoolValue(true), e2];
+      } else if (bv instanceof VoidValue) {
+        if (av instanceof VoidValue) {
+          return [new BoolValue(true), e2];
+        } else {
+          throw makeError(
+            "panic",
+            FILEPATH,
+            "eoc/langs/l_tup",
+            198,
+            "interpret_op",
+            "mismatched types in eq? expression",
+            {}
+          );
+        }
+      } else if (av instanceof HeapRef) {
+        let h2 = bv.i;
+        let h12 = av.i;
+        return [new BoolValue(h12 === h2), e2];
       } else {
         throw makeError(
           "panic",
           FILEPATH,
-          "eoc/langs/l_while",
-          159,
+          "eoc/langs/l_tup",
+          198,
           "interpret_op",
           "mismatched types in eq? expression",
           {}
@@ -7694,16 +7069,16 @@ function interpret_op(op, env) {
         throw makeError(
           "let_assert",
           FILEPATH,
-          "eoc/langs/l_while",
-          163,
+          "eoc/langs/l_tup",
+          202,
           "interpret_op",
           "Pattern match failed, no pattern matched the value.",
           {
             value: $1,
-            start: 4226,
-            end: 4280,
-            pattern_start: 4237,
-            pattern_end: 4256
+            start: 5280,
+            end: 5334,
+            pattern_start: 5291,
+            pattern_end: 5310
           }
         );
       }
@@ -7718,16 +7093,16 @@ function interpret_op(op, env) {
         throw makeError(
           "let_assert",
           FILEPATH,
-          "eoc/langs/l_while",
-          164,
+          "eoc/langs/l_tup",
+          203,
           "interpret_op",
           "Pattern match failed, no pattern matched the value.",
           {
             value: $3,
-            start: 4287,
-            end: 4340,
-            pattern_start: 4298,
-            pattern_end: 4317
+            start: 5341,
+            end: 5394,
+            pattern_start: 5352,
+            pattern_end: 5371
           }
         );
       }
@@ -7737,8 +7112,8 @@ function interpret_op(op, env) {
             throw makeError(
               "panic",
               FILEPATH,
-              "eoc/langs/l_while",
-              171,
+              "eoc/langs/l_tup",
+              210,
               "interpret_op",
               "unreachable branch",
               {}
@@ -7776,16 +7151,16 @@ function interpret_op(op, env) {
           throw makeError(
             "let_assert",
             FILEPATH,
-            "eoc/langs/l_while",
-            129,
+            "eoc/langs/l_tup",
+            167,
             "interpret_op",
             "Pattern match failed, no pattern matched the value.",
             {
               value: $3,
-              start: 3105,
-              end: 3159,
-              pattern_start: 3116,
-              pattern_end: 3136
+              start: 4096,
+              end: 4150,
+              pattern_start: 4107,
+              pattern_end: 4127
             }
           );
         }
@@ -7797,8 +7172,8 @@ function interpret_op(op, env) {
       throw makeError(
         "panic",
         FILEPATH,
-        "eoc/langs/l_while",
-        135,
+        "eoc/langs/l_tup",
+        173,
         "interpret_op",
         "non-boolean expression not valid in `and`",
         {}
@@ -7826,16 +7201,16 @@ function interpret_op(op, env) {
           throw makeError(
             "let_assert",
             FILEPATH,
-            "eoc/langs/l_while",
-            142,
+            "eoc/langs/l_tup",
+            180,
             "interpret_op",
             "Pattern match failed, no pattern matched the value.",
             {
               value: $3,
-              start: 3519,
-              end: 3573,
-              pattern_start: 3530,
-              pattern_end: 3550
+              start: 4510,
+              end: 4564,
+              pattern_start: 4521,
+              pattern_end: 4541
             }
           );
         }
@@ -7845,14 +7220,14 @@ function interpret_op(op, env) {
       throw makeError(
         "panic",
         FILEPATH,
-        "eoc/langs/l_while",
-        145,
+        "eoc/langs/l_tup",
+        183,
         "interpret_op",
         "non-boolean expression not valid in `or`",
         {}
       );
     }
-  } else {
+  } else if (op instanceof Not) {
     let e = op.a;
     let $ = interpret_exp(e, env);
     let v;
@@ -7865,20 +7240,276 @@ function interpret_op(op, env) {
       throw makeError(
         "let_assert",
         FILEPATH,
-        "eoc/langs/l_while",
-        149,
+        "eoc/langs/l_tup",
+        187,
         "interpret_op",
         "Pattern match failed, no pattern matched the value.",
         {
           value: $,
-          start: 3716,
-          end: 3770,
-          pattern_start: 3727,
-          pattern_end: 3746
+          start: 4707,
+          end: 4761,
+          pattern_start: 4718,
+          pattern_end: 4737
         }
       );
     }
     return [new BoolValue(!v), e1];
+  } else if (op instanceof Vector) {
+    let fields = op.fields;
+    let $ = map_fold(
+      fields,
+      env,
+      (env2, f) => {
+        return swap(interpret_exp(f, env2));
+      }
+    );
+    let env$1;
+    let field_values;
+    env$1 = $[0];
+    field_values = $[1];
+    return allocate_vec(env$1, field_values);
+  } else if (op instanceof VectorLength) {
+    let v = op.v;
+    let $ = interpret_exp(v, env);
+    let i;
+    let env$1;
+    let $1 = $[0];
+    if ($1 instanceof HeapRef) {
+      env$1 = $[1];
+      i = $1.i;
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        224,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $,
+          start: 5915,
+          end: 5968,
+          pattern_start: 5926,
+          pattern_end: 5944
+        }
+      );
+    }
+    let $2 = get_heap(env$1, i);
+    let vfs;
+    if ($2 instanceof Ok) {
+      vfs = $2[0];
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        225,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $2,
+          start: 5975,
+          end: 6012,
+          pattern_start: 5986,
+          pattern_end: 5993
+        }
+      );
+    }
+    return [new IntValue(length2(vfs)), env$1];
+  } else if (op instanceof VectorRef) {
+    let v = op.v;
+    let index4 = op.index;
+    let i;
+    if (index4 instanceof Int) {
+      i = index4.value;
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        229,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: index4,
+          start: 6097,
+          end: 6122,
+          pattern_start: 6108,
+          pattern_end: 6114
+        }
+      );
+    }
+    let $ = interpret_exp(v, env);
+    let ref;
+    let env$1;
+    let $1 = $[0];
+    if ($1 instanceof HeapRef) {
+      env$1 = $[1];
+      ref = $1.i;
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        230,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $,
+          start: 6129,
+          end: 6184,
+          pattern_start: 6140,
+          pattern_end: 6160
+        }
+      );
+    }
+    let $2 = get_heap(env$1, ref);
+    let vfs;
+    if ($2 instanceof Ok) {
+      vfs = $2[0];
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        231,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $2,
+          start: 6191,
+          end: 6230,
+          pattern_start: 6202,
+          pattern_end: 6209
+        }
+      );
+    }
+    let $3 = first(drop(vfs, i));
+    let val;
+    if ($3 instanceof Ok) {
+      val = $3[0];
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        232,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $3,
+          start: 6237,
+          end: 6287,
+          pattern_start: 6248,
+          pattern_end: 6255
+        }
+      );
+    }
+    return [val, env$1];
+  } else {
+    let v = op.v;
+    let index4 = op.index;
+    let value = op.value;
+    let i;
+    if (index4 instanceof Int) {
+      i = index4.value;
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        236,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: index4,
+          start: 6357,
+          end: 6382,
+          pattern_start: 6368,
+          pattern_end: 6374
+        }
+      );
+    }
+    let $ = interpret_exp(v, env);
+    let ref;
+    let env$1;
+    let $1 = $[0];
+    if ($1 instanceof HeapRef) {
+      env$1 = $[1];
+      ref = $1.i;
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        237,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $,
+          start: 6389,
+          end: 6444,
+          pattern_start: 6400,
+          pattern_end: 6420
+        }
+      );
+    }
+    let $2 = get_heap(env$1, ref);
+    let vfs;
+    if ($2 instanceof Ok) {
+      vfs = $2[0];
+    } else {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        238,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $2,
+          start: 6451,
+          end: 6490,
+          pattern_start: 6462,
+          pattern_end: 6469
+        }
+      );
+    }
+    let $3 = split2(vfs, i);
+    let pred;
+    let succ;
+    let $4 = $3[1];
+    if ($4 instanceof Empty) {
+      throw makeError(
+        "let_assert",
+        FILEPATH,
+        "eoc/langs/l_tup",
+        239,
+        "interpret_op",
+        "Pattern match failed, no pattern matched the value.",
+        {
+          value: $3,
+          start: 6497,
+          end: 6554,
+          pattern_start: 6508,
+          pattern_end: 6533
+        }
+      );
+    } else {
+      pred = $3[0];
+      succ = $4.tail;
+    }
+    let $5 = interpret_exp(value, env$1);
+    let new_field;
+    let env$2;
+    new_field = $5[0];
+    env$2 = $5[1];
+    let env$3 = update_heap(
+      env$2,
+      ref,
+      append2(pred, prepend(new_field, succ))
+    );
+    return [new VoidValue(), env$3];
   }
 }
 function interpret_exp(loop$e, loop$env) {
@@ -7906,9 +7537,9 @@ function interpret_exp(loop$e, loop$env) {
       let env1;
       result = $[0];
       env1 = $[1];
-      let new_env = insert(env1, var$2, result);
+      let new_env$1 = bind_var(env1, var$2, result);
       loop$e = expr;
-      loop$env = new_env;
+      loop$env = new_env$1;
     } else if (e instanceof If) {
       let c = e.condition;
       let t = e.if_true;
@@ -7918,20 +7549,20 @@ function interpret_exp(loop$e, loop$env) {
       if ($1 instanceof BoolValue) {
         let $2 = $1.v;
         if ($2) {
-          let new_env = $[1];
+          let new_env$1 = $[1];
           loop$e = t;
-          loop$env = new_env;
+          loop$env = new_env$1;
         } else {
-          let new_env = $[1];
+          let new_env$1 = $[1];
           loop$e = e$1;
-          loop$env = new_env;
+          loop$env = new_env$1;
         }
       } else {
         throw makeError(
           "panic",
           FILEPATH,
-          "eoc/langs/l_while",
-          81,
+          "eoc/langs/l_tup",
+          118,
           "interpret_exp",
           "invalid boolean expression",
           {}
@@ -7945,7 +7576,7 @@ function interpret_exp(loop$e, loop$env) {
       let env1;
       result = $[0];
       env1 = $[1];
-      return [new VoidValue(), insert(env1, var$2, result)];
+      return [new VoidValue(), bind_var(env1, var$2, result)];
     } else if (e instanceof Begin) {
       let stmts = e.stmts;
       let result = e.result;
@@ -7961,7 +7592,7 @@ function interpret_exp(loop$e, loop$env) {
       );
       loop$e = result;
       loop$env = env1;
-    } else {
+    } else if (e instanceof WhileLoop) {
       let condition = e.condition;
       let body = e.body;
       let $ = interpret_exp(condition, env);
@@ -7983,1597 +7614,25 @@ function interpret_exp(loop$e, loop$env) {
         throw makeError(
           "panic",
           FILEPATH,
-          "eoc/langs/l_while",
-          103,
+          "eoc/langs/l_tup",
+          140,
           "interpret_exp",
           "invalid boolean expression",
           {}
         );
       }
+    } else {
+      let value = e.value;
+      loop$e = value;
+      loop$env = env;
     }
   }
 }
 function interpret(p) {
-  return interpret_exp(p.body, new_map())[0];
+  return interpret_exp(p.body, new_env())[0];
 }
 
-// build/dev/javascript/eoc/eoc/graph.mjs
-var Graph = class extends CustomType {
-  constructor($0) {
-    super();
-    this[0] = $0;
-  }
-};
-var Node = class extends CustomType {
-  constructor(id, value) {
-    super();
-    this.id = id;
-    this.value = value;
-  }
-};
-var Context = class extends CustomType {
-  constructor(edges, node) {
-    super();
-    this.edges = edges;
-    this.node = node;
-  }
-};
-function new$8() {
-  return new Graph(new_map());
-}
-function nodes(graph) {
-  let graph$1;
-  graph$1 = graph[0];
-  return fold(
-    graph$1,
-    toList([]),
-    (acc, _, _use2) => {
-      let node;
-      node = _use2.node;
-      return prepend(node, acc);
-    }
-  );
-}
-function has_node(graph, node_id) {
-  let graph$1;
-  graph$1 = graph[0];
-  return has_key(graph$1, node_id);
-}
-function get_context(graph, node) {
-  let graph$1;
-  graph$1 = graph[0];
-  return map_get(graph$1, node);
-}
-function insert_node(graph, node) {
-  let graph$1;
-  graph$1 = graph[0];
-  let empty_context = new Context(new_map(), node);
-  let new_graph = insert(graph$1, node.id, empty_context);
-  return new Graph(new_graph);
-}
-function update_context(graph, node, fun) {
-  let graph$1;
-  graph$1 = graph[0];
-  let $ = map_get(graph$1, node);
-  if ($ instanceof Ok) {
-    let context = $[0];
-    return new Graph(insert(graph$1, node, fun(context)));
-  } else {
-    return new Graph(graph$1);
-  }
-}
-function add_edge(context, node, label) {
-  let edges;
-  edges = context.edges;
-  return new Context(insert(edges, node, label), context.node);
-}
-function insert_edge(graph, label, one, other) {
-  let _pipe = graph;
-  let _pipe$1 = update_context(
-    _pipe,
-    one,
-    (_capture) => {
-      return add_edge(_capture, other, label);
-    }
-  );
-  return update_context(
-    _pipe$1,
-    other,
-    (_capture) => {
-      return add_edge(_capture, one, label);
-    }
-  );
-}
-function insert_context(graph, context) {
-  let graph$1;
-  graph$1 = graph[0];
-  let new_graph = insert(graph$1, context.node.id, context);
-  return new Graph(new_graph);
-}
-function modify_value(graph, node_id, fun) {
-  let $ = get_context(graph, node_id);
-  if ($ instanceof Ok) {
-    let context = $[0];
-    let new_value = fun(context.node.value);
-    return insert_context(
-      graph,
-      new Context(
-        context.edges,
-        (() => {
-          let _record = context.node;
-          return new Node(_record.id, new_value);
-        })()
-      )
-    );
-  } else {
-    return graph;
-  }
-}
-function dict_map_shared_keys(one, other, fun) {
-  return fold(
-    other,
-    one,
-    (one2, key, other_value) => {
-      let $ = map_get(one2, key);
-      if ($ instanceof Ok) {
-        let one_value = $[0];
-        return insert(one2, key, fun(one_value, other_value));
-      } else {
-        return one2;
-      }
-    }
-  );
-}
-function remove_occurrences(graph, node, nodes2) {
-  return dict_map_shared_keys(
-    graph,
-    nodes2,
-    (context, _) => {
-      let edges;
-      edges = context.edges;
-      return new Context(delete$(edges, node), context.node);
-    }
-  );
-}
-function remove_node(graph, node_id) {
-  let $ = get_context(graph, node_id);
-  if ($ instanceof Ok) {
-    let edges = $[0].edges;
-    let graph$1 = graph[0];
-    let _pipe = delete$(graph$1, node_id);
-    let _pipe$1 = remove_occurrences(_pipe, node_id, edges);
-    return new Graph(_pipe$1);
-  } else {
-    return graph;
-  }
-}
-function match(graph, node_id) {
-  return try$(
-    get_context(graph, node_id),
-    (_use0) => {
-      let edges;
-      let node;
-      edges = _use0.edges;
-      node = _use0.node;
-      let rest = remove_node(graph, node_id);
-      let new_edges = delete$(edges, node_id);
-      return new Ok([new Context(new_edges, node), rest]);
-    }
-  );
-}
-
-// build/dev/javascript/eoc/eoc/langs/x86_base.mjs
-var Rsp = class extends CustomType {
-};
-var Rbp = class extends CustomType {
-};
-var Rax = class extends CustomType {
-};
-var Rbx = class extends CustomType {
-};
-var Rcx = class extends CustomType {
-};
-var Rdx = class extends CustomType {
-};
-var Rsi = class extends CustomType {
-};
-var Rdi = class extends CustomType {
-};
-var R8 = class extends CustomType {
-};
-var R9 = class extends CustomType {
-};
-var R10 = class extends CustomType {
-};
-var R11 = class extends CustomType {
-};
-var R12 = class extends CustomType {
-};
-var R13 = class extends CustomType {
-};
-var R14 = class extends CustomType {
-};
-var R15 = class extends CustomType {
-};
-var Ah = class extends CustomType {
-};
-var Al = class extends CustomType {
-};
-var Bh = class extends CustomType {
-};
-var Bl = class extends CustomType {
-};
-var Ch = class extends CustomType {
-};
-var Cl = class extends CustomType {
-};
-var Dh = class extends CustomType {
-};
-var E = class extends CustomType {
-};
-var L = class extends CustomType {
-};
-var Le = class extends CustomType {
-};
-var G = class extends CustomType {
-};
-var Ge = class extends CustomType {
-};
-var LocReg = class extends CustomType {
-  constructor(reg) {
-    super();
-    this.reg = reg;
-  }
-};
-var LocVar = class extends CustomType {
-  constructor(name) {
-    super();
-    this.name = name;
-  }
-};
-function is_callee_saved(reg) {
-  if (reg instanceof Rsp) {
-    return true;
-  } else if (reg instanceof Rbp) {
-    return true;
-  } else if (reg instanceof Rbx) {
-    return true;
-  } else if (reg instanceof R12) {
-    return true;
-  } else if (reg instanceof R13) {
-    return true;
-  } else if (reg instanceof R14) {
-    return true;
-  } else if (reg instanceof R15) {
-    return true;
-  } else {
-    return false;
-  }
-}
-function register_to_rank(r) {
-  if (r instanceof Rsp) {
-    return -2;
-  } else if (r instanceof Rbp) {
-    return -3;
-  } else if (r instanceof Rax) {
-    return -1;
-  } else if (r instanceof Rbx) {
-    return 7;
-  } else if (r instanceof Rcx) {
-    return 0;
-  } else if (r instanceof Rdx) {
-    return 1;
-  } else if (r instanceof Rsi) {
-    return 2;
-  } else if (r instanceof Rdi) {
-    return 3;
-  } else if (r instanceof R8) {
-    return 4;
-  } else if (r instanceof R9) {
-    return 5;
-  } else if (r instanceof R10) {
-    return 6;
-  } else if (r instanceof R11) {
-    return -4;
-  } else if (r instanceof R12) {
-    return 8;
-  } else if (r instanceof R13) {
-    return 9;
-  } else if (r instanceof R14) {
-    return 10;
-  } else {
-    return -5;
-  }
-}
-function compare_location(a2, b) {
-  if (b instanceof LocReg) {
-    if (a2 instanceof LocReg) {
-      let r2 = b.reg;
-      let r1 = a2.reg;
-      return compare(register_to_rank(r1), register_to_rank(r2));
-    } else {
-      return new Gt();
-    }
-  } else if (a2 instanceof LocReg) {
-    return new Lt();
-  } else {
-    let v2 = b.name;
-    let v1 = a2.name;
-    return compare2(v1, v2);
-  }
-}
-function bytereg_to_quad(br) {
-  if (br instanceof Ah) {
-    return new Rax();
-  } else if (br instanceof Al) {
-    return new Rax();
-  } else if (br instanceof Bh) {
-    return new Rbx();
-  } else if (br instanceof Bl) {
-    return new Rbx();
-  } else if (br instanceof Ch) {
-    return new Rcx();
-  } else if (br instanceof Cl) {
-    return new Rcx();
-  } else if (br instanceof Dh) {
-    return new Rdx();
-  } else {
-    return new Rdx();
-  }
-}
-
-// build/dev/javascript/eoc/eoc/interference_graph.mjs
-var FILEPATH2 = "src/eoc/interference_graph.gleam";
-var Node2 = class extends CustomType {
-  constructor(location, assignment, saturation) {
-    super();
-    this.location = location;
-    this.assignment = assignment;
-    this.saturation = saturation;
-  }
-};
-var Graph2 = class extends CustomType {
-  constructor(graph) {
-    super();
-    this.graph = graph;
-  }
-};
-function insert_location(g, location) {
-  let $ = has_node(g.graph, location);
-  if ($) {
-    return g;
-  } else {
-    let _pipe = g.graph;
-    let _pipe$1 = insert_node(
-      _pipe,
-      new Node(location, new Node2(location, new None(), new$()))
-    );
-    return new Graph2(_pipe$1);
-  }
-}
-function add_locations(g, locations) {
-  return fold3(locations, g, insert_location);
-}
-function add_conflict(g, a2, b) {
-  let $ = isEqual(a2, b);
-  if ($) {
-    return g;
-  } else {
-    let $1 = get_context(g.graph, a2);
-    let a_context;
-    if ($1 instanceof Ok) {
-      a_context = $1[0];
-    } else {
-      throw makeError(
-        "let_assert",
-        FILEPATH2,
-        "eoc/interference_graph",
-        45,
-        "add_conflict",
-        "Pattern match failed, no pattern matched the value.",
-        { value: $1, start: 931, end: 987, pattern_start: 942, pattern_end: 955 }
-      );
-    }
-    let $2 = get_context(g.graph, b);
-    let b_context;
-    if ($2 instanceof Ok) {
-      b_context = $2[0];
-    } else {
-      throw makeError(
-        "let_assert",
-        FILEPATH2,
-        "eoc/interference_graph",
-        46,
-        "add_conflict",
-        "Pattern match failed, no pattern matched the value.",
-        {
-          value: $2,
-          start: 994,
-          end: 1050,
-          pattern_start: 1005,
-          pattern_end: 1018
-        }
-      );
-    }
-    let _pipe = g.graph;
-    let _pipe$1 = insert_edge(_pipe, void 0, a2, b);
-    let _pipe$2 = modify_value(
-      _pipe$1,
-      a2,
-      (node) => {
-        let $3 = b_context.node.value.assignment;
-        if ($3 instanceof Some) {
-          let i = $3[0];
-          return new Node2(
-            node.location,
-            node.assignment,
-            insert2(node.saturation, i)
-          );
-        } else {
-          return node;
-        }
-      }
-    );
-    let _pipe$3 = modify_value(
-      _pipe$2,
-      b,
-      (node) => {
-        let $3 = a_context.node.value.assignment;
-        if ($3 instanceof Some) {
-          let i = $3[0];
-          return new Node2(
-            node.location,
-            node.assignment,
-            insert2(node.saturation, i)
-          );
-        } else {
-          return node;
-        }
-      }
-    );
-    return new Graph2(_pipe$3);
-  }
-}
-function add_registers(g) {
-  let _pipe = toList([
-    [new Rax(), -1],
-    [new Rsp(), -2],
-    [new Rbp(), -3],
-    [new R11(), -4],
-    [new R15(), -5],
-    [new Rcx(), 0],
-    [new Rdx(), 1],
-    [new Rsi(), 2],
-    [new Rdi(), 3],
-    [new R8(), 4],
-    [new R9(), 5],
-    [new R10(), 6],
-    [new Rbx(), 7],
-    [new R12(), 8],
-    [new R13(), 9],
-    [new R14(), 10]
-  ]);
-  let _pipe$1 = map(
-    _pipe,
-    (pair2) => {
-      let reg;
-      let color;
-      reg = pair2[0];
-      color = pair2[1];
-      let location = new LocReg(reg);
-      return new Node(
-        location,
-        new Node2(location, new Some(color), new$())
-      );
-    }
-  );
-  let _pipe$2 = fold2(_pipe$1, g.graph, insert_node);
-  return new Graph2(_pipe$2);
-}
-function new$9() {
-  let _pipe = new Graph2(new$8());
-  return add_registers(_pipe);
-}
-
-// build/dev/javascript/eoc/eoc/langs/x86_if.mjs
-var Imm = class extends CustomType {
-  constructor(value) {
-    super();
-    this.value = value;
-  }
-};
-var Reg = class extends CustomType {
-  constructor(reg) {
-    super();
-    this.reg = reg;
-  }
-};
-var Deref = class extends CustomType {
-  constructor(reg, offset) {
-    super();
-    this.reg = reg;
-    this.offset = offset;
-  }
-};
-var Addq = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Subq = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Negq = class extends CustomType {
-  constructor(a2) {
-    super();
-    this.a = a2;
-  }
-};
-var Movq = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Pushq = class extends CustomType {
-  constructor(a2) {
-    super();
-    this.a = a2;
-  }
-};
-var Popq = class extends CustomType {
-  constructor(a2) {
-    super();
-    this.a = a2;
-  }
-};
-var Callq = class extends CustomType {
-  constructor(label, arity) {
-    super();
-    this.label = label;
-    this.arity = arity;
-  }
-};
-var Retq = class extends CustomType {
-};
-var Jmp = class extends CustomType {
-  constructor(label) {
-    super();
-    this.label = label;
-  }
-};
-var Xorq = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Cmpq = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Set3 = class extends CustomType {
-  constructor(cmp, arg) {
-    super();
-    this.cmp = cmp;
-    this.arg = arg;
-  }
-};
-var Movzbq = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var JmpIf = class extends CustomType {
-  constructor(cmp, label) {
-    super();
-    this.cmp = cmp;
-    this.label = label;
-  }
-};
-var Block = class extends CustomType {
-  constructor(body) {
-    super();
-    this.body = body;
-  }
-};
-var X86Program = class extends CustomType {
-  constructor(body, stack_vars, used_callee) {
-    super();
-    this.body = body;
-    this.stack_vars = stack_vars;
-    this.used_callee = used_callee;
-  }
-};
-
-// build/dev/javascript/eoc/eoc/langs/x86_var_if.mjs
-var Imm2 = class extends CustomType {
-  constructor(value) {
-    super();
-    this.value = value;
-  }
-};
-var Reg2 = class extends CustomType {
-  constructor(reg) {
-    super();
-    this.reg = reg;
-  }
-};
-var Var2 = class extends CustomType {
-  constructor(name) {
-    super();
-    this.name = name;
-  }
-};
-var Addq2 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Subq2 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Negq2 = class extends CustomType {
-  constructor(a2) {
-    super();
-    this.a = a2;
-  }
-};
-var Movq2 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Pushq2 = class extends CustomType {
-  constructor(a2) {
-    super();
-    this.a = a2;
-  }
-};
-var Popq2 = class extends CustomType {
-  constructor(a2) {
-    super();
-    this.a = a2;
-  }
-};
-var Callq2 = class extends CustomType {
-  constructor(label, arity) {
-    super();
-    this.label = label;
-    this.arity = arity;
-  }
-};
-var Retq2 = class extends CustomType {
-};
-var Jmp2 = class extends CustomType {
-  constructor(label) {
-    super();
-    this.label = label;
-  }
-};
-var Xorq2 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Cmpq2 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Set4 = class extends CustomType {
-  constructor(cmp, arg) {
-    super();
-    this.cmp = cmp;
-    this.arg = arg;
-  }
-};
-var Movzbq2 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var JmpIf2 = class extends CustomType {
-  constructor(cmp, label) {
-    super();
-    this.cmp = cmp;
-    this.label = label;
-  }
-};
-var Block2 = class extends CustomType {
-  constructor(body, live_before, live_after) {
-    super();
-    this.body = body;
-    this.live_before = live_before;
-    this.live_after = live_after;
-  }
-};
-var X86Program2 = class extends CustomType {
-  constructor(body, conflicts) {
-    super();
-    this.body = body;
-    this.conflicts = conflicts;
-  }
-};
-function new_program() {
-  return new X86Program2(new_map(), new$9());
-}
-function new_block() {
-  return new Block2(toList([]), new$(), toList([]));
-}
-
-// build/dev/javascript/eoc/eoc/passes/allocate_registers.mjs
-var FILEPATH3 = "src/eoc/passes/allocate_registers.gleam";
-function translate_location(l, assignments) {
-  if (l instanceof Imm2) {
-    let i = l.value;
-    return new Imm(i);
-  } else if (l instanceof Reg2) {
-    let r = l.reg;
-    return new Reg(r);
-  } else {
-    let v = l.name;
-    let $ = map_get(assignments, new LocVar(v));
-    let arg;
-    if ($ instanceof Ok) {
-      arg = $[0];
-    } else {
-      throw makeError(
-        "let_assert",
-        FILEPATH3,
-        "eoc/passes/allocate_registers",
-        105,
-        "translate_location",
-        "Pattern match failed, no pattern matched the value.",
-        {
-          value: $,
-          start: 2747,
-          end: 2804,
-          pattern_start: 2758,
-          pattern_end: 2765
-        }
-      );
-    }
-    return arg;
-  }
-}
-function translate_instr(instr, assignments) {
-  if (instr instanceof Addq2) {
-    let a2 = instr.a;
-    let b = instr.b;
-    return new Addq(
-      translate_location(a2, assignments),
-      translate_location(b, assignments)
-    );
-  } else if (instr instanceof Subq2) {
-    let a2 = instr.a;
-    let b = instr.b;
-    return new Subq(
-      translate_location(a2, assignments),
-      translate_location(b, assignments)
-    );
-  } else if (instr instanceof Negq2) {
-    let a2 = instr.a;
-    return new Negq(translate_location(a2, assignments));
-  } else if (instr instanceof Movq2) {
-    let a2 = instr.a;
-    let b = instr.b;
-    return new Movq(
-      translate_location(a2, assignments),
-      translate_location(b, assignments)
-    );
-  } else if (instr instanceof Pushq2) {
-    let a2 = instr.a;
-    return new Pushq(translate_location(a2, assignments));
-  } else if (instr instanceof Popq2) {
-    let a2 = instr.a;
-    return new Popq(translate_location(a2, assignments));
-  } else if (instr instanceof Callq2) {
-    let label = instr.label;
-    let arity = instr.arity;
-    return new Callq(label, arity);
-  } else if (instr instanceof Retq2) {
-    return new Retq();
-  } else if (instr instanceof Jmp2) {
-    let label = instr.label;
-    return new Jmp(label);
-  } else if (instr instanceof Xorq2) {
-    let a2 = instr.a;
-    let b = instr.b;
-    return new Xorq(
-      translate_location(a2, assignments),
-      translate_location(b, assignments)
-    );
-  } else if (instr instanceof Cmpq2) {
-    let a2 = instr.a;
-    let b = instr.b;
-    return new Cmpq(
-      translate_location(a2, assignments),
-      translate_location(b, assignments)
-    );
-  } else if (instr instanceof Set4) {
-    let cmp = instr.cmp;
-    let arg = instr.arg;
-    return new Set3(cmp, arg);
-  } else if (instr instanceof Movzbq2) {
-    let a2 = instr.a;
-    let b = instr.b;
-    return new Movzbq(a2, translate_location(b, assignments));
-  } else {
-    let cmp = instr.cmp;
-    let label = instr.label;
-    return new JmpIf(cmp, label);
-  }
-}
-function unfold(loop$initial, loop$generator, loop$result) {
-  while (true) {
-    let initial = loop$initial;
-    let generator = loop$generator;
-    let result = loop$result;
-    let $ = generator(initial);
-    if ($ instanceof Ok) {
-      let item = $[0][0];
-      let next_acc = $[0][1];
-      loop$initial = next_acc;
-      loop$generator = generator;
-      loop$result = prepend(item, result);
-    } else {
-      return result;
-    }
-  }
-}
-function pick_color_internal(loop$set, loop$candidate) {
-  while (true) {
-    let set = loop$set;
-    let candidate = loop$candidate;
-    let $ = contains(set, candidate);
-    if ($) {
-      loop$set = set;
-      loop$candidate = candidate + 1;
-    } else {
-      return candidate;
-    }
-  }
-}
-function pick_color(set) {
-  return pick_color_internal(set, 0);
-}
-function pick_vertex(g) {
-  let _pipe = g.graph;
-  let _pipe$1 = nodes(_pipe);
-  let _pipe$2 = filter_map(
-    _pipe$1,
-    (node) => {
-      let $ = node.value.assignment;
-      if ($ instanceof Some) {
-        return new Error2(void 0);
-      } else {
-        return new Ok([size(node.value.saturation), node.id]);
-      }
-    }
-  );
-  let _pipe$3 = sort(
-    _pipe$2,
-    (a2, b) => {
-      let $ = compare(a2[0], b[0]);
-      if ($ instanceof Eq) {
-        return compare_location(a2[1], b[1]);
-      } else {
-        return $;
-      }
-    }
-  );
-  let _pipe$4 = max2(
-    _pipe$3,
-    (a2, b) => {
-      return compare(a2[0], b[0]);
-    }
-  );
-  return map3(_pipe$4, second);
-}
-function color_graph_step(g) {
-  let $ = pick_vertex(g);
-  if ($ instanceof Ok) {
-    let location = $[0];
-    let $1 = match(g.graph, location);
-    let context;
-    let graph;
-    if ($1 instanceof Ok) {
-      context = $1[0][0];
-      graph = $1[0][1];
-    } else {
-      throw makeError(
-        "let_assert",
-        FILEPATH3,
-        "eoc/passes/allocate_registers",
-        131,
-        "color_graph_step",
-        "Pattern match failed, no pattern matched the value.",
-        {
-          value: $1,
-          start: 3415,
-          end: 3480,
-          pattern_start: 3426,
-          pattern_end: 3447
-        }
-      );
-    }
-    let color = pick_color(context.node.value.saturation);
-    let _block;
-    let _record = context.node.value;
-    _block = new Node2(_record.location, new Some(color), _record.saturation);
-    let value = _block;
-    let _block$1;
-    let _pipe = context.edges;
-    let _pipe$1 = keys(_pipe);
-    _block$1 = fold2(
-      _pipe$1,
-      graph,
-      (g2, node_id) => {
-        return modify_value(
-          g2,
-          node_id,
-          (node) => {
-            return new Node2(
-              node.location,
-              node.assignment,
-              insert2(node.saturation, color)
-            );
-          }
-        );
-      }
-    );
-    let new_graph = _block$1;
-    return new Ok([value, new Graph2(new_graph)]);
-  } else {
-    return new Error2(void 0);
-  }
-}
-function color_graph(g) {
-  return unfold(g, color_graph_step, toList([]));
-}
-function assignment_to_arg(a2) {
-  if (a2 === -1) {
-    return new Reg(new Rax());
-  } else if (a2 === -2) {
-    return new Reg(new Rsp());
-  } else if (a2 === -3) {
-    return new Reg(new Rbp());
-  } else if (a2 === -4) {
-    return new Reg(new R11());
-  } else if (a2 === -5) {
-    return new Reg(new R15());
-  } else if (a2 === 0) {
-    return new Reg(new Rcx());
-  } else if (a2 === 1) {
-    return new Reg(new Rdx());
-  } else if (a2 === 2) {
-    return new Reg(new Rsi());
-  } else if (a2 === 3) {
-    return new Reg(new Rdi());
-  } else if (a2 === 4) {
-    return new Reg(new R8());
-  } else if (a2 === 5) {
-    return new Reg(new R9());
-  } else if (a2 === 6) {
-    return new Reg(new R10());
-  } else if (a2 === 7) {
-    return new Reg(new Rbx());
-  } else if (a2 === 8) {
-    return new Reg(new R12());
-  } else if (a2 === 9) {
-    return new Reg(new R13());
-  } else if (a2 === 10) {
-    return new Reg(new R14());
-  } else {
-    let stack = a2;
-    return new Deref(new Rbp(), -(stack - 11) * 8);
-  }
-}
-function extract_assignments(g) {
-  return fold2(
-    g,
-    new_map(),
-    (acc, node) => {
-      let $ = node.assignment;
-      let assignment;
-      if ($ instanceof Some) {
-        assignment = $[0];
-      } else {
-        throw makeError(
-          "let_assert",
-          FILEPATH3,
-          "eoc/passes/allocate_registers",
-          183,
-          "extract_assignments",
-          "Pattern match failed, no pattern matched the value.",
-          {
-            value: $,
-            start: 5066,
-            end: 5111,
-            pattern_start: 5077,
-            pattern_end: 5093
-          }
-        );
-      }
-      let arg = assignment_to_arg(assignment);
-      return insert(acc, node.location, arg);
-    }
-  );
-}
-function allocate_registers(input) {
-  let _block;
-  let _pipe = input.conflicts;
-  let _pipe$1 = color_graph(_pipe);
-  _block = extract_assignments(_pipe$1);
-  let assignments = _block;
-  let _block$1;
-  let _pipe$2 = assignments;
-  let _pipe$3 = values(_pipe$2);
-  let _pipe$4 = filter_map(
-    _pipe$3,
-    (arg) => {
-      if (arg instanceof Reg) {
-        let reg = arg.reg;
-        let $ = is_callee_saved(reg);
-        if ($) {
-          return new Ok(reg);
-        } else {
-          return new Error2(void 0);
-        }
-      } else {
-        return new Error2(void 0);
-      }
-    }
-  );
-  _block$1 = from_list2(_pipe$4);
-  let used_callee = _block$1;
-  let _block$2;
-  let _pipe$5 = assignments;
-  let _pipe$6 = values(_pipe$5);
-  let _pipe$7 = filter_map(
-    _pipe$6,
-    (arg) => {
-      if (arg instanceof Deref) {
-        let offset = arg.offset;
-        return new Ok(globalThis.Math.trunc(-offset / 8));
-      } else {
-        return new Error2(void 0);
-      }
-    }
-  );
-  let _pipe$8 = max2(_pipe$7, compare);
-  _block$2 = unwrap(_pipe$8, 0);
-  let stack_vars = _block$2;
-  let _block$3;
-  let _pipe$9 = input.body;
-  _block$3 = map_values(
-    _pipe$9,
-    (_, block) => {
-      let new_instrs = map(
-        block.body,
-        (_capture) => {
-          return translate_instr(_capture, assignments);
-        }
-      );
-      return new Block(new_instrs);
-    }
-  );
-  let body = _block$3;
-  return new X86Program(body, stack_vars, used_callee);
-}
-
-// build/dev/javascript/eoc/cfg_ffi.mjs
-var import_graphlib = __toESM(require_graphlib(), 1);
-function new_cfg() {
-  return new import_graphlib.Graph();
-}
-function add_vertex(g, v) {
-  g.setNode(v);
-  return g;
-}
-function add_edge2(g, v1, v2) {
-  g.setEdge(v1, v2);
-  return g;
-}
-function in_neighbors(g, v) {
-  const neighbors = g.predecessors(v);
-  return List.fromArray(neighbors);
-}
-function out_neighbors(g, v) {
-  const neighbors = g.successors(v);
-  return List.fromArray(neighbors);
-}
-
-// build/dev/javascript/eoc/eoc/passes/uncover_live.mjs
-var FILEPATH4 = "src/eoc/passes/uncover_live.gleam";
-function build_cfg(blocks) {
-  return fold(
-    blocks,
-    new_cfg(),
-    (g, block_name, block) => {
-      return fold2(
-        block.body,
-        add_vertex(g, block_name),
-        (g2, instr) => {
-          if (instr instanceof Jmp2) {
-            let label = instr.label;
-            let _pipe = g2;
-            let _pipe$1 = add_vertex(_pipe, label);
-            return add_edge2(_pipe$1, label, block_name);
-          } else if (instr instanceof JmpIf2) {
-            let label = instr.label;
-            let _pipe = g2;
-            let _pipe$1 = add_vertex(_pipe, label);
-            return add_edge2(_pipe$1, label, block_name);
-          } else {
-            return g2;
-          }
-        }
-      );
-    }
-  );
-}
-function locations_in_arg(arg) {
-  if (arg instanceof Imm2) {
-    return new$();
-  } else if (arg instanceof Reg2) {
-    let reg = arg.reg;
-    return from_list2(toList([new LocReg(reg)]));
-  } else {
-    let name = arg.name;
-    return from_list2(toList([new LocVar(name)]));
-  }
-}
-function read_locations_in_inst(inst) {
-  if (inst instanceof Addq2) {
-    let a2 = inst.a;
-    let b = inst.b;
-    return union(locations_in_arg(a2), locations_in_arg(b));
-  } else if (inst instanceof Subq2) {
-    let a2 = inst.a;
-    let b = inst.b;
-    return union(locations_in_arg(a2), locations_in_arg(b));
-  } else if (inst instanceof Negq2) {
-    let a2 = inst.a;
-    return locations_in_arg(a2);
-  } else if (inst instanceof Movq2) {
-    let a2 = inst.a;
-    return locations_in_arg(a2);
-  } else if (inst instanceof Pushq2) {
-    let a2 = inst.a;
-    return union(
-      locations_in_arg(a2),
-      from_list2(toList([new LocReg(new Rsp())]))
-    );
-  } else if (inst instanceof Popq2) {
-    return from_list2(toList([new LocReg(new Rsp())]));
-  } else if (inst instanceof Callq2) {
-    let arity = inst.arity;
-    let _pipe = toList([
-      new LocReg(new Rdi()),
-      new LocReg(new Rsi()),
-      new LocReg(new Rdx()),
-      new LocReg(new Rcx()),
-      new LocReg(new R8()),
-      new LocReg(new R9())
-    ]);
-    let _pipe$1 = take(_pipe, arity);
-    return from_list2(_pipe$1);
-  } else if (inst instanceof Retq2) {
-    return from_list2(toList([new LocReg(new Rax())]));
-  } else if (inst instanceof Jmp2) {
-    return new$();
-  } else if (inst instanceof Xorq2) {
-    let a2 = inst.a;
-    let b = inst.b;
-    return union(locations_in_arg(a2), locations_in_arg(b));
-  } else if (inst instanceof Cmpq2) {
-    let a2 = inst.a;
-    let b = inst.b;
-    return union(locations_in_arg(a2), locations_in_arg(b));
-  } else if (inst instanceof Set4) {
-    return new$();
-  } else if (inst instanceof Movzbq2) {
-    let a2 = inst.a;
-    return from_list2(toList([new LocReg(bytereg_to_quad(a2))]));
-  } else {
-    return new$();
-  }
-}
-function write_location_in_inst(inst) {
-  if (inst instanceof Addq2) {
-    let b = inst.b;
-    return locations_in_arg(b);
-  } else if (inst instanceof Subq2) {
-    let b = inst.b;
-    return locations_in_arg(b);
-  } else if (inst instanceof Negq2) {
-    let a2 = inst.a;
-    return locations_in_arg(a2);
-  } else if (inst instanceof Movq2) {
-    let b = inst.b;
-    return locations_in_arg(b);
-  } else if (inst instanceof Pushq2) {
-    return from_list2(toList([new LocReg(new Rsp())]));
-  } else if (inst instanceof Popq2) {
-    let a2 = inst.a;
-    return union(
-      locations_in_arg(a2),
-      from_list2(toList([new LocReg(new Rsp())]))
-    );
-  } else if (inst instanceof Callq2) {
-    return from_list2(toList([new LocReg(new Rax())]));
-  } else if (inst instanceof Retq2) {
-    return new$();
-  } else if (inst instanceof Jmp2) {
-    return new$();
-  } else if (inst instanceof Xorq2) {
-    let b = inst.b;
-    return locations_in_arg(b);
-  } else if (inst instanceof Cmpq2) {
-    return new$();
-  } else if (inst instanceof Set4) {
-    let arg = inst.arg;
-    return from_list2(toList([new LocReg(bytereg_to_quad(arg))]));
-  } else if (inst instanceof Movzbq2) {
-    let b = inst.b;
-    return locations_in_arg(b);
-  } else {
-    return new$();
-  }
-}
-function before_set(after, instr) {
-  let _pipe = after;
-  let _pipe$1 = difference(_pipe, write_location_in_inst(instr));
-  return union(_pipe$1, read_locations_in_inst(instr));
-}
-function transfer(instrs, live_after) {
-  return fold_right(
-    instrs,
-    toList([live_after]),
-    (live_after2, instr) => {
-      let $ = first(live_after2);
-      let next2;
-      if ($ instanceof Ok) {
-        next2 = $[0];
-      } else {
-        throw makeError(
-          "let_assert",
-          FILEPATH4,
-          "eoc/passes/uncover_live",
-          104,
-          "transfer",
-          "Pattern match failed, no pattern matched the value.",
-          {
-            value: $,
-            start: 2596,
-            end: 2640,
-            pattern_start: 2607,
-            pattern_end: 2615
-          }
-        );
-      }
-      return prepend(before_set(next2, instr), live_after2);
-    }
-  );
-}
-function analyze_dataflow_loop(loop$g, loop$blocks, loop$mapping, loop$worklist) {
-  while (true) {
-    let g = loop$g;
-    let blocks = loop$blocks;
-    let mapping = loop$mapping;
-    let worklist = loop$worklist;
-    if (worklist instanceof Empty) {
-      return mapping;
-    } else {
-      let node = worklist.head;
-      let worklist$1 = worklist.tail;
-      let _block;
-      let _pipe = g;
-      let _pipe$1 = in_neighbors(_pipe, node);
-      _block = fold2(
-        _pipe$1,
-        new$(),
-        (state, pred) => {
-          let $3 = map_get(mapping, pred);
-          let live_sets;
-          if ($3 instanceof Ok) {
-            live_sets = $3[0];
-          } else {
-            throw makeError(
-              "let_assert",
-              FILEPATH4,
-              "eoc/passes/uncover_live",
-              72,
-              "analyze_dataflow_loop",
-              "Pattern match failed, no pattern matched the value.",
-              {
-                value: $3,
-                start: 1741,
-                end: 1791,
-                pattern_start: 1752,
-                pattern_end: 1765
-              }
-            );
-          }
-          let _block$1;
-          let _pipe$2 = live_sets;
-          let _pipe$3 = first(_pipe$2);
-          _block$1 = unwrap(_pipe$3, new$());
-          let before = _block$1;
-          return union(state, before);
-        }
-      );
-      let input = _block;
-      let $ = map_get(blocks, node);
-      let block;
-      if ($ instanceof Ok) {
-        block = $[0];
-      } else {
-        throw makeError(
-          "let_assert",
-          FILEPATH4,
-          "eoc/passes/uncover_live",
-          81,
-          "analyze_dataflow_loop",
-          "Pattern match failed, no pattern matched the value.",
-          {
-            value: $,
-            start: 1959,
-            end: 2004,
-            pattern_start: 1970,
-            pattern_end: 1979
-          }
-        );
-      }
-      let output = transfer(block.body, input);
-      let $1 = map_get(mapping, node);
-      let previous;
-      if ($1 instanceof Ok) {
-        previous = $1[0];
-      } else {
-        throw makeError(
-          "let_assert",
-          FILEPATH4,
-          "eoc/passes/uncover_live",
-          83,
-          "analyze_dataflow_loop",
-          "Pattern match failed, no pattern matched the value.",
-          {
-            value: $1,
-            start: 2058,
-            end: 2107,
-            pattern_start: 2069,
-            pattern_end: 2081
-          }
-        );
-      }
-      let $2 = isEqual(output, previous);
-      if ($2) {
-        loop$g = g;
-        loop$blocks = blocks;
-        loop$mapping = mapping;
-        loop$worklist = worklist$1;
-      } else {
-        loop$g = g;
-        loop$blocks = blocks;
-        loop$mapping = insert(mapping, node, output);
-        loop$worklist = append3(worklist$1, out_neighbors(g, node));
-      }
-    }
-  }
-}
-function analyze_dataflow(g, blocks) {
-  let worklist = keys(blocks);
-  let _block;
-  let _pipe = worklist;
-  let _pipe$1 = map(_pipe, (k) => {
-    return [k, toList([])];
-  });
-  let _pipe$2 = from_list(_pipe$1);
-  _block = insert(
-    _pipe$2,
-    "conclusion",
-    toList([
-      from_list2(toList([new LocReg(new Rax()), new LocReg(new Rsp())]))
-    ])
-  );
-  let mapping = _block;
-  let _pipe$3 = analyze_dataflow_loop(g, blocks, mapping, worklist);
-  return delete$(_pipe$3, "conclusion");
-}
-function uncover_live(input) {
-  let _block;
-  let _pipe = input.body;
-  let _pipe$1 = build_cfg(_pipe);
-  let _pipe$2 = analyze_dataflow(_pipe$1, input.body);
-  _block = map_values(
-    _pipe$2,
-    (block_name, live_sets) => {
-      let $ = map_get(input.body, block_name);
-      let block;
-      if ($ instanceof Ok) {
-        block = $[0];
-      } else {
-        throw makeError(
-          "let_assert",
-          FILEPATH4,
-          "eoc/passes/uncover_live",
-          24,
-          "uncover_live",
-          "Pattern match failed, no pattern matched the value.",
-          {
-            value: $,
-            start: 677,
-            end: 732,
-            pattern_start: 688,
-            pattern_end: 697
-          }
-        );
-      }
-      let live_before;
-      let live_after;
-      if (live_sets instanceof Empty) {
-        throw makeError(
-          "let_assert",
-          FILEPATH4,
-          "eoc/passes/uncover_live",
-          25,
-          "uncover_live",
-          "Pattern match failed, no pattern matched the value.",
-          {
-            value: live_sets,
-            start: 739,
-            end: 789,
-            pattern_start: 750,
-            pattern_end: 777
-          }
-        );
-      } else {
-        live_before = live_sets.head;
-        live_after = live_sets.tail;
-      }
-      return new Block2(block.body, live_before, live_after);
-    }
-  );
-  let new_blocks = _block;
-  return new X86Program2(new_blocks, input.conflicts);
-}
-
-// build/dev/javascript/eoc/eoc/passes/build_interference.mjs
-function rule_1(g, s, d, live) {
-  let _block;
-  let _pipe = s;
-  let _pipe$1 = union(_pipe, d);
-  let _pipe$2 = union(_pipe$1, live);
-  _block = ((_capture) => {
-    return add_locations(g, _capture);
-  })(_pipe$2);
-  let g$1 = _block;
-  return fold3(
-    live,
-    g$1,
-    (g2, loc) => {
-      let $ = !contains(s, loc) && !contains(d, loc);
-      if ($) {
-        return fold3(
-          d,
-          g2,
-          (g3, d2) => {
-            return add_conflict(g3, d2, loc);
-          }
-        );
-      } else {
-        return g2;
-      }
-    }
-  );
-}
-function rule_2(g, w, live) {
-  let _block;
-  let _pipe = w;
-  let _pipe$1 = union(_pipe, live);
-  _block = ((_capture) => {
-    return add_locations(g, _capture);
-  })(_pipe$1);
-  let g$1 = _block;
-  return fold3(
-    w,
-    g$1,
-    (g2, d) => {
-      return fold3(
-        live,
-        g2,
-        (g3, v) => {
-          let $ = !isEqual(v, d);
-          if ($) {
-            return add_conflict(g3, d, v);
-          } else {
-            return g3;
-          }
-        }
-      );
-    }
-  );
-}
-function determine_conflicts(ig, body, live_after) {
-  let _pipe = body;
-  let _pipe$1 = zip(_pipe, live_after);
-  return fold2(
-    _pipe$1,
-    ig,
-    (g, pair2) => {
-      let instr;
-      let live;
-      instr = pair2[0];
-      live = pair2[1];
-      if (instr instanceof Movq2) {
-        let s = instr.a;
-        let d = instr.b;
-        return rule_1(
-          g,
-          locations_in_arg(s),
-          locations_in_arg(d),
-          live
-        );
-      } else if (instr instanceof Movzbq2) {
-        let s = instr.a;
-        let d = instr.b;
-        return rule_1(
-          g,
-          from_list2(
-            toList([new LocReg(bytereg_to_quad(s))])
-          ),
-          locations_in_arg(d),
-          live
-        );
-      } else {
-        let i = instr;
-        return rule_2(g, write_location_in_inst(i), live);
-      }
-    }
-  );
-}
-function build_interference(program2) {
-  let conflicts = fold(
-    program2.body,
-    program2.conflicts,
-    (ig, _, block) => {
-      return determine_conflicts(ig, block.body, block.live_after);
-    }
-  );
-  return new X86Program2(program2.body, conflicts);
-}
-
-// build/dev/javascript/eoc/eoc/langs/c_loop.mjs
+// build/dev/javascript/eoc/eoc/langs/c_tup.mjs
 var Int2 = class extends CustomType {
   constructor(value) {
     super();
@@ -9630,6 +7689,27 @@ var Minus2 = class extends CustomType {
     this.b = b;
   }
 };
+var VectorRef2 = class extends CustomType {
+  constructor(v, index4) {
+    super();
+    this.v = v;
+    this.index = index4;
+  }
+};
+var VectorSet2 = class extends CustomType {
+  constructor(v, index4, value) {
+    super();
+    this.v = v;
+    this.index = index4;
+    this.value = value;
+  }
+};
+var VectorLength2 = class extends CustomType {
+  constructor(v) {
+    super();
+    this.v = v;
+  }
+};
 var Atom = class extends CustomType {
   constructor(atm) {
     super();
@@ -9642,6 +7722,19 @@ var Prim2 = class extends CustomType {
     this.op = op;
   }
 };
+var Allocate = class extends CustomType {
+  constructor(amount, t) {
+    super();
+    this.amount = amount;
+    this.t = t;
+  }
+};
+var GlobalValue = class extends CustomType {
+  constructor(var$2) {
+    super();
+    this.var = var$2;
+  }
+};
 var Assign = class extends CustomType {
   constructor(var$2, expr) {
     super();
@@ -9650,6 +7743,20 @@ var Assign = class extends CustomType {
   }
 };
 var ReadStmt = class extends CustomType {
+};
+var VectorSetStmt = class extends CustomType {
+  constructor(v, index4, value) {
+    super();
+    this.v = v;
+    this.index = index4;
+    this.value = value;
+  }
+};
+var Collect = class extends CustomType {
+  constructor(amount) {
+    super();
+    this.amount = amount;
+  }
 };
 var Return = class extends CustomType {
   constructor(a2) {
@@ -9685,15 +7792,202 @@ var CProgram = class extends CustomType {
     this.body = body;
   }
 };
+function format_atm(a2) {
+  if (a2 instanceof Int2) {
+    let value = a2.value;
+    return int_to_doc(value);
+  } else if (a2 instanceof Bool2) {
+    let value = a2.value;
+    if (value) {
+      return from_string("#t");
+    } else {
+      return from_string("#f");
+    }
+  } else if (a2 instanceof Variable) {
+    let v = a2.v;
+    return from_string(v);
+  } else {
+    return parenthesize(from_string("void"));
+  }
+}
+function format_op2(op) {
+  let _block;
+  if (op instanceof Read2) {
+    _block = toList([from_string("read")]);
+  } else if (op instanceof Neg) {
+    let a2 = op.a;
+    _block = toList([from_string("-"), format_atm(a2)]);
+  } else if (op instanceof Not2) {
+    let a2 = op.a;
+    _block = toList([from_string("not"), format_atm(a2)]);
+  } else if (op instanceof Cmp2) {
+    let op$1 = op.op;
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([format_cmp(op$1), format_atm(a2), format_atm(b)]);
+  } else if (op instanceof Plus2) {
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([from_string("+"), format_atm(a2), format_atm(b)]);
+  } else if (op instanceof Minus2) {
+    let a2 = op.a;
+    let b = op.b;
+    _block = toList([from_string("-"), format_atm(a2), format_atm(b)]);
+  } else if (op instanceof VectorRef2) {
+    let v = op.v;
+    let index4 = op.index;
+    _block = toList([
+      from_string("vector-ref"),
+      format_atm(v),
+      format_atm(index4)
+    ]);
+  } else if (op instanceof VectorSet2) {
+    let v = op.v;
+    let index4 = op.index;
+    let value = op.value;
+    _block = toList([
+      from_string("vector-set!"),
+      format_atm(v),
+      format_atm(index4),
+      format_atm(value)
+    ]);
+  } else {
+    let v = op.v;
+    _block = toList([from_string("vector-length"), format_atm(v)]);
+  }
+  let _pipe = _block;
+  return concat_join(_pipe, toList([from_string(" ")]));
+}
+function format_expr2(e) {
+  if (e instanceof Atom) {
+    let atm = e.atm;
+    return format_atm(atm);
+  } else if (e instanceof Prim2) {
+    let op = e.op;
+    let _pipe = op;
+    let _pipe$1 = format_op2(_pipe);
+    return parenthesize(_pipe$1);
+  } else if (e instanceof Allocate) {
+    let amount = e.amount;
+    let t = e.t;
+    let _pipe = toList([
+      from_string("allocate"),
+      int_to_doc(amount),
+      format_type(t)
+    ]);
+    let _pipe$1 = concat_join(_pipe, toList([from_string(" ")]));
+    return parenthesize(_pipe$1);
+  } else {
+    let var$2 = e.var;
+    let _pipe = toList([
+      from_string("global-value"),
+      from_string(var$2)
+    ]);
+    let _pipe$1 = concat_join(_pipe, toList([from_string(" ")]));
+    return parenthesize(_pipe$1);
+  }
+}
+function format_stmt(s) {
+  let _block;
+  if (s instanceof Assign) {
+    let var$2 = s.var;
+    let expr = s.expr;
+    _block = concat3(
+      toList([
+        from_string(var$2),
+        space,
+        from_string("="),
+        space,
+        format_expr2(expr)
+      ])
+    );
+  } else if (s instanceof ReadStmt) {
+    _block = parenthesize(from_string("read"));
+  } else if (s instanceof VectorSetStmt) {
+    let v = s.v;
+    let index4 = s.index;
+    let value = s.value;
+    let _pipe2 = toList([
+      from_string("vector-set!"),
+      format_atm(v),
+      format_atm(index4),
+      format_atm(value)
+    ]);
+    let _pipe$1 = concat_join(_pipe2, toList([space]));
+    _block = parenthesize(_pipe$1);
+  } else {
+    let amount = s.amount;
+    let _pipe2 = toList([from_string("collect"), int_to_doc(amount)]);
+    let _pipe$1 = concat_join(_pipe2, toList([space]));
+    _block = parenthesize(_pipe$1);
+  }
+  let _pipe = _block;
+  return append4(_pipe, from_string(";"));
+}
+function format_tail(t) {
+  if (t instanceof Return) {
+    let a2 = t.a;
+    return concat3(
+      toList([
+        from_string("return "),
+        format_expr2(a2),
+        from_string(";")
+      ])
+    );
+  } else if (t instanceof Seq) {
+    let s = t.s;
+    let t$1 = t.t;
+    return concat_join(
+      toList([format_stmt(s), format_tail(t$1)]),
+      toList([line])
+    );
+  } else if (t instanceof Goto) {
+    let label = t.label;
+    return from_string("goto " + label + ";");
+  } else {
+    let cond = t.cond;
+    let if_true = t.if_true;
+    let if_false = t.if_false;
+    return concat_join(
+      toList([
+        concat3(toList([from_string("if "), format_expr2(cond)])),
+        with_indent(format_tail(if_true), 2),
+        from_string("else"),
+        with_indent(format_tail(if_false), 2)
+      ]),
+      toList([line])
+    );
+  }
+}
+function format_block(name, contents) {
+  let label = concat3(toList([from_string(name + ":"), line]));
+  let _pipe = contents;
+  let _pipe$1 = format_tail(_pipe);
+  let _pipe$2 = prepend4(_pipe$1, label);
+  let _pipe$3 = nest(_pipe$2, 2);
+  let _pipe$4 = append_docs(_pipe$3, toList([line, line]));
+  return group(_pipe$4);
+}
+function format_program2(input) {
+  let _pipe = input.body;
+  let _pipe$1 = map_to_list(_pipe);
+  let _pipe$2 = map(
+    _pipe$1,
+    (item) => {
+      return format_block(item[0], item[1]);
+    }
+  );
+  return concat3(_pipe$2);
+}
 
-// build/dev/javascript/eoc/eoc/langs/l_mon_while.mjs
+// build/dev/javascript/eoc/eoc/langs/l_mon_alloc.mjs
 var Int3 = class extends CustomType {
   constructor(value) {
     super();
     this.value = value;
   }
 };
-var Var3 = class extends CustomType {
+var Var2 = class extends CustomType {
   constructor(name) {
     super();
     this.name = name;
@@ -9741,6 +8035,27 @@ var Cmp3 = class extends CustomType {
     this.op = op;
     this.a = a2;
     this.b = b;
+  }
+};
+var VectorLength3 = class extends CustomType {
+  constructor(v) {
+    super();
+    this.v = v;
+  }
+};
+var VectorRef3 = class extends CustomType {
+  constructor(v, index4) {
+    super();
+    this.v = v;
+    this.index = index4;
+  }
+};
+var VectorSet3 = class extends CustomType {
+  constructor(v, index4, value) {
+    super();
+    this.v = v;
+    this.index = index4;
+    this.value = value;
   }
 };
 var Atomic = class extends CustomType {
@@ -9798,6 +8113,25 @@ var WhileLoop2 = class extends CustomType {
     this.body = body;
   }
 };
+var Collect2 = class extends CustomType {
+  constructor(amount) {
+    super();
+    this.amount = amount;
+  }
+};
+var Allocate2 = class extends CustomType {
+  constructor(amount, t) {
+    super();
+    this.amount = amount;
+    this.t = t;
+  }
+};
+var GlobalValue2 = class extends CustomType {
+  constructor(name) {
+    super();
+    this.name = name;
+  }
+};
 var Program2 = class extends CustomType {
   constructor(body) {
     super();
@@ -9806,7 +8140,7 @@ var Program2 = class extends CustomType {
 };
 
 // build/dev/javascript/eoc/eoc/passes/explicate_control.mjs
-var FILEPATH5 = "src/eoc/passes/explicate_control.gleam";
+var FILEPATH2 = "src/eoc/passes/explicate_control.gleam";
 function create_label(prefix, blocks) {
   let new_index = map_size(blocks) + 1;
   return prefix + "_" + to_string(new_index);
@@ -9823,7 +8157,7 @@ function convert_atm(input) {
   if (input instanceof Int3) {
     let i = input.value;
     return new Int2(i);
-  } else if (input instanceof Var3) {
+  } else if (input instanceof Var2) {
     let v = input.name;
     return new Variable(v);
   } else if (input instanceof Bool3) {
@@ -9841,7 +8175,7 @@ function explicate_pred(loop$cond, loop$if_true, loop$if_false, loop$blocks) {
     let blocks = loop$blocks;
     if (cond instanceof Atomic) {
       let $ = cond.value;
-      if ($ instanceof Var3) {
+      if ($ instanceof Var2) {
         let v = $.name;
         let $1 = create_block(if_true, blocks);
         let thn_block;
@@ -9873,9 +8207,9 @@ function explicate_pred(loop$cond, loop$if_true, loop$if_false, loop$blocks) {
       } else {
         throw makeError(
           "panic",
-          FILEPATH5,
+          FILEPATH2,
           "eoc/passes/explicate_control",
-          278,
+          345,
           "explicate_pred",
           "explicate_pred unhandled case",
           {}
@@ -9914,9 +8248,9 @@ function explicate_pred(loop$cond, loop$if_true, loop$if_false, loop$blocks) {
       } else {
         throw makeError(
           "panic",
-          FILEPATH5,
+          FILEPATH2,
           "eoc/passes/explicate_control",
-          278,
+          345,
           "explicate_pred",
           "explicate_pred unhandled case",
           {}
@@ -10000,9 +8334,9 @@ function explicate_pred(loop$cond, loop$if_true, loop$if_false, loop$blocks) {
     } else {
       throw makeError(
         "panic",
-        FILEPATH5,
+        FILEPATH2,
         "eoc/passes/explicate_control",
-        278,
+        345,
         "explicate_pred",
         "explicate_pred unhandled case",
         {}
@@ -10073,7 +8407,7 @@ function explicate_assign(loop$expr, loop$v, loop$cont, loop$blocks) {
           ),
           blocks
         ];
-      } else {
+      } else if ($ instanceof Cmp3) {
         let op = $.op;
         let a2 = $.a;
         let b = $.b;
@@ -10082,6 +8416,53 @@ function explicate_assign(loop$expr, loop$v, loop$cont, loop$blocks) {
             new Assign(
               v,
               new Prim2(new Cmp2(op, convert_atm(a2), convert_atm(b)))
+            ),
+            cont
+          ),
+          blocks
+        ];
+      } else if ($ instanceof VectorLength3) {
+        let vector = $.v;
+        return [
+          new Seq(
+            new Assign(
+              v,
+              new Prim2(new VectorLength2(convert_atm(vector)))
+            ),
+            cont
+          ),
+          blocks
+        ];
+      } else if ($ instanceof VectorRef3) {
+        let vector = $.v;
+        let index4 = $.index;
+        return [
+          new Seq(
+            new Assign(
+              v,
+              new Prim2(
+                new VectorRef2(convert_atm(vector), convert_atm(index4))
+              )
+            ),
+            cont
+          ),
+          blocks
+        ];
+      } else {
+        let vector = $.v;
+        let index4 = $.index;
+        let value = $.value;
+        return [
+          new Seq(
+            new Assign(
+              v,
+              new Prim2(
+                new VectorSet2(
+                  convert_atm(vector),
+                  convert_atm(index4),
+                  convert_atm(value)
+                )
+              )
             ),
             cont
           ),
@@ -10149,7 +8530,7 @@ function explicate_assign(loop$expr, loop$v, loop$cont, loop$blocks) {
           return explicate_effect(stmt, acc[0], acc[1]);
         }
       );
-    } else {
+    } else if (expr instanceof WhileLoop2) {
       let condition = expr.condition;
       let body = expr.body;
       let loop_label = create_label("loop", blocks);
@@ -10176,6 +8557,22 @@ function explicate_assign(loop$expr, loop$v, loop$cont, loop$blocks) {
       blocks3 = $2[1];
       let blocks4 = insert(blocks3, loop_label, loop_condition);
       return [loop_start, blocks4];
+    } else if (expr instanceof Collect2) {
+      let amount = expr.amount;
+      return [new Seq(new Collect(amount), cont), blocks];
+    } else if (expr instanceof Allocate2) {
+      let amount = expr.amount;
+      let t = expr.t;
+      return [
+        new Seq(new Assign(v, new Allocate(amount, t)), cont),
+        blocks
+      ];
+    } else {
+      let name = expr.name;
+      return [
+        new Seq(new Assign(v, new GlobalValue(name)), cont),
+        blocks
+      ];
     }
   }
 }
@@ -10236,7 +8633,7 @@ function explicate_effect(expr, cont, blocks) {
         return explicate_effect(stmt, acc[0], acc[1]);
       }
     );
-  } else {
+  } else if (expr instanceof WhileLoop2) {
     let condition = expr.condition;
     let body = expr.body;
     let loop_label = create_label("loop", blocks);
@@ -10258,6 +8655,29 @@ function explicate_effect(expr, cont, blocks) {
     blocks3 = $2[1];
     let blocks4 = insert(blocks3, loop_label, loop_condition);
     return [loop_start, blocks4];
+  } else if (expr instanceof Collect2) {
+    let amount = expr.amount;
+    return [new Seq(new Collect(amount), cont), blocks];
+  } else if (expr instanceof Allocate2) {
+    throw makeError(
+      "panic",
+      FILEPATH2,
+      "eoc/passes/explicate_control",
+      409,
+      "explicate_effect",
+      "unexpected allocate in effect position",
+      {}
+    );
+  } else {
+    throw makeError(
+      "panic",
+      FILEPATH2,
+      "eoc/passes/explicate_control",
+      411,
+      "explicate_effect",
+      "unexpected global_value in effect position",
+      {}
+    );
   }
 }
 function explicate_tail(input, blocks) {
@@ -10266,7 +8686,7 @@ function explicate_tail(input, blocks) {
     if ($ instanceof Int3) {
       let i = $.value;
       return [new Return(new Atom(new Int2(i))), blocks];
-    } else if ($ instanceof Var3) {
+    } else if ($ instanceof Var2) {
       let v = $.name;
       return [new Return(new Atom(new Variable(v))), blocks];
     } else if ($ instanceof Bool3) {
@@ -10302,13 +8722,44 @@ function explicate_tail(input, blocks) {
         new Return(new Prim2(new Not2(convert_atm(value)))),
         blocks
       ];
-    } else {
+    } else if ($ instanceof Cmp3) {
       let op = $.op;
       let a2 = $.a;
       let b = $.b;
       return [
         new Return(
           new Prim2(new Cmp2(op, convert_atm(a2), convert_atm(b)))
+        ),
+        blocks
+      ];
+    } else if ($ instanceof VectorLength3) {
+      let v = $.v;
+      return [
+        new Return(new Prim2(new VectorLength2(convert_atm(v)))),
+        blocks
+      ];
+    } else if ($ instanceof VectorRef3) {
+      let v = $.v;
+      let index4 = $.index;
+      return [
+        new Return(
+          new Prim2(new VectorRef2(convert_atm(v), convert_atm(index4)))
+        ),
+        blocks
+      ];
+    } else {
+      let v = $.v;
+      let index4 = $.index;
+      let value = $.value;
+      return [
+        new Return(
+          new Prim2(
+            new VectorSet2(
+              convert_atm(v),
+              convert_atm(index4),
+              convert_atm(value)
+            )
+          )
         ),
         blocks
       ];
@@ -10361,7 +8812,7 @@ function explicate_tail(input, blocks) {
         return explicate_effect(stmt, acc[0], acc[1]);
       }
     );
-  } else {
+  } else if (input instanceof WhileLoop2) {
     let condition = input.condition;
     let body = input.body;
     let loop_label = create_label("loop", blocks);
@@ -10379,6 +8830,36 @@ function explicate_tail(input, blocks) {
     blocks2 = $1[1];
     let blocks3 = insert(blocks2, loop_label, loop_condition);
     return [loop_start, blocks3];
+  } else if (input instanceof Collect2) {
+    throw makeError(
+      "panic",
+      FILEPATH2,
+      "eoc/passes/explicate_control",
+      116,
+      "explicate_tail",
+      "unexpected GC internal in tail position",
+      {}
+    );
+  } else if (input instanceof Allocate2) {
+    throw makeError(
+      "panic",
+      FILEPATH2,
+      "eoc/passes/explicate_control",
+      116,
+      "explicate_tail",
+      "unexpected GC internal in tail position",
+      {}
+    );
+  } else {
+    throw makeError(
+      "panic",
+      FILEPATH2,
+      "eoc/passes/explicate_control",
+      116,
+      "explicate_tail",
+      "unexpected GC internal in tail position",
+      {}
+    );
   }
 }
 function explicate_control(input) {
@@ -10390,359 +8871,562 @@ function explicate_control(input) {
   return new CProgram(new_map(), insert(blocks, "start", tail));
 }
 
-// build/dev/javascript/eoc/eoc/passes/generate_prelude_and_conclusion.mjs
-function align(bytes) {
-  let $ = bytes % 16;
-  if ($ === 0) {
-    return bytes;
-  } else {
-    return (globalThis.Math.trunc(bytes / 16) + 1) * 16;
+// build/dev/javascript/eoc/eoc/langs/l_alloc.mjs
+var Read4 = class extends CustomType {
+};
+var Void4 = class extends CustomType {
+};
+var Negate3 = class extends CustomType {
+  constructor(value) {
+    super();
+    this.value = value;
   }
+};
+var Plus4 = class extends CustomType {
+  constructor(a2, b) {
+    super();
+    this.a = a2;
+    this.b = b;
+  }
+};
+var Minus4 = class extends CustomType {
+  constructor(a2, b) {
+    super();
+    this.a = a2;
+    this.b = b;
+  }
+};
+var Cmp4 = class extends CustomType {
+  constructor(op, a2, b) {
+    super();
+    this.op = op;
+    this.a = a2;
+    this.b = b;
+  }
+};
+var And2 = class extends CustomType {
+  constructor(a2, b) {
+    super();
+    this.a = a2;
+    this.b = b;
+  }
+};
+var Or2 = class extends CustomType {
+  constructor(a2, b) {
+    super();
+    this.a = a2;
+    this.b = b;
+  }
+};
+var Not4 = class extends CustomType {
+  constructor(a2) {
+    super();
+    this.a = a2;
+  }
+};
+var VectorLength4 = class extends CustomType {
+  constructor(v) {
+    super();
+    this.v = v;
+  }
+};
+var VectorRef4 = class extends CustomType {
+  constructor(v, index4) {
+    super();
+    this.v = v;
+    this.index = index4;
+  }
+};
+var VectorSet4 = class extends CustomType {
+  constructor(v, index4, value) {
+    super();
+    this.v = v;
+    this.index = index4;
+    this.value = value;
+  }
+};
+var Int4 = class extends CustomType {
+  constructor(value) {
+    super();
+    this.value = value;
+  }
+};
+var Bool4 = class extends CustomType {
+  constructor(value) {
+    super();
+    this.value = value;
+  }
+};
+var Prim4 = class extends CustomType {
+  constructor(op) {
+    super();
+    this.op = op;
+  }
+};
+var Var3 = class extends CustomType {
+  constructor(name) {
+    super();
+    this.name = name;
+  }
+};
+var Let3 = class extends CustomType {
+  constructor(var$2, binding, expr) {
+    super();
+    this.var = var$2;
+    this.binding = binding;
+    this.expr = expr;
+  }
+};
+var If4 = class extends CustomType {
+  constructor(condition, if_true, if_false) {
+    super();
+    this.condition = condition;
+    this.if_true = if_true;
+    this.if_false = if_false;
+  }
+};
+var SetBang3 = class extends CustomType {
+  constructor(var$2, value) {
+    super();
+    this.var = var$2;
+    this.value = value;
+  }
+};
+var GetBang2 = class extends CustomType {
+  constructor(var$2) {
+    super();
+    this.var = var$2;
+  }
+};
+var Begin3 = class extends CustomType {
+  constructor(stmts, result) {
+    super();
+    this.stmts = stmts;
+    this.result = result;
+  }
+};
+var WhileLoop3 = class extends CustomType {
+  constructor(condition, body) {
+    super();
+    this.condition = condition;
+    this.body = body;
+  }
+};
+var HasType2 = class extends CustomType {
+  constructor(value, t) {
+    super();
+    this.value = value;
+    this.t = t;
+  }
+};
+var Collect3 = class extends CustomType {
+  constructor(amount) {
+    super();
+    this.amount = amount;
+  }
+};
+var Allocate3 = class extends CustomType {
+  constructor(amount, t) {
+    super();
+    this.amount = amount;
+    this.t = t;
+  }
+};
+var GlobalValue3 = class extends CustomType {
+  constructor(name) {
+    super();
+    this.name = name;
+  }
+};
+var Program3 = class extends CustomType {
+  constructor(body) {
+    super();
+    this.body = body;
+  }
+};
+
+// build/dev/javascript/eoc/eoc/passes/expose_allocation.mjs
+var FILEPATH3 = "src/eoc/passes/expose_allocation.gleam";
+function fresh_var(prefix, counter) {
+  return [prefix + to_string(counter), counter + 1];
 }
-function compute_frame_alignment(input) {
-  let saved_regs = size(input.used_callee) + 1;
-  return align(8 * input.stack_vars + 8 * saved_regs) - 8 * saved_regs;
-}
-function get_saved_registers(input) {
-  return to_list(input.used_callee);
-}
-function generate_main(alignment, registers) {
-  let pushes = map(
-    prepend(new Rbp(), registers),
-    (r) => {
-      return new Pushq(new Reg(r));
+function expose_op(op, counter) {
+  if (op instanceof Read) {
+    return [new Read4(), counter];
+  } else if (op instanceof Void) {
+    return [new Void4(), counter];
+  } else if (op instanceof Negate) {
+    let value = op.value;
+    let $ = expose_expr(value, counter);
+    let value$1;
+    let c1;
+    value$1 = $[0];
+    c1 = $[1];
+    return [new Negate3(value$1), c1];
+  } else if (op instanceof Plus) {
+    let a2 = op.a;
+    let b = op.b;
+    let $ = expose_expr(a2, counter);
+    let a$1;
+    let c1;
+    a$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(b, c1);
+    let b$1;
+    let c2;
+    b$1 = $1[0];
+    c2 = $1[1];
+    return [new Plus4(a$1, b$1), c2];
+  } else if (op instanceof Minus) {
+    let a2 = op.a;
+    let b = op.b;
+    let $ = expose_expr(a2, counter);
+    let a$1;
+    let c1;
+    a$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(b, c1);
+    let b$1;
+    let c2;
+    b$1 = $1[0];
+    c2 = $1[1];
+    return [new Minus4(a$1, b$1), c2];
+  } else if (op instanceof Cmp) {
+    let op$1 = op.op;
+    let a2 = op.a;
+    let b = op.b;
+    let $ = expose_expr(a2, counter);
+    let a$1;
+    let c1;
+    a$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(b, c1);
+    let b$1;
+    let c2;
+    b$1 = $1[0];
+    c2 = $1[1];
+    return [new Cmp4(op$1, a$1, b$1), c2];
+  } else if (op instanceof And) {
+    let a2 = op.a;
+    let b = op.b;
+    let $ = expose_expr(a2, counter);
+    let a$1;
+    let c1;
+    a$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(b, c1);
+    let b$1;
+    let c2;
+    b$1 = $1[0];
+    c2 = $1[1];
+    return [new And2(a$1, b$1), c2];
+  } else if (op instanceof Or) {
+    let a2 = op.a;
+    let b = op.b;
+    let $ = expose_expr(a2, counter);
+    let a$1;
+    let c1;
+    a$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(b, c1);
+    let b$1;
+    let c2;
+    b$1 = $1[0];
+    c2 = $1[1];
+    return [new Or2(a$1, b$1), c2];
+  } else if (op instanceof Not) {
+    let a2 = op.a;
+    let $ = expose_expr(a2, counter);
+    let value;
+    let c1;
+    value = $[0];
+    c1 = $[1];
+    return [new Not4(value), c1];
+  } else if (op instanceof Vector) {
+    throw makeError(
+      "panic",
+      FILEPATH3,
+      "eoc/passes/expose_allocation",
+      99,
+      "expose_op",
+      "untagged vector initialization",
+      {}
+    );
+  } else if (op instanceof VectorLength) {
+    let v = op.v;
+    {
+      let $ = expose_expr(v, counter);
+      let v$1;
+      let c1;
+      v$1 = $[0];
+      c1 = $[1];
+      return [new VectorLength4(v$1), c1];
     }
-  );
-  let _block;
-  if (alignment === 0) {
-    _block = toList([]);
+  } else if (op instanceof VectorRef) {
+    let v = op.v;
+    let index4 = op.index;
+    let $ = expose_expr(v, counter);
+    let v$1;
+    let c1;
+    v$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(index4, c1);
+    let index$1;
+    let c2;
+    index$1 = $1[0];
+    c2 = $1[1];
+    return [new VectorRef4(v$1, index$1), c2];
   } else {
-    _block = toList([
-      new Subq(new Imm(alignment), new Reg(new Rsp()))
-    ]);
-  }
-  let aligner = _block;
-  let _block$1;
-  let _pipe = pushes;
-  let _pipe$1 = append3(
-    _pipe,
-    toList([new Movq(new Reg(new Rsp()), new Reg(new Rbp()))])
-  );
-  let _pipe$2 = append3(_pipe$1, aligner);
-  _block$1 = append3(_pipe$2, toList([new Jmp("start")]));
-  let instrs = _block$1;
-  return new Block(instrs);
-}
-function generate_conclusion(alignment, registers) {
-  let _block;
-  let _pipe = prepend(new Rbp(), registers);
-  let _pipe$1 = map(
-    _pipe,
-    (r) => {
-      return new Popq(new Reg(r));
-    }
-  );
-  _block = reverse(_pipe$1);
-  let pops = _block;
-  let _block$1;
-  if (alignment === 0) {
-    _block$1 = toList([]);
-  } else {
-    _block$1 = toList([
-      new Addq(new Imm(alignment), new Reg(new Rsp()))
-    ]);
-  }
-  let aligner = _block$1;
-  let _block$2;
-  let _pipe$2 = aligner;
-  let _pipe$3 = append3(_pipe$2, pops);
-  _block$2 = append3(_pipe$3, toList([new Retq()]));
-  let instrs = _block$2;
-  return new Block(instrs);
-}
-function generate_prelude_and_conclusion(input) {
-  let alignment = compute_frame_alignment(input);
-  let saved_regs = get_saved_registers(input);
-  let main3 = generate_main(alignment, saved_regs);
-  let conclusion = generate_conclusion(alignment, saved_regs);
-  let _block;
-  let _pipe = input.body;
-  let _pipe$1 = insert(_pipe, "main", main3);
-  _block = insert(_pipe$1, "conclusion", conclusion);
-  let body = _block;
-  return new X86Program(body, input.stack_vars, input.used_callee);
-}
-function bytereg_to_text(arg) {
-  let _block;
-  if (arg instanceof Ah) {
-    _block = "ah";
-  } else if (arg instanceof Al) {
-    _block = "al";
-  } else if (arg instanceof Bh) {
-    _block = "bh";
-  } else if (arg instanceof Bl) {
-    _block = "bl";
-  } else if (arg instanceof Ch) {
-    _block = "ch";
-  } else if (arg instanceof Cl) {
-    _block = "cl";
-  } else if (arg instanceof Dh) {
-    _block = "dh";
-  } else {
-    _block = "dl";
-  }
-  let r = _block;
-  return concat(toList(["%", r]));
-}
-function reg_to_text(arg) {
-  let _block;
-  if (arg instanceof Rsp) {
-    _block = "rsp";
-  } else if (arg instanceof Rbp) {
-    _block = "rbp";
-  } else if (arg instanceof Rax) {
-    _block = "rax";
-  } else if (arg instanceof Rbx) {
-    _block = "rbx";
-  } else if (arg instanceof Rcx) {
-    _block = "rcx";
-  } else if (arg instanceof Rdx) {
-    _block = "rdx";
-  } else if (arg instanceof Rsi) {
-    _block = "rsi";
-  } else if (arg instanceof Rdi) {
-    _block = "rdi";
-  } else if (arg instanceof R8) {
-    _block = "r8";
-  } else if (arg instanceof R9) {
-    _block = "r9";
-  } else if (arg instanceof R10) {
-    _block = "r10";
-  } else if (arg instanceof R11) {
-    _block = "r11";
-  } else if (arg instanceof R12) {
-    _block = "r12";
-  } else if (arg instanceof R13) {
-    _block = "r13";
-  } else if (arg instanceof R14) {
-    _block = "r14";
-  } else {
-    _block = "r15";
-  }
-  let r = _block;
-  return concat(toList(["%", r]));
-}
-function arg_to_text(arg) {
-  if (arg instanceof Imm) {
-    let i = arg.value;
-    let _pipe = identity("$");
-    return append(_pipe, to_string(i));
-  } else if (arg instanceof Reg) {
-    let r = arg.reg;
-    return reg_to_text(r);
-  } else {
-    let r = arg.reg;
-    let offset = arg.offset;
-    let _pipe = offset;
-    let _pipe$1 = to_string(_pipe);
-    let _pipe$2 = identity(_pipe$1);
-    let _pipe$3 = append(_pipe$2, "(");
-    let _pipe$4 = add(_pipe$3, reg_to_text(r));
-    return append(_pipe$4, ")");
+    let v = op.v;
+    let index4 = op.index;
+    let value = op.value;
+    let $ = expose_expr(v, counter);
+    let v$1;
+    let c1;
+    v$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(index4, c1);
+    let index$1;
+    let c2;
+    index$1 = $1[0];
+    c2 = $1[1];
+    let $2 = expose_expr(value, c2);
+    let value$1;
+    let c3;
+    value$1 = $2[0];
+    c3 = $2[1];
+    return [new VectorSet4(v$1, index$1, value$1), c3];
   }
 }
-function indent() {
-  return identity("    ");
-}
-function instr_to_text(instr) {
-  let _block;
-  if (instr instanceof Addq) {
-    let a2 = instr.a;
-    let b = instr.b;
-    let _pipe2 = toList([
-      identity("addq "),
-      arg_to_text(a2),
-      identity(", "),
-      arg_to_text(b)
-    ]);
-    _block = concat(_pipe2);
-  } else if (instr instanceof Subq) {
-    let a2 = instr.a;
-    let b = instr.b;
-    let _pipe2 = toList([
-      identity("subq "),
-      arg_to_text(a2),
-      identity(", "),
-      arg_to_text(b)
-    ]);
-    _block = concat(_pipe2);
-  } else if (instr instanceof Negq) {
-    let a2 = instr.a;
-    _block = join(
-      toList([identity("negq"), arg_to_text(a2)]),
-      " "
+function expose_expr(e, counter) {
+  if (e instanceof Int) {
+    let value = e.value;
+    return [new Int4(value), counter];
+  } else if (e instanceof Bool) {
+    let value = e.value;
+    return [new Bool4(value), counter];
+  } else if (e instanceof Prim) {
+    let op = e.op;
+    let $ = expose_op(op, counter);
+    let op$1;
+    let c1;
+    op$1 = $[0];
+    c1 = $[1];
+    return [new Prim4(op$1), c1];
+  } else if (e instanceof Var) {
+    let name = e.name;
+    return [new Var3(name), counter];
+  } else if (e instanceof Let) {
+    let var$2 = e.var;
+    let binding = e.binding;
+    let expr = e.expr;
+    let $ = expose_expr(binding, counter);
+    let binding$1;
+    let c1;
+    binding$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(expr, c1);
+    let expr$1;
+    let c2;
+    expr$1 = $1[0];
+    c2 = $1[1];
+    return [new Let3(var$2, binding$1, expr$1), c2];
+  } else if (e instanceof If) {
+    let condition = e.condition;
+    let if_true = e.if_true;
+    let if_false = e.if_false;
+    let $ = expose_expr(condition, counter);
+    let condition$1;
+    let c1;
+    condition$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(if_true, c1);
+    let if_true$1;
+    let c2;
+    if_true$1 = $1[0];
+    c2 = $1[1];
+    let $2 = expose_expr(if_false, c2);
+    let if_false$1;
+    let c3;
+    if_false$1 = $2[0];
+    c3 = $2[1];
+    return [new If4(condition$1, if_true$1, if_false$1), c3];
+  } else if (e instanceof SetBang) {
+    let var$2 = e.var;
+    let value = e.value;
+    let $ = expose_expr(value, counter);
+    let value$1;
+    let c1;
+    value$1 = $[0];
+    c1 = $[1];
+    return [new SetBang3(var$2, value$1), c1];
+  } else if (e instanceof Begin) {
+    let stmts = e.stmts;
+    let result = e.result;
+    let $ = map_fold(
+      stmts,
+      counter,
+      (c, e2) => {
+        return swap(expose_expr(e2, c));
+      }
     );
-  } else if (instr instanceof Movq) {
-    let a2 = instr.a;
-    let b = instr.b;
-    let _pipe2 = toList([
-      identity("movq "),
-      arg_to_text(a2),
-      identity(", "),
-      arg_to_text(b)
-    ]);
-    _block = concat(_pipe2);
-  } else if (instr instanceof Pushq) {
-    let a2 = instr.a;
-    _block = join(
-      toList([identity("pushq"), arg_to_text(a2)]),
-      " "
-    );
-  } else if (instr instanceof Popq) {
-    let a2 = instr.a;
-    _block = join(
-      toList([identity("popq"), arg_to_text(a2)]),
-      " "
-    );
-  } else if (instr instanceof Callq) {
-    let l = instr.label;
-    let _pipe2 = identity("callq ");
-    _block = append(_pipe2, l);
-  } else if (instr instanceof Retq) {
-    _block = identity("retq");
-  } else if (instr instanceof Jmp) {
-    let s = instr.label;
-    let _pipe2 = identity("jmp ");
-    _block = append(_pipe2, s);
-  } else if (instr instanceof Xorq) {
-    let a2 = instr.a;
-    let b = instr.b;
-    let _pipe2 = toList([
-      identity("xorq "),
-      arg_to_text(a2),
-      identity(", "),
-      arg_to_text(b)
-    ]);
-    _block = concat(_pipe2);
-  } else if (instr instanceof Cmpq) {
-    let a2 = instr.a;
-    let b = instr.b;
-    let _pipe2 = toList([
-      identity("cmpq "),
-      arg_to_text(a2),
-      identity(", "),
-      arg_to_text(b)
-    ]);
-    _block = concat(_pipe2);
-  } else if (instr instanceof Set3) {
-    let cmp = instr.cmp;
-    let arg = instr.arg;
-    let _block$1;
-    if (cmp instanceof E) {
-      _block$1 = identity("sete ");
-    } else if (cmp instanceof L) {
-      _block$1 = identity("setl ");
-    } else if (cmp instanceof Le) {
-      _block$1 = identity("setle ");
-    } else if (cmp instanceof G) {
-      _block$1 = identity("setg ");
+    let counter1;
+    let stmts$1;
+    counter1 = $[0];
+    stmts$1 = $[1];
+    let $1 = expose_expr(result, counter1);
+    let result$1;
+    let counter2;
+    result$1 = $1[0];
+    counter2 = $1[1];
+    return [new Begin3(stmts$1, result$1), counter2];
+  } else if (e instanceof WhileLoop) {
+    let condition = e.condition;
+    let body = e.body;
+    let $ = expose_expr(condition, counter);
+    let condition$1;
+    let c1;
+    condition$1 = $[0];
+    c1 = $[1];
+    let $1 = expose_expr(body, c1);
+    let body$1;
+    let c2;
+    body$1 = $1[0];
+    c2 = $1[1];
+    return [new WhileLoop3(condition$1, body$1), c2];
+  } else {
+    let $ = e.value;
+    if ($ instanceof Prim) {
+      let $1 = $.op;
+      if ($1 instanceof Vector) {
+        let t = e.t;
+        let es = $1.fields;
+        let len = length2(es);
+        let bytes = (len + 1) * 8;
+        let $2 = map_fold(
+          es,
+          counter,
+          (c, e2) => {
+            let $32 = expose_expr(e2, c);
+            let en;
+            let cn;
+            en = $32[0];
+            cn = $32[1];
+            let $42 = fresh_var("vecinit", cn);
+            let var$2;
+            let cn$1;
+            var$2 = $42[0];
+            cn$1 = $42[1];
+            return [cn$1, [var$2, en]];
+          }
+        );
+        let c1;
+        let exprs;
+        c1 = $2[0];
+        exprs = $2[1];
+        let $3 = fresh_var("alloc", c1);
+        let alloc;
+        let c2;
+        alloc = $3[0];
+        c2 = $3[1];
+        let $4 = fold_right(
+          exprs,
+          [new Var3(alloc), c2, len - 1],
+          (acc, varexp) => {
+            let nested2 = acc[0];
+            let field2 = acc[2];
+            let $52 = fresh_var("_", acc[1]);
+            let ignore3;
+            let count;
+            ignore3 = $52[0];
+            count = $52[1];
+            let set = new Prim4(
+              new VectorSet4(
+                new Var3(alloc),
+                new Int4(field2),
+                new Var3(varexp[0])
+              )
+            );
+            return [new Let3(ignore3, set, nested2), count, field2 - 1];
+          }
+        );
+        let set_fields;
+        let c3;
+        set_fields = $4[0];
+        c3 = $4[1];
+        let $5 = fresh_var("_", c3);
+        let ignore2;
+        let c4;
+        ignore2 = $5[0];
+        c4 = $5[1];
+        let gc = new If4(
+          new Prim4(
+            new Cmp4(
+              new Lt2(),
+              new Prim4(
+                new Plus4(
+                  new GlobalValue3("free_ptr"),
+                  new Int4(bytes)
+                )
+              ),
+              new GlobalValue3("fromspace_end")
+            )
+          ),
+          new Prim4(new Void4()),
+          new Collect3(bytes)
+        );
+        let gc_alloc_set = new Let3(
+          ignore2,
+          gc,
+          new Let3(alloc, new Allocate3(len, t), set_fields)
+        );
+        return [
+          fold_right(
+            exprs,
+            gc_alloc_set,
+            (acc, varexpr) => {
+              return new Let3(varexpr[0], varexpr[1], acc);
+            }
+          ),
+          c4
+        ];
+      } else {
+        throw makeError(
+          "panic",
+          FILEPATH3,
+          "eoc/passes/expose_allocation",
+          69,
+          "expose_expr",
+          "unexpected type wrapper",
+          {}
+        );
+      }
     } else {
-      _block$1 = identity("setge ");
+      throw makeError(
+        "panic",
+        FILEPATH3,
+        "eoc/passes/expose_allocation",
+        69,
+        "expose_expr",
+        "unexpected type wrapper",
+        {}
+      );
     }
-    let _pipe2 = _block$1;
-    _block = add(_pipe2, bytereg_to_text(arg));
-  } else if (instr instanceof Movzbq) {
-    let a2 = instr.a;
-    let b = instr.b;
-    let _pipe2 = toList([
-      identity("movzbq "),
-      bytereg_to_text(a2),
-      identity(", "),
-      arg_to_text(b)
-    ]);
-    _block = concat(_pipe2);
-  } else {
-    let cmp = instr.cmp;
-    let label = instr.label;
-    let _block$1;
-    if (cmp instanceof E) {
-      _block$1 = identity("je ");
-    } else if (cmp instanceof L) {
-      _block$1 = identity("jl ");
-    } else if (cmp instanceof Le) {
-      _block$1 = identity("jle ");
-    } else if (cmp instanceof G) {
-      _block$1 = identity("jg ");
-    } else {
-      _block$1 = identity("jge ");
-    }
-    let _pipe2 = _block$1;
-    _block = append(_pipe2, label);
   }
-  let text4 = _block;
-  let _pipe = toList([indent(), text4]);
-  return concat(_pipe);
 }
-function block_to_text(kv, entry) {
-  let label;
-  let block;
-  label = kv[0];
-  block = kv[1];
-  let _block;
-  let $ = label === entry;
-  if ($) {
-    _block = toList([
-      (() => {
-        let _pipe2 = "    .globl ";
-        let _pipe$12 = identity(_pipe2);
-        return append(_pipe$12, label);
-      })(),
-      (() => {
-        let _pipe2 = label;
-        let _pipe$12 = identity(_pipe2);
-        return append(_pipe$12, ":");
-      })()
-    ]);
-  } else {
-    _block = toList([
-      (() => {
-        let _pipe2 = label;
-        let _pipe$12 = identity(_pipe2);
-        return append(_pipe$12, ":");
-      })()
-    ]);
-  }
-  let prelude = _block;
-  let instrs = map(block.body, instr_to_text);
-  let _pipe = prelude;
-  let _pipe$1 = append3(_pipe, instrs);
-  return join(_pipe$1, "\n");
-}
-function program_to_text(input, entry) {
+function expose_allocation(input) {
   let _pipe = input.body;
-  let _pipe$1 = map_to_list(_pipe);
-  let _pipe$2 = sort(
-    _pipe$1,
-    (a2, b) => {
-      return compare2(first2(a2), first2(b));
-    }
-  );
-  let _pipe$3 = map(
-    _pipe$2,
-    (_capture) => {
-      return block_to_text(_capture, entry);
-    }
-  );
-  let _pipe$4 = join(_pipe$3, "\n\n");
-  return identity(_pipe$4);
+  let _pipe$1 = expose_expr(_pipe, 1);
+  let _pipe$2 = first2(_pipe$1);
+  return new Program3(_pipe$2);
 }
 
 // build/dev/javascript/iv/iv_ffi.mjs
 var empty3 = () => [];
 var singleton = (x) => [x];
-var append4 = (xs, x) => [...xs, x];
+var append5 = (xs, x) => [...xs, x];
 var get1 = (idx, xs) => xs[idx - 1];
-var length2 = (xs) => xs.length;
+var length3 = (xs) => xs.length;
 var bsl = (a2, b) => a2 << b;
 var bsr = (a2, b) => a2 >> b;
 
@@ -10767,15 +9451,15 @@ function fold_loop2(loop$xs, loop$state, loop$idx, loop$len, loop$fun) {
   }
 }
 function fold_skip_first(xs, state, fun) {
-  let len = length2(xs);
+  let len = length3(xs);
   return fold_loop2(xs, state, 2, len, fun);
 }
 
 // build/dev/javascript/iv/iv/internal/node.mjs
 var Balanced = class extends CustomType {
-  constructor(size4, children) {
+  constructor(size3, children) {
     super();
-    this.size = size4;
+    this.size = size3;
     this.children = children;
   }
 };
@@ -10795,26 +9479,26 @@ var Leaf = class extends CustomType {
 function leaf(items) {
   return new Leaf(items);
 }
-function size3(node) {
+function size2(node) {
   if (node instanceof Balanced) {
     let size$1 = node.size;
     return size$1;
   } else if (node instanceof Unbalanced) {
     let sizes = node.sizes;
-    return get1(length2(sizes), sizes);
+    return get1(length3(sizes), sizes);
   } else {
     let children = node.children;
-    return length2(children);
+    return length3(children);
   }
 }
-function compute_sizes(nodes2) {
-  let first_size = size3(get1(1, nodes2));
+function compute_sizes(nodes) {
+  let first_size = size2(get1(1, nodes));
   return fold_skip_first(
-    nodes2,
+    nodes,
     singleton(first_size),
     (sizes, node) => {
-      let size$1 = get1(length2(sizes), sizes) + size3(node);
-      return append4(sizes, size$1);
+      let size$1 = get1(length3(sizes), sizes) + size2(node);
+      return append5(sizes, size$1);
     }
   );
 }
@@ -10833,17 +9517,17 @@ function find_size(loop$sizes, loop$size_idx_plus_one, loop$index) {
     }
   }
 }
-function balanced(shift, nodes2) {
-  let len = length2(nodes2);
-  let last_child = get1(len, nodes2);
+function balanced(shift, nodes) {
+  let len = length3(nodes);
+  let last_child = get1(len, nodes);
   let max_size = bsl(1, shift);
-  let size$1 = max_size * (len - 1) + size3(last_child);
-  return new Balanced(size$1, nodes2);
+  let size$1 = max_size * (len - 1) + size2(last_child);
+  return new Balanced(size$1, nodes);
 }
-function branch(shift, nodes2) {
-  let len = length2(nodes2);
+function branch(shift, nodes) {
+  let len = length3(nodes);
   let max_size = bsl(1, shift);
-  let sizes = compute_sizes(nodes2);
+  let sizes = compute_sizes(nodes);
   let _block;
   if (len === 1) {
     _block = 0;
@@ -10854,9 +9538,9 @@ function branch(shift, nodes2) {
   let is_balanced = prefix_size === max_size * (len - 1);
   if (is_balanced) {
     let size$1 = get1(len, sizes);
-    return new Balanced(size$1, nodes2);
+    return new Balanced(size$1, nodes);
   } else {
-    return new Unbalanced(sizes, nodes2);
+    return new Unbalanced(sizes, nodes);
   }
 }
 var branch_bits = 5;
@@ -10899,23 +9583,23 @@ var branch_factor = 32;
 
 // build/dev/javascript/iv/iv/internal/builder.mjs
 var Builder = class extends CustomType {
-  constructor(nodes2, items, push_node, push_item) {
+  constructor(nodes, items, push_node, push_item) {
     super();
-    this.nodes = nodes2;
+    this.nodes = nodes;
     this.items = items;
     this.push_node = push_node;
     this.push_item = push_item;
   }
 };
-function append_node(nodes2, node, shift) {
-  if (nodes2 instanceof Empty) {
+function append_node(nodes, node, shift) {
+  if (nodes instanceof Empty) {
     return toList([singleton(node)]);
   } else {
-    let nodes$1 = nodes2.head;
-    let rest = nodes2.tail;
-    let $ = length2(nodes$1) < branch_factor;
+    let nodes$1 = nodes.head;
+    let rest = nodes.tail;
+    let $ = length3(nodes$1) < branch_factor;
     if ($) {
-      return prepend(append4(nodes$1, node), rest);
+      return prepend(append5(nodes$1, node), rest);
     } else {
       let shift$1 = shift + branch_bits;
       let new_node = balanced(shift$1, nodes$1);
@@ -10926,45 +9610,45 @@ function append_node(nodes2, node, shift) {
     }
   }
 }
-function new$10() {
-  return new Builder(toList([]), empty3(), append_node, append4);
+function new$8() {
+  return new Builder(toList([]), empty3(), append_node, append5);
 }
 function push(builder, item) {
-  let nodes2;
+  let nodes;
   let items;
   let push_node;
   let push_item;
-  nodes2 = builder.nodes;
+  nodes = builder.nodes;
   items = builder.items;
   push_node = builder.push_node;
   push_item = builder.push_item;
-  let $ = length2(items) === branch_factor;
+  let $ = length3(items) === branch_factor;
   if ($) {
     let leaf2 = leaf(items);
     return new Builder(
-      push_node(nodes2, leaf2, 0),
+      push_node(nodes, leaf2, 0),
       singleton(item),
       push_node,
       push_item
     );
   } else {
-    return new Builder(nodes2, push_item(items, item), push_node, push_item);
+    return new Builder(nodes, push_item(items, item), push_node, push_item);
   }
 }
 function compress_nodes(loop$nodes, loop$push_node, loop$shift) {
   while (true) {
-    let nodes2 = loop$nodes;
+    let nodes = loop$nodes;
     let push_node = loop$push_node;
     let shift = loop$shift;
-    if (nodes2 instanceof Empty) {
-      return new Error2(void 0);
+    if (nodes instanceof Empty) {
+      return new Error(void 0);
     } else {
-      let $ = nodes2.tail;
+      let $ = nodes.tail;
       if ($ instanceof Empty) {
-        let root3 = nodes2.head;
+        let root3 = nodes.head;
         return new Ok([shift, root3]);
       } else {
-        let nodes$1 = nodes2.head;
+        let nodes$1 = nodes.head;
         let rest = $;
         let shift$1 = shift + branch_bits;
         let compressed = push_node(
@@ -10980,19 +9664,19 @@ function compress_nodes(loop$nodes, loop$push_node, loop$shift) {
   }
 }
 function build2(builder) {
-  let nodes2;
+  let nodes;
   let items;
   let push_node;
-  nodes2 = builder.nodes;
+  nodes = builder.nodes;
   items = builder.items;
   push_node = builder.push_node;
-  let items_len = length2(items);
+  let items_len = length3(items);
   let _block;
   let $ = items_len > 0;
   if ($) {
-    _block = push_node(nodes2, leaf(items), 0);
+    _block = push_node(nodes, leaf(items), 0);
   } else {
-    _block = nodes2;
+    _block = nodes;
   }
   let nodes$1 = _block;
   return compress_nodes(nodes$1, push_node, 0);
@@ -11008,42 +9692,42 @@ var Array2 = class extends CustomType {
     this.root = root3;
   }
 };
-function array3(shift, nodes2) {
-  let $ = length2(nodes2);
+function array3(shift, nodes) {
+  let $ = length3(nodes);
   if ($ === 0) {
     return new Empty2();
   } else if ($ === 1) {
-    return new Array2(shift, get1(1, nodes2));
+    return new Array2(shift, get1(1, nodes));
   } else {
     let shift$1 = shift + branch_bits;
-    return new Array2(shift$1, branch(shift$1, nodes2));
+    return new Array2(shift$1, branch(shift$1, nodes));
   }
 }
 function from_list3(list4) {
   let $ = (() => {
     let _pipe = list4;
-    let _pipe$1 = fold2(_pipe, new$10(), push);
+    let _pipe$1 = fold2(_pipe, new$8(), push);
     return build2(_pipe$1);
   })();
   if ($ instanceof Ok) {
     let shift = $[0][0];
-    let nodes2 = $[0][1];
-    return array3(shift, nodes2);
+    let nodes = $[0][1];
+    return array3(shift, nodes);
   } else {
     return new Empty2();
   }
 }
 function get3(array4, index4) {
   if (array4 instanceof Empty2) {
-    return new Error2(void 0);
+    return new Error(void 0);
   } else {
     let shift = array4.shift;
     let root3 = array4.root;
-    let $ = 0 <= index4 && index4 < size3(root3);
+    let $ = 0 <= index4 && index4 < size2(root3);
     if ($) {
       return new Ok(get2(root3, shift, index4));
     } else {
-      return new Error2(void 0);
+      return new Error(void 0);
     }
   }
 }
@@ -11061,7 +9745,7 @@ function compile(pattern, options) {
     return new Ok(new RegExp(pattern, flags));
   } catch (error) {
     const number = (error.columnNumber || 0) | 0;
-    return new Error2(new CompileError(error.message, number));
+    return new Error(new CompileError(error.message, number));
   }
 }
 
@@ -11083,7 +9767,7 @@ var Options = class extends CustomType {
 function compile2(pattern, options) {
   return compile(pattern, options);
 }
-function from_string(pattern) {
+function from_string2(pattern) {
   return compile2(pattern, new Options(false, false));
 }
 function check2(regexp, string5) {
@@ -11091,7 +9775,7 @@ function check2(regexp, string5) {
 }
 
 // build/dev/javascript/nibble/nibble/lexer.mjs
-var FILEPATH6 = "src/nibble/lexer.gleam";
+var FILEPATH4 = "src/nibble/lexer.gleam";
 var Matcher = class extends CustomType {
   constructor(run4) {
     super();
@@ -11191,14 +9875,14 @@ function token2(str, value) {
   );
 }
 function identifier(start4, inner, reserved, to_value) {
-  let $ = from_string("^" + start4 + inner + "*$");
+  let $ = from_string2("^" + start4 + inner + "*$");
   let ident;
   if ($ instanceof Ok) {
     ident = $[0];
   } else {
     throw makeError(
       "let_assert",
-      FILEPATH6,
+      FILEPATH4,
       "nibble/lexer",
       486,
       "identifier",
@@ -11212,14 +9896,14 @@ function identifier(start4, inner, reserved, to_value) {
       }
     );
   }
-  let $1 = from_string(inner);
+  let $1 = from_string2(inner);
   let inner$1;
   if ($1 instanceof Ok) {
     inner$1 = $1[0];
   } else {
     throw makeError(
       "let_assert",
-      FILEPATH6,
+      FILEPATH4,
       "nibble/lexer",
       487,
       "identifier",
@@ -11255,14 +9939,14 @@ function identifier(start4, inner, reserved, to_value) {
   );
 }
 function whitespace(token4) {
-  let $ = from_string("^\\s+$");
+  let $ = from_string2("^\\s+$");
   let whitespace$1;
   if ($ instanceof Ok) {
     whitespace$1 = $[0];
   } else {
     throw makeError(
       "let_assert",
-      FILEPATH6,
+      FILEPATH4,
       "nibble/lexer",
       557,
       "whitespace",
@@ -11294,13 +9978,13 @@ function do_match(mode, str, lookahead, matchers) {
     (_, matcher) => {
       let $ = matcher.run(mode, str, lookahead);
       if ($ instanceof Keep) {
-        let match2 = $;
-        return new Stop(match2);
+        let match = $;
+        return new Stop(match);
       } else if ($ instanceof Skip) {
         return new Stop(new Skip());
       } else if ($ instanceof Drop) {
-        let match2 = $;
-        return new Stop(match2);
+        let match = $;
+        return new Stop(match);
       } else {
         return new Continue(new NoMatch());
       }
@@ -11344,11 +10028,11 @@ function do_run(loop$lexer, loop$mode, loop$state) {
           let token$1 = new Token(span2, lexeme, value);
           return new Ok(reverse(prepend(token$1, state.tokens)));
         } else if ($3 instanceof Skip) {
-          return new Error2(new NoMatchFound(start_row, start_col, lexeme));
+          return new Error(new NoMatchFound(start_row, start_col, lexeme));
         } else if ($3 instanceof Drop) {
           return new Ok(reverse(state.tokens));
         } else {
-          return new Error2(new NoMatchFound(start_row, start_col, lexeme));
+          return new Error(new NoMatchFound(start_row, start_col, lexeme));
         }
       }
     } else {
@@ -11417,14 +10101,14 @@ function run2(source, lexer) {
   })(_pipe$1);
 }
 function int_with_separator(separator, to_value) {
-  let $ = from_string("[0-9" + separator + "]");
+  let $ = from_string2("[0-9" + separator + "]");
   let digit;
   if ($ instanceof Ok) {
     digit = $[0];
   } else {
     throw makeError(
       "let_assert",
-      FILEPATH6,
+      FILEPATH4,
       "nibble/lexer",
       356,
       "int_with_separator",
@@ -11438,14 +10122,14 @@ function int_with_separator(separator, to_value) {
       }
     );
   }
-  let $1 = from_string("^-*[0-9" + separator + "]+$");
+  let $1 = from_string2("^-*[0-9" + separator + "]+$");
   let integer2;
   if ($1 instanceof Ok) {
     integer2 = $1[0];
   } else {
     throw makeError(
       "let_assert",
-      FILEPATH6,
+      FILEPATH4,
       "nibble/lexer",
       357,
       "int_with_separator",
@@ -11477,7 +10161,7 @@ function int_with_separator(separator, to_value) {
         } else {
           throw makeError(
             "let_assert",
-            FILEPATH6,
+            FILEPATH4,
             "nibble/lexer",
             364,
             "int_with_separator",
@@ -11545,7 +10229,7 @@ var Continue2 = class extends CustomType {
     this[0] = $0;
   }
 };
-var Break = class extends CustomType {
+var Break2 = class extends CustomType {
   constructor($0) {
     super();
     this[0] = $0;
@@ -11783,7 +10467,7 @@ function run3(src, parser) {
     return new Ok(a2);
   } else {
     let bag = $[1];
-    return new Error2(to_deadends(bag, toList([])));
+    return new Error(to_deadends(bag, toList([])));
   }
 }
 function add_bag_to_step(step, left) {
@@ -11826,7 +10510,7 @@ function more(x, parser, separator) {
     toList([x]),
     (xs) => {
       let break$ = () => {
-        return return$(new Break(reverse(xs)));
+        return return$(new Break2(reverse(xs)));
       };
       let continue$ = do$(
         separator,
@@ -11874,7 +10558,7 @@ function many1(parser) {
 }
 
 // build/dev/javascript/eoc/eoc/passes/parse.mjs
-var FILEPATH7 = "src/eoc/passes/parse.gleam";
+var FILEPATH5 = "src/eoc/passes/parse.gleam";
 var LParen = class extends CustomType {
 };
 var RParen = class extends CustomType {
@@ -11901,7 +10585,7 @@ var Keyword = class extends CustomType {
     this[0] = $0;
   }
 };
-var Cmp4 = class extends CustomType {
+var Cmp5 = class extends CustomType {
   constructor($0) {
     super();
     this[0] = $0;
@@ -11913,29 +10597,37 @@ var Identifier = class extends CustomType {
     this[0] = $0;
   }
 };
-var Read4 = class extends CustomType {
+var Read5 = class extends CustomType {
 };
-var Let3 = class extends CustomType {
+var Let4 = class extends CustomType {
 };
-var Plus4 = class extends CustomType {
+var Plus5 = class extends CustomType {
 };
-var Minus4 = class extends CustomType {
+var Minus5 = class extends CustomType {
 };
-var And2 = class extends CustomType {
+var And3 = class extends CustomType {
 };
-var Or2 = class extends CustomType {
+var Or3 = class extends CustomType {
 };
-var Not4 = class extends CustomType {
+var Not5 = class extends CustomType {
 };
-var If4 = class extends CustomType {
+var If5 = class extends CustomType {
 };
-var SetBang3 = class extends CustomType {
+var SetBang4 = class extends CustomType {
 };
-var Begin3 = class extends CustomType {
+var Begin4 = class extends CustomType {
 };
 var While = class extends CustomType {
 };
-var Void4 = class extends CustomType {
+var Void5 = class extends CustomType {
+};
+var Vector2 = class extends CustomType {
+};
+var VectorRef5 = class extends CustomType {
+};
+var VectorSet5 = class extends CustomType {
+};
+var VectorLength5 = class extends CustomType {
 };
 function tokens(input) {
   let l = simple2(
@@ -11956,39 +10648,47 @@ function tokens(input) {
         new$(),
         (text4) => {
           if (text4 === "+") {
-            return new Keyword(new Plus4());
+            return new Keyword(new Plus5());
           } else if (text4 === "-") {
-            return new Keyword(new Minus4());
+            return new Keyword(new Minus5());
           } else if (text4 === ">=") {
-            return new Cmp4(new Gte());
+            return new Cmp5(new Gte());
           } else if (text4 === "<=") {
-            return new Cmp4(new Lte());
+            return new Cmp5(new Lte());
           } else if (text4 === ">") {
-            return new Cmp4(new Gt2());
+            return new Cmp5(new Gt2());
           } else if (text4 === "<") {
-            return new Cmp4(new Lt2());
+            return new Cmp5(new Lt2());
           } else if (text4 === "if") {
-            return new Keyword(new If4());
+            return new Keyword(new If5());
           } else if (text4 === "eq?") {
-            return new Cmp4(new Eq2());
+            return new Cmp5(new Eq2());
           } else if (text4 === "set!") {
-            return new Keyword(new SetBang3());
+            return new Keyword(new SetBang4());
           } else if (text4 === "read") {
-            return new Keyword(new Read4());
+            return new Keyword(new Read5());
           } else if (text4 === "let") {
-            return new Keyword(new Let3());
+            return new Keyword(new Let4());
           } else if (text4 === "and") {
-            return new Keyword(new And2());
+            return new Keyword(new And3());
           } else if (text4 === "or") {
-            return new Keyword(new Or2());
+            return new Keyword(new Or3());
           } else if (text4 === "not") {
-            return new Keyword(new Not4());
+            return new Keyword(new Not5());
           } else if (text4 === "begin") {
-            return new Keyword(new Begin3());
+            return new Keyword(new Begin4());
           } else if (text4 === "while") {
             return new Keyword(new While());
           } else if (text4 === "void") {
-            return new Keyword(new Void4());
+            return new Keyword(new Void5());
+          } else if (text4 === "vector") {
+            return new Keyword(new Vector2());
+          } else if (text4 === "vector-ref") {
+            return new Keyword(new VectorRef5());
+          } else if (text4 === "vector-set!") {
+            return new Keyword(new VectorSet5());
+          } else if (text4 === "vector-length") {
+            return new Keyword(new VectorLength5());
           } else {
             let id = text4;
             return new Identifier(id);
@@ -12001,7 +10701,7 @@ function tokens(input) {
 }
 function read_op() {
   return do$(
-    token3(new Keyword(new Read4())),
+    token3(new Keyword(new Read5())),
     (_) => {
       return return$(new Read());
     }
@@ -12009,7 +10709,7 @@ function read_op() {
 }
 function void_op() {
   return do$(
-    token3(new Keyword(new Void4())),
+    token3(new Keyword(new Void5())),
     (_) => {
       return return$(new Void());
     }
@@ -12019,7 +10719,7 @@ function cmp_inner() {
   return take_map(
     "expected comparison op",
     (tok) => {
-      if (tok instanceof Cmp4) {
+      if (tok instanceof Cmp5) {
         let op = tok[0];
         return new Some(op);
       } else {
@@ -12074,7 +10774,7 @@ function variable() {
 }
 function begin_expr() {
   return do$(
-    token3(new Keyword(new Begin3())),
+    token3(new Keyword(new Begin4())),
     (_) => {
       return do$(
         many1(expression()),
@@ -12085,17 +10785,17 @@ function begin_expr() {
           if ($ instanceof Empty) {
             throw makeError(
               "let_assert",
-              FILEPATH7,
+              FILEPATH5,
               "eoc/passes/parse",
-              112,
+              120,
               "begin_expr",
               "Pattern match failed, no pattern matched the value.",
               {
                 value: $,
-                start: 2483,
-                end: 2533,
-                pattern_start: 2494,
-                pattern_end: 2511
+                start: 2717,
+                end: 2767,
+                pattern_start: 2728,
+                pattern_end: 2745
               }
             );
           } else {
@@ -12169,7 +10869,7 @@ function while_expr() {
 }
 function set_expr() {
   return do$(
-    token3(new Keyword(new SetBang3())),
+    token3(new Keyword(new SetBang4())),
     (_) => {
       return do$(
         identifier2(),
@@ -12187,7 +10887,7 @@ function set_expr() {
 }
 function if_expr() {
   return do$(
-    token3(new Keyword(new If4())),
+    token3(new Keyword(new If5())),
     (_) => {
       return do$(
         expression(),
@@ -12210,7 +10910,7 @@ function if_expr() {
 }
 function let_expr() {
   return do$(
-    token3(new Keyword(new Let3())),
+    token3(new Keyword(new Let4())),
     (_) => {
       return do$(
         token3(new LParen()),
@@ -12255,7 +10955,7 @@ function let_expr() {
 }
 function minus_op() {
   return do$(
-    token3(new Keyword(new Minus4())),
+    token3(new Keyword(new Minus5())),
     (_) => {
       return do$(
         expression(),
@@ -12273,7 +10973,7 @@ function minus_op() {
 }
 function negate_op() {
   return do$(
-    token3(new Keyword(new Minus4())),
+    token3(new Keyword(new Minus5())),
     (_) => {
       return do$(
         expression(),
@@ -12286,7 +10986,7 @@ function negate_op() {
 }
 function plus_op() {
   return do$(
-    token3(new Keyword(new Plus4())),
+    token3(new Keyword(new Plus5())),
     (_) => {
       return do$(
         expression(),
@@ -12295,6 +10995,73 @@ function plus_op() {
             expression(),
             (arg2) => {
               return return$(new Plus(arg1, arg2));
+            }
+          );
+        }
+      );
+    }
+  );
+}
+function vector_op() {
+  return do$(
+    token3(new Keyword(new Vector2())),
+    (_) => {
+      return do$(
+        many(expression()),
+        (fields) => {
+          return return$(new Vector(fields));
+        }
+      );
+    }
+  );
+}
+function vector_length_op() {
+  return do$(
+    token3(new Keyword(new VectorLength5())),
+    (_) => {
+      return do$(
+        expression(),
+        (arg1) => {
+          return return$(new VectorLength(arg1));
+        }
+      );
+    }
+  );
+}
+function vector_ref_op() {
+  return do$(
+    token3(new Keyword(new VectorRef5())),
+    (_) => {
+      return do$(
+        expression(),
+        (arg1) => {
+          return do$(
+            expression(),
+            (arg2) => {
+              return return$(new VectorRef(arg1, arg2));
+            }
+          );
+        }
+      );
+    }
+  );
+}
+function vector_set_op() {
+  return do$(
+    token3(new Keyword(new VectorSet5())),
+    (_) => {
+      return do$(
+        expression(),
+        (arg1) => {
+          return do$(
+            expression(),
+            (arg2) => {
+              return do$(
+                expression(),
+                (arg3) => {
+                  return return$(new VectorSet(arg1, arg2, arg3));
+                }
+              );
             }
           );
         }
@@ -12322,7 +11089,7 @@ function cmp_op() {
 }
 function and_op() {
   return do$(
-    token3(new Keyword(new And2())),
+    token3(new Keyword(new And3())),
     (_) => {
       return do$(
         expression(),
@@ -12340,7 +11107,7 @@ function and_op() {
 }
 function or_op() {
   return do$(
-    token3(new Keyword(new Or2())),
+    token3(new Keyword(new Or3())),
     (_) => {
       return do$(
         expression(),
@@ -12358,7 +11125,7 @@ function or_op() {
 }
 function not_op() {
   return do$(
-    token3(new Keyword(new Not4())),
+    token3(new Keyword(new Not5())),
     (_) => {
       return do$(
         expression(),
@@ -12381,7 +11148,11 @@ function primitive() {
         cmp_op(),
         and_op(),
         or_op(),
-        not_op()
+        not_op(),
+        vector_op(),
+        vector_length_op(),
+        vector_ref_op(),
+        vector_set_op()
       ])
     ),
     (prim_op) => {
@@ -12390,296 +11161,73 @@ function primitive() {
   );
 }
 
-// build/dev/javascript/eoc/eoc/passes/patch_instructions.mjs
-var FILEPATH8 = "src/eoc/passes/patch_instructions.gleam";
-function patch_instruction(instr) {
-  if (instr instanceof Addq) {
-    let $ = instr.b;
-    if ($ instanceof Deref) {
-      let $1 = instr.a;
-      if ($1 instanceof Deref) {
-        let a2 = $1;
-        let b = $;
-        return toList([
-          new Movq(a2, new Reg(new Rax())),
-          new Addq(new Reg(new Rax()), b)
-        ]);
-      } else {
-        let other = instr;
-        return toList([other]);
-      }
-    } else {
-      let other = instr;
-      return toList([other]);
-    }
-  } else if (instr instanceof Subq) {
-    let $ = instr.b;
-    if ($ instanceof Deref) {
-      let $1 = instr.a;
-      if ($1 instanceof Deref) {
-        let a2 = $1;
-        let b = $;
-        return toList([
-          new Movq(a2, new Reg(new Rax())),
-          new Subq(new Reg(new Rax()), b)
-        ]);
-      } else {
-        let other = instr;
-        return toList([other]);
-      }
-    } else {
-      let other = instr;
-      return toList([other]);
-    }
-  } else if (instr instanceof Movq) {
-    let a2 = instr.a;
-    let b = instr.b;
-    if (isEqual(a2, b)) {
-      return toList([]);
-    } else {
-      let $ = instr.b;
-      if ($ instanceof Deref) {
-        let $1 = instr.a;
-        if ($1 instanceof Deref) {
-          let a$1 = $1;
-          let b$1 = $;
-          return toList([
-            new Movq(a$1, new Reg(new Rax())),
-            new Movq(new Reg(new Rax()), b$1)
-          ]);
-        } else {
-          let other = instr;
-          return toList([other]);
-        }
-      } else {
-        let other = instr;
-        return toList([other]);
-      }
-    }
-  } else if (instr instanceof Cmpq) {
-    let $ = instr.b;
-    if ($ instanceof Imm) {
-      let a2 = instr.a;
-      let b = $;
-      return toList([
-        new Movq(b, new Reg(new Rax())),
-        new Cmpq(a2, new Reg(new Rax()))
-      ]);
-    } else {
-      let other = instr;
-      return toList([other]);
-    }
-  } else if (instr instanceof Movzbq) {
-    let $ = instr.b;
-    if ($ instanceof Imm) {
-      throw makeError(
-        "panic",
-        FILEPATH8,
-        "eoc/passes/patch_instructions",
-        61,
-        "patch_instruction",
-        "invalid movzbq instruction",
-        {}
-      );
-    } else if ($ instanceof Deref) {
-      let a2 = instr.a;
-      let b = $;
-      return toList([
-        new Movzbq(a2, new Reg(new Rax())),
-        new Movq(new Reg(new Rax()), b)
-      ]);
-    } else {
-      let other = instr;
-      return toList([other]);
-    }
-  } else {
-    let other = instr;
-    return toList([other]);
-  }
-}
-function patch_instructions_block(instrs) {
-  return flat_map(instrs, patch_instruction);
-}
-function patch_instructions(input) {
-  let _block;
-  let _pipe = input.body;
-  _block = map_values(
-    _pipe,
-    (_, block) => {
-      return new Block(patch_instructions_block(block.body));
-    }
-  );
-  let body = _block;
-  return new X86Program(body, input.stack_vars, input.used_callee);
-}
-
-// build/dev/javascript/eoc/eoc/langs/l_while_get.mjs
-var Read5 = class extends CustomType {
-};
-var Void5 = class extends CustomType {
-};
-var Negate3 = class extends CustomType {
-  constructor(value) {
-    super();
-    this.value = value;
-  }
-};
-var Plus5 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Minus5 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Cmp5 = class extends CustomType {
-  constructor(op, a2, b) {
-    super();
-    this.op = op;
-    this.a = a2;
-    this.b = b;
-  }
-};
-var And3 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Or3 = class extends CustomType {
-  constructor(a2, b) {
-    super();
-    this.a = a2;
-    this.b = b;
-  }
-};
-var Not5 = class extends CustomType {
-  constructor(a2) {
-    super();
-    this.a = a2;
-  }
-};
-var Int4 = class extends CustomType {
-  constructor(value) {
-    super();
-    this.value = value;
-  }
-};
-var Bool4 = class extends CustomType {
-  constructor(value) {
-    super();
-    this.value = value;
-  }
-};
-var Prim4 = class extends CustomType {
-  constructor(op) {
-    super();
-    this.op = op;
-  }
-};
-var Var4 = class extends CustomType {
-  constructor(name) {
-    super();
-    this.name = name;
-  }
-};
-var Let4 = class extends CustomType {
-  constructor(var$2, binding, expr) {
-    super();
-    this.var = var$2;
-    this.binding = binding;
-    this.expr = expr;
-  }
-};
-var If5 = class extends CustomType {
-  constructor(condition, if_true, if_false) {
-    super();
-    this.condition = condition;
-    this.if_true = if_true;
-    this.if_false = if_false;
-  }
-};
-var SetBang4 = class extends CustomType {
-  constructor(var$2, value) {
-    super();
-    this.var = var$2;
-    this.value = value;
-  }
-};
-var GetBang2 = class extends CustomType {
-  constructor(var$2) {
-    super();
-    this.var = var$2;
-  }
-};
-var Begin4 = class extends CustomType {
-  constructor(stmts, result) {
-    super();
-    this.stmts = stmts;
-    this.result = result;
-  }
-};
-var WhileLoop3 = class extends CustomType {
-  constructor(condition, body) {
-    super();
-    this.condition = condition;
-    this.body = body;
-  }
-};
-var Program3 = class extends CustomType {
-  constructor(body) {
-    super();
-    this.body = body;
-  }
-};
-
 // build/dev/javascript/eoc/eoc/passes/remove_complex_operands.mjs
-var FILEPATH9 = "src/eoc/passes/remove_complex_operands.gleam";
+var FILEPATH6 = "src/eoc/passes/remove_complex_operands.gleam";
 function new_var(counter) {
   let new_count = counter + 1;
   let name = "tmp." + to_string(new_count);
   return [name, new_count];
 }
-function rco_atom(input, counter) {
-  if (input instanceof Int4) {
-    let i = input.value;
-    return [new Int3(i), toList([]), counter];
-  } else if (input instanceof Bool4) {
-    let b = input.value;
-    return [new Bool3(b), toList([]), counter];
-  } else if (input instanceof Prim4) {
-    let $ = input.op;
-    if ($ instanceof Void5) {
-      return [new Void3(), toList([]), counter];
-    } else if ($ instanceof And3) {
-      throw makeError(
-        "panic",
-        FILEPATH9,
-        "eoc/passes/remove_complex_operands",
-        55,
-        "rco_atom",
-        "shrink pass was not run before remove_complex_operands",
-        {}
-      );
-    } else if ($ instanceof Or3) {
-      throw makeError(
-        "panic",
-        FILEPATH9,
-        "eoc/passes/remove_complex_operands",
-        55,
-        "rco_atom",
-        "shrink pass was not run before remove_complex_operands",
-        {}
-      );
-    } else {
-      let $1 = rco_exp(input, counter);
+function rco_atom(loop$input, loop$counter) {
+  while (true) {
+    let input = loop$input;
+    let counter = loop$counter;
+    if (input instanceof Int4) {
+      let i = input.value;
+      return [new Int3(i), toList([]), counter];
+    } else if (input instanceof Bool4) {
+      let b = input.value;
+      return [new Bool3(b), toList([]), counter];
+    } else if (input instanceof Prim4) {
+      let $ = input.op;
+      if ($ instanceof Void4) {
+        return [new Void3(), toList([]), counter];
+      } else if ($ instanceof And2) {
+        throw makeError(
+          "panic",
+          FILEPATH6,
+          "eoc/passes/remove_complex_operands",
+          56,
+          "rco_atom",
+          "shrink pass was not run before remove_complex_operands",
+          {}
+        );
+      } else if ($ instanceof Or2) {
+        throw makeError(
+          "panic",
+          FILEPATH6,
+          "eoc/passes/remove_complex_operands",
+          56,
+          "rco_atom",
+          "shrink pass was not run before remove_complex_operands",
+          {}
+        );
+      } else {
+        let $1 = rco_exp(input, counter);
+        let expr;
+        let counter_e;
+        expr = $1[0];
+        counter_e = $1[1];
+        let $2 = new_var(counter_e);
+        let var$2;
+        let new_counter;
+        var$2 = $2[0];
+        new_counter = $2[1];
+        return [new Var2(var$2), toList([[var$2, expr]]), new_counter];
+      }
+    } else if (input instanceof Var3) {
+      let v = input.name;
+      return [new Var2(v), toList([]), counter];
+    } else if (input instanceof Let3) {
+      let v = input.var;
+      let b = input.binding;
+      let e = input.expr;
+      let $ = rco_exp(b, counter);
+      let binding;
+      let counter_b;
+      binding = $[0];
+      counter_b = $[1];
+      let $1 = rco_exp(e, counter_b);
       let expr;
       let counter_e;
       expr = $1[0];
@@ -12689,388 +11237,551 @@ function rco_atom(input, counter) {
       let new_counter;
       var$2 = $2[0];
       new_counter = $2[1];
-      return [new Var3(var$2), toList([[var$2, expr]]), new_counter];
+      return [
+        new Var2(var$2),
+        toList([[var$2, new Let2(v, binding, expr)]]),
+        new_counter
+      ];
+    } else if (input instanceof If4) {
+      let c = input.condition;
+      let t = input.if_true;
+      let e = input.if_false;
+      let $ = rco_exp(c, counter);
+      let c1;
+      let counter1;
+      c1 = $[0];
+      counter1 = $[1];
+      let $1 = rco_exp(t, counter1);
+      let t1;
+      let counter2;
+      t1 = $1[0];
+      counter2 = $1[1];
+      let $2 = rco_exp(e, counter2);
+      let e1;
+      let counter3;
+      e1 = $2[0];
+      counter3 = $2[1];
+      let $3 = new_var(counter3);
+      let var$2;
+      let new_counter;
+      var$2 = $3[0];
+      new_counter = $3[1];
+      return [
+        new Var2(var$2),
+        toList([[var$2, new If3(c1, t1, e1)]]),
+        new_counter
+      ];
+    } else if (input instanceof SetBang3) {
+      let var$2 = input.var;
+      let value = input.value;
+      let $ = rco_exp(value, counter);
+      let value1;
+      let counter1;
+      value1 = $[0];
+      counter1 = $[1];
+      let $1 = new_var(counter1);
+      let new_var$1;
+      let new_counter;
+      new_var$1 = $1[0];
+      new_counter = $1[1];
+      return [
+        new Void3(),
+        toList([[new_var$1, new SetBang2(var$2, value1)]]),
+        new_counter
+      ];
+    } else if (input instanceof GetBang2) {
+      let var$2 = input.var;
+      let $ = new_var(counter);
+      let new_var$1;
+      let new_counter;
+      new_var$1 = $[0];
+      new_counter = $[1];
+      return [
+        new Var2(new_var$1),
+        toList([[new_var$1, new GetBang(var$2)]]),
+        new_counter
+      ];
+    } else if (input instanceof Begin3) {
+      let stmts = input.stmts;
+      let result = input.result;
+      let $ = map_fold(
+        stmts,
+        counter,
+        (c, s) => {
+          return swap(rco_exp(s, c));
+        }
+      );
+      let counter1;
+      let stmts1;
+      counter1 = $[0];
+      stmts1 = $[1];
+      let $1 = rco_exp(result, counter1);
+      let result1;
+      let counter2;
+      result1 = $1[0];
+      counter2 = $1[1];
+      let $2 = new_var(counter2);
+      let var$2;
+      let new_counter;
+      var$2 = $2[0];
+      new_counter = $2[1];
+      return [
+        new Var2(var$2),
+        toList([[var$2, new Begin2(stmts1, result1)]]),
+        new_counter
+      ];
+    } else if (input instanceof WhileLoop3) {
+      let condition = input.condition;
+      let body = input.body;
+      let $ = rco_exp(condition, counter);
+      let condition1;
+      let counter1;
+      condition1 = $[0];
+      counter1 = $[1];
+      let $1 = rco_exp(body, counter1);
+      let body1;
+      let counter2;
+      body1 = $1[0];
+      counter2 = $1[1];
+      let $2 = new_var(counter2);
+      let new_var$1;
+      let new_counter;
+      new_var$1 = $2[0];
+      new_counter = $2[1];
+      return [
+        new Void3(),
+        toList([[new_var$1, new WhileLoop2(condition1, body1)]]),
+        new_counter
+      ];
+    } else if (input instanceof HasType2) {
+      let value = input.value;
+      loop$input = value;
+      loop$counter = counter;
+    } else if (input instanceof Collect3) {
+      let amount = input.amount;
+      let $ = new_var(counter);
+      let new_var$1;
+      let new_counter;
+      new_var$1 = $[0];
+      new_counter = $[1];
+      return [
+        new Var2(new_var$1),
+        toList([[new_var$1, new Collect2(amount)]]),
+        new_counter
+      ];
+    } else if (input instanceof Allocate3) {
+      let amount = input.amount;
+      let t = input.t;
+      let $ = new_var(counter);
+      let new_var$1;
+      let new_counter;
+      new_var$1 = $[0];
+      new_counter = $[1];
+      return [
+        new Var2(new_var$1),
+        toList([[new_var$1, new Allocate2(amount, t)]]),
+        new_counter
+      ];
+    } else {
+      let name = input.name;
+      let $ = new_var(counter);
+      let new_var$1;
+      let new_counter;
+      new_var$1 = $[0];
+      new_counter = $[1];
+      return [
+        new Var2(new_var$1),
+        toList([[new_var$1, new GlobalValue2(name)]]),
+        new_counter
+      ];
     }
-  } else if (input instanceof Var4) {
-    let v = input.name;
-    return [new Var3(v), toList([]), counter];
-  } else if (input instanceof Let4) {
-    let v = input.var;
-    let b = input.binding;
-    let e = input.expr;
-    let $ = rco_exp(b, counter);
-    let binding;
-    let counter_b;
-    binding = $[0];
-    counter_b = $[1];
-    let $1 = rco_exp(e, counter_b);
-    let expr;
-    let counter_e;
-    expr = $1[0];
-    counter_e = $1[1];
-    let $2 = new_var(counter_e);
-    let var$2;
-    let new_counter;
-    var$2 = $2[0];
-    new_counter = $2[1];
-    return [
-      new Var3(var$2),
-      toList([[var$2, new Let2(v, binding, expr)]]),
-      new_counter
-    ];
-  } else if (input instanceof If5) {
-    let c = input.condition;
-    let t = input.if_true;
-    let e = input.if_false;
-    let $ = rco_exp(c, counter);
-    let c1;
-    let counter1;
-    c1 = $[0];
-    counter1 = $[1];
-    let $1 = rco_exp(t, counter1);
-    let t1;
-    let counter2;
-    t1 = $1[0];
-    counter2 = $1[1];
-    let $2 = rco_exp(e, counter2);
-    let e1;
-    let counter3;
-    e1 = $2[0];
-    counter3 = $2[1];
-    let $3 = new_var(counter3);
-    let var$2;
-    let new_counter;
-    var$2 = $3[0];
-    new_counter = $3[1];
-    return [
-      new Var3(var$2),
-      toList([[var$2, new If3(c1, t1, e1)]]),
-      new_counter
-    ];
-  } else if (input instanceof SetBang4) {
-    let var$2 = input.var;
-    let value = input.value;
-    let $ = rco_exp(value, counter);
-    let value1;
-    let counter1;
-    value1 = $[0];
-    counter1 = $[1];
-    let $1 = new_var(counter1);
-    let new_var$1;
-    let new_counter;
-    new_var$1 = $1[0];
-    new_counter = $1[1];
-    return [
-      new Void3(),
-      toList([[new_var$1, new SetBang2(var$2, value1)]]),
-      new_counter
-    ];
-  } else if (input instanceof GetBang2) {
-    let var$2 = input.var;
-    let $ = new_var(counter);
-    let new_var$1;
-    let new_counter;
-    new_var$1 = $[0];
-    new_counter = $[1];
-    return [
-      new Var3(new_var$1),
-      toList([[new_var$1, new GetBang(var$2)]]),
-      new_counter
-    ];
-  } else if (input instanceof Begin4) {
-    let stmts = input.stmts;
-    let result = input.result;
-    let $ = map_fold(
-      stmts,
-      counter,
-      (c, s) => {
-        return swap(rco_exp(s, c));
-      }
-    );
-    let counter1;
-    let stmts1;
-    counter1 = $[0];
-    stmts1 = $[1];
-    let $1 = rco_exp(result, counter1);
-    let result1;
-    let counter2;
-    result1 = $1[0];
-    counter2 = $1[1];
-    let $2 = new_var(counter2);
-    let var$2;
-    let new_counter;
-    var$2 = $2[0];
-    new_counter = $2[1];
-    return [
-      new Var3(var$2),
-      toList([[var$2, new Begin2(stmts1, result1)]]),
-      new_counter
-    ];
-  } else {
-    let condition = input.condition;
-    let body = input.body;
-    let $ = rco_exp(condition, counter);
-    let condition1;
-    let counter1;
-    condition1 = $[0];
-    counter1 = $[1];
-    let $1 = rco_exp(body, counter1);
-    let body1;
-    let counter2;
-    body1 = $1[0];
-    counter2 = $1[1];
-    let $2 = new_var(counter2);
-    let new_var$1;
-    let new_counter;
-    new_var$1 = $2[0];
-    new_counter = $2[1];
-    return [
-      new Void3(),
-      toList([[new_var$1, new WhileLoop2(condition1, body1)]]),
-      new_counter
-    ];
   }
 }
-function rco_exp(input, counter) {
-  if (input instanceof Int4) {
-    let i = input.value;
-    return [new Atomic(new Int3(i)), counter];
-  } else if (input instanceof Bool4) {
-    let value = input.value;
-    return [new Atomic(new Bool3(value)), counter];
-  } else if (input instanceof Prim4) {
-    let $ = input.op;
-    if ($ instanceof Read5) {
-      return [new Prim3(new Read3()), counter];
-    } else if ($ instanceof Void5) {
-      return [new Atomic(new Void3()), counter];
-    } else if ($ instanceof Negate3) {
-      let e = $.value;
-      let $1 = rco_atom(e, counter);
-      let atm;
-      let bindings;
-      let new_counter;
-      atm = $1[0];
-      bindings = $1[1];
-      new_counter = $1[2];
-      let new_expr = fold2(
-        bindings,
-        new Prim3(new Negate2(atm)),
-        (exp2, pair2) => {
-          return new Let2(pair2[0], pair2[1], exp2);
-        }
-      );
-      return [new_expr, new_counter];
-    } else if ($ instanceof Plus5) {
-      let a2 = $.a;
-      let b = $.b;
-      let $1 = rco_atom(a2, counter);
-      let atm_a;
-      let bindings_a;
-      let counter_a;
-      atm_a = $1[0];
-      bindings_a = $1[1];
-      counter_a = $1[2];
-      let $2 = rco_atom(b, counter_a);
-      let atm_b;
-      let bindings_b;
-      let counter_b;
-      atm_b = $2[0];
-      bindings_b = $2[1];
-      counter_b = $2[2];
-      let _block;
-      let _pipe = bindings_a;
-      let _pipe$1 = append3(_pipe, bindings_b);
-      _block = fold_right(
-        _pipe$1,
-        new Prim3(new Plus3(atm_a, atm_b)),
-        (exp2, pair2) => {
-          return new Let2(pair2[0], pair2[1], exp2);
-        }
-      );
-      let new_expr = _block;
-      return [new_expr, counter_b];
-    } else if ($ instanceof Minus5) {
-      let a2 = $.a;
-      let b = $.b;
-      let $1 = rco_atom(a2, counter);
-      let atm_a;
-      let bindings_a;
-      let counter_a;
-      atm_a = $1[0];
-      bindings_a = $1[1];
-      counter_a = $1[2];
-      let $2 = rco_atom(b, counter_a);
-      let atm_b;
-      let bindings_b;
-      let counter_b;
-      atm_b = $2[0];
-      bindings_b = $2[1];
-      counter_b = $2[2];
-      let _block;
-      let _pipe = bindings_a;
-      let _pipe$1 = append3(_pipe, bindings_b);
-      _block = fold_right(
-        _pipe$1,
-        new Prim3(new Minus3(atm_a, atm_b)),
-        (exp2, pair2) => {
-          return new Let2(pair2[0], pair2[1], exp2);
-        }
-      );
-      let new_expr = _block;
-      return [new_expr, counter_b];
-    } else if ($ instanceof Cmp5) {
-      let op = $.op;
-      let a2 = $.a;
-      let b = $.b;
-      let $1 = rco_atom(a2, counter);
-      let atm_a;
-      let bindings_a;
-      let counter_a;
-      atm_a = $1[0];
-      bindings_a = $1[1];
-      counter_a = $1[2];
-      let $2 = rco_atom(b, counter_a);
-      let atm_b;
-      let bindings_b;
-      let counter_b;
-      atm_b = $2[0];
-      bindings_b = $2[1];
-      counter_b = $2[2];
-      let _block;
-      let _pipe = bindings_a;
-      let _pipe$1 = append3(_pipe, bindings_b);
-      _block = fold_right(
-        _pipe$1,
-        new Prim3(new Cmp3(op, atm_a, atm_b)),
-        (exp2, pair2) => {
-          return new Let2(pair2[0], pair2[1], exp2);
-        }
-      );
-      let new_expr = _block;
-      return [new_expr, counter_b];
-    } else if ($ instanceof And3) {
-      throw makeError(
-        "panic",
-        FILEPATH9,
-        "eoc/passes/remove_complex_operands",
-        173,
-        "rco_exp",
-        "shrink pass was not run before remove_complex_operands",
-        {}
-      );
-    } else if ($ instanceof Or3) {
-      throw makeError(
-        "panic",
-        FILEPATH9,
-        "eoc/passes/remove_complex_operands",
-        173,
-        "rco_exp",
-        "shrink pass was not run before remove_complex_operands",
-        {}
-      );
-    } else {
-      let a2 = $.a;
-      let $1 = rco_atom(a2, counter);
-      let atm;
-      let bindings;
-      let new_counter;
-      atm = $1[0];
-      bindings = $1[1];
-      new_counter = $1[2];
-      let new_expr = fold2(
-        bindings,
-        new Prim3(new Not3(atm)),
-        (exp2, pair2) => {
-          return new Let2(pair2[0], pair2[1], exp2);
-        }
-      );
-      return [new_expr, new_counter];
-    }
-  } else if (input instanceof Var4) {
-    let v = input.name;
-    return [new Atomic(new Var3(v)), counter];
-  } else if (input instanceof Let4) {
-    let v = input.var;
-    let b = input.binding;
-    let e = input.expr;
-    let $ = rco_exp(b, counter);
-    let binding;
-    let new_counter;
-    binding = $[0];
-    new_counter = $[1];
-    let $1 = rco_exp(e, new_counter);
-    let expr;
-    let new_counter1;
-    expr = $1[0];
-    new_counter1 = $1[1];
-    return [new Let2(v, binding, expr), new_counter1];
-  } else if (input instanceof If5) {
-    let condition = input.condition;
-    let if_true = input.if_true;
-    let if_false = input.if_false;
-    let $ = rco_exp(condition, counter);
-    let c1;
-    let counter1;
-    c1 = $[0];
-    counter1 = $[1];
-    let $1 = rco_exp(if_true, counter1);
-    let t1;
-    let counter2;
-    t1 = $1[0];
-    counter2 = $1[1];
-    let $2 = rco_exp(if_false, counter2);
-    let f1;
-    let counter3;
-    f1 = $2[0];
-    counter3 = $2[1];
-    return [new If3(c1, t1, f1), counter3];
-  } else if (input instanceof SetBang4) {
-    let var$2 = input.var;
-    let value = input.value;
-    let $ = rco_exp(value, counter);
-    let value1;
-    let counter1;
-    value1 = $[0];
-    counter1 = $[1];
-    return [new SetBang2(var$2, value1), counter1];
-  } else if (input instanceof GetBang2) {
-    let var$2 = input.var;
-    return [new GetBang(var$2), counter];
-  } else if (input instanceof Begin4) {
-    let stmts = input.stmts;
-    let result = input.result;
-    let $ = map_fold(
-      stmts,
-      counter,
-      (c, s) => {
-        return swap(rco_exp(s, c));
+function rco_exp(loop$input, loop$counter) {
+  while (true) {
+    let input = loop$input;
+    let counter = loop$counter;
+    if (input instanceof Int4) {
+      let i = input.value;
+      return [new Atomic(new Int3(i)), counter];
+    } else if (input instanceof Bool4) {
+      let value = input.value;
+      return [new Atomic(new Bool3(value)), counter];
+    } else if (input instanceof Prim4) {
+      let $ = input.op;
+      if ($ instanceof Read4) {
+        return [new Prim3(new Read3()), counter];
+      } else if ($ instanceof Void4) {
+        return [new Atomic(new Void3()), counter];
+      } else if ($ instanceof Negate3) {
+        let e = $.value;
+        let $1 = rco_atom(e, counter);
+        let atm;
+        let bindings;
+        let new_counter;
+        atm = $1[0];
+        bindings = $1[1];
+        new_counter = $1[2];
+        let new_expr = fold2(
+          bindings,
+          new Prim3(new Negate2(atm)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        return [new_expr, new_counter];
+      } else if ($ instanceof Plus4) {
+        let a2 = $.a;
+        let b = $.b;
+        let $1 = rco_atom(a2, counter);
+        let atm_a;
+        let bindings_a;
+        let counter_a;
+        atm_a = $1[0];
+        bindings_a = $1[1];
+        counter_a = $1[2];
+        let $2 = rco_atom(b, counter_a);
+        let atm_b;
+        let bindings_b;
+        let counter_b;
+        atm_b = $2[0];
+        bindings_b = $2[1];
+        counter_b = $2[2];
+        let _block;
+        let _pipe = bindings_a;
+        let _pipe$1 = append2(_pipe, bindings_b);
+        _block = fold_right(
+          _pipe$1,
+          new Prim3(new Plus3(atm_a, atm_b)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        let new_expr = _block;
+        return [new_expr, counter_b];
+      } else if ($ instanceof Minus4) {
+        let a2 = $.a;
+        let b = $.b;
+        let $1 = rco_atom(a2, counter);
+        let atm_a;
+        let bindings_a;
+        let counter_a;
+        atm_a = $1[0];
+        bindings_a = $1[1];
+        counter_a = $1[2];
+        let $2 = rco_atom(b, counter_a);
+        let atm_b;
+        let bindings_b;
+        let counter_b;
+        atm_b = $2[0];
+        bindings_b = $2[1];
+        counter_b = $2[2];
+        let _block;
+        let _pipe = bindings_a;
+        let _pipe$1 = append2(_pipe, bindings_b);
+        _block = fold_right(
+          _pipe$1,
+          new Prim3(new Minus3(atm_a, atm_b)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        let new_expr = _block;
+        return [new_expr, counter_b];
+      } else if ($ instanceof Cmp4) {
+        let op = $.op;
+        let a2 = $.a;
+        let b = $.b;
+        let $1 = rco_atom(a2, counter);
+        let atm_a;
+        let bindings_a;
+        let counter_a;
+        atm_a = $1[0];
+        bindings_a = $1[1];
+        counter_a = $1[2];
+        let $2 = rco_atom(b, counter_a);
+        let atm_b;
+        let bindings_b;
+        let counter_b;
+        atm_b = $2[0];
+        bindings_b = $2[1];
+        counter_b = $2[2];
+        let _block;
+        let _pipe = bindings_a;
+        let _pipe$1 = append2(_pipe, bindings_b);
+        _block = fold_right(
+          _pipe$1,
+          new Prim3(new Cmp3(op, atm_a, atm_b)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        let new_expr = _block;
+        return [new_expr, counter_b];
+      } else if ($ instanceof And2) {
+        throw makeError(
+          "panic",
+          FILEPATH6,
+          "eoc/passes/remove_complex_operands",
+          204,
+          "rco_exp",
+          "shrink pass was not run before remove_complex_operands",
+          {}
+        );
+      } else if ($ instanceof Or2) {
+        throw makeError(
+          "panic",
+          FILEPATH6,
+          "eoc/passes/remove_complex_operands",
+          204,
+          "rco_exp",
+          "shrink pass was not run before remove_complex_operands",
+          {}
+        );
+      } else if ($ instanceof Not4) {
+        let a2 = $.a;
+        let $1 = rco_atom(a2, counter);
+        let atm;
+        let bindings;
+        let new_counter;
+        atm = $1[0];
+        bindings = $1[1];
+        new_counter = $1[2];
+        let new_expr = fold2(
+          bindings,
+          new Prim3(new Not3(atm)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        return [new_expr, new_counter];
+      } else if ($ instanceof VectorLength4) {
+        let v = $.v;
+        let $1 = rco_atom(v, counter);
+        let atm;
+        let bindings;
+        let new_counter;
+        atm = $1[0];
+        bindings = $1[1];
+        new_counter = $1[2];
+        let new_expr = fold2(
+          bindings,
+          new Prim3(new VectorLength3(atm)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        return [new_expr, new_counter];
+      } else if ($ instanceof VectorRef4) {
+        let v = $.v;
+        let index4 = $.index;
+        let $1 = rco_atom(v, counter);
+        let atm_v;
+        let bindings;
+        let new_counter;
+        atm_v = $1[0];
+        bindings = $1[1];
+        new_counter = $1[2];
+        let $2 = rco_atom(index4, new_counter);
+        let atm_i;
+        let bindings1;
+        let new_counter$1;
+        atm_i = $2[0];
+        bindings1 = $2[1];
+        new_counter$1 = $2[2];
+        let _block;
+        let _pipe = bindings;
+        let _pipe$1 = append2(_pipe, bindings1);
+        _block = fold_right(
+          _pipe$1,
+          new Prim3(new VectorRef3(atm_v, atm_i)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        let new_expr = _block;
+        return [new_expr, new_counter$1];
+      } else {
+        let v = $.v;
+        let index4 = $.index;
+        let value = $.value;
+        let $1 = rco_atom(v, counter);
+        let atm_v;
+        let bindings;
+        let new_counter;
+        atm_v = $1[0];
+        bindings = $1[1];
+        new_counter = $1[2];
+        let $2 = rco_atom(index4, new_counter);
+        let atm_i;
+        let bindings1;
+        let new_counter$1;
+        atm_i = $2[0];
+        bindings1 = $2[1];
+        new_counter$1 = $2[2];
+        let $3 = rco_atom(value, new_counter$1);
+        let atm_x;
+        let bindings2;
+        let new_counter$2;
+        atm_x = $3[0];
+        bindings2 = $3[1];
+        new_counter$2 = $3[2];
+        let _block;
+        let _pipe = bindings;
+        let _pipe$1 = append2(_pipe, bindings1);
+        let _pipe$2 = append2(_pipe$1, bindings2);
+        _block = fold_right(
+          _pipe$2,
+          new Prim3(new VectorSet3(atm_v, atm_i, atm_x)),
+          (exp2, pair2) => {
+            return new Let2(pair2[0], pair2[1], exp2);
+          }
+        );
+        let new_expr = _block;
+        return [new_expr, new_counter$2];
       }
-    );
-    let counter1;
-    let stmts1;
-    counter1 = $[0];
-    stmts1 = $[1];
-    let $1 = rco_exp(result, counter1);
-    let result1;
-    let counter2;
-    result1 = $1[0];
-    counter2 = $1[1];
-    return [new Begin2(stmts1, result1), counter2];
-  } else {
-    let condition = input.condition;
-    let body = input.body;
-    let $ = rco_exp(condition, counter);
-    let condition1;
-    let counter1;
-    condition1 = $[0];
-    counter1 = $[1];
-    let $1 = rco_exp(body, counter1);
-    let body1;
-    let counter2;
-    body1 = $1[0];
-    counter2 = $1[1];
-    return [new WhileLoop2(condition1, body1), counter2];
+    } else if (input instanceof Var3) {
+      let v = input.name;
+      return [new Atomic(new Var2(v)), counter];
+    } else if (input instanceof Let3) {
+      let v = input.var;
+      let b = input.binding;
+      let e = input.expr;
+      let $ = rco_exp(b, counter);
+      let binding;
+      let new_counter;
+      binding = $[0];
+      new_counter = $[1];
+      let $1 = rco_exp(e, new_counter);
+      let expr;
+      let new_counter1;
+      expr = $1[0];
+      new_counter1 = $1[1];
+      return [new Let2(v, binding, expr), new_counter1];
+    } else if (input instanceof If4) {
+      let $ = input.condition;
+      if ($ instanceof Prim4) {
+        let $1 = $.op;
+        if ($1 instanceof VectorRef4) {
+          let if_true = input.if_true;
+          let if_false = input.if_false;
+          let v = $1.v;
+          let index4 = $1.index;
+          loop$input = new If4(
+            new Prim4(
+              new Cmp4(
+                new Eq2(),
+                new Prim4(new VectorRef4(v, index4)),
+                new Bool4(true)
+              )
+            ),
+            if_true,
+            if_false
+          );
+          loop$counter = counter;
+        } else {
+          let condition = $;
+          let if_true = input.if_true;
+          let if_false = input.if_false;
+          let $2 = rco_exp(condition, counter);
+          let c1;
+          let counter1;
+          c1 = $2[0];
+          counter1 = $2[1];
+          let $3 = rco_exp(if_true, counter1);
+          let t1;
+          let counter2;
+          t1 = $3[0];
+          counter2 = $3[1];
+          let $4 = rco_exp(if_false, counter2);
+          let f1;
+          let counter3;
+          f1 = $4[0];
+          counter3 = $4[1];
+          return [new If3(c1, t1, f1), counter3];
+        }
+      } else {
+        let condition = $;
+        let if_true = input.if_true;
+        let if_false = input.if_false;
+        let $1 = rco_exp(condition, counter);
+        let c1;
+        let counter1;
+        c1 = $1[0];
+        counter1 = $1[1];
+        let $2 = rco_exp(if_true, counter1);
+        let t1;
+        let counter2;
+        t1 = $2[0];
+        counter2 = $2[1];
+        let $3 = rco_exp(if_false, counter2);
+        let f1;
+        let counter3;
+        f1 = $3[0];
+        counter3 = $3[1];
+        return [new If3(c1, t1, f1), counter3];
+      }
+    } else if (input instanceof SetBang3) {
+      let var$2 = input.var;
+      let value = input.value;
+      let $ = rco_exp(value, counter);
+      let value1;
+      let counter1;
+      value1 = $[0];
+      counter1 = $[1];
+      return [new SetBang2(var$2, value1), counter1];
+    } else if (input instanceof GetBang2) {
+      let var$2 = input.var;
+      return [new GetBang(var$2), counter];
+    } else if (input instanceof Begin3) {
+      let stmts = input.stmts;
+      let result = input.result;
+      let $ = map_fold(
+        stmts,
+        counter,
+        (c, s) => {
+          return swap(rco_exp(s, c));
+        }
+      );
+      let counter1;
+      let stmts1;
+      counter1 = $[0];
+      stmts1 = $[1];
+      let $1 = rco_exp(result, counter1);
+      let result1;
+      let counter2;
+      result1 = $1[0];
+      counter2 = $1[1];
+      return [new Begin2(stmts1, result1), counter2];
+    } else if (input instanceof WhileLoop3) {
+      let condition = input.condition;
+      let body = input.body;
+      let $ = rco_exp(condition, counter);
+      let condition1;
+      let counter1;
+      condition1 = $[0];
+      counter1 = $[1];
+      let $1 = rco_exp(body, counter1);
+      let body1;
+      let counter2;
+      body1 = $1[0];
+      counter2 = $1[1];
+      return [new WhileLoop2(condition1, body1), counter2];
+    } else if (input instanceof HasType2) {
+      let value = input.value;
+      loop$input = value;
+      loop$counter = counter;
+    } else if (input instanceof Collect3) {
+      let amount = input.amount;
+      return [new Collect2(amount), counter];
+    } else if (input instanceof Allocate3) {
+      let amount = input.amount;
+      let t = input.t;
+      return [new Allocate2(amount, t), counter];
+    } else {
+      let name = input.name;
+      return [new GlobalValue2(name), counter];
+    }
   }
 }
 function remove_complex_operands(input) {
@@ -13078,379 +11789,6 @@ function remove_complex_operands(input) {
   let rco;
   rco = $[0];
   return new Program2(rco);
-}
-
-// build/dev/javascript/eoc/eoc/passes/select_instructions.mjs
-var FILEPATH10 = "src/eoc/passes/select_instructions.gleam";
-function select_atm(input) {
-  if (input instanceof Int2) {
-    let i = input.value;
-    return new Imm2(i);
-  } else if (input instanceof Bool2) {
-    let bool4 = input.value;
-    if (bool4) {
-      return new Imm2(1);
-    } else {
-      return new Imm2(0);
-    }
-  } else if (input instanceof Variable) {
-    let v = input.v;
-    return new Var2(v);
-  } else {
-    return new Imm2(0);
-  }
-}
-function convert_op_to_cc(op) {
-  if (op instanceof Eq2) {
-    return new E();
-  } else if (op instanceof Lt2) {
-    return new L();
-  } else if (op instanceof Lte) {
-    return new Le();
-  } else if (op instanceof Gt2) {
-    return new G();
-  } else {
-    return new Ge();
-  }
-}
-function select_stmt(input) {
-  if (input instanceof Assign) {
-    let $ = input.expr;
-    if ($ instanceof Atom) {
-      let v = input.var;
-      let atm = $.atm;
-      return toList([new Movq2(select_atm(atm), new Var2(v))]);
-    } else {
-      let $1 = $.op;
-      if ($1 instanceof Read2) {
-        let v = input.var;
-        return toList([
-          new Callq2("read_int", 0),
-          new Movq2(new Reg2(new Rax()), new Var2(v))
-        ]);
-      } else if ($1 instanceof Neg) {
-        let $2 = $1.a;
-        if ($2 instanceof Variable) {
-          let v = input.var;
-          let v1 = $2.v;
-          if (v === v1) {
-            return toList([new Negq2(new Var2(v))]);
-          } else {
-            let v$1 = input.var;
-            let atm = $2;
-            return toList([
-              new Movq2(select_atm(atm), new Var2(v$1)),
-              new Negq2(new Var2(v$1))
-            ]);
-          }
-        } else {
-          let v = input.var;
-          let atm = $2;
-          return toList([
-            new Movq2(select_atm(atm), new Var2(v)),
-            new Negq2(new Var2(v))
-          ]);
-        }
-      } else if ($1 instanceof Not2) {
-        let var$2 = input.var;
-        let a2 = $1.a;
-        return toList([
-          new Movq2(select_atm(a2), new Var2(var$2)),
-          new Xorq2(new Imm2(1), new Var2(var$2))
-        ]);
-      } else if ($1 instanceof Cmp2) {
-        let var$2 = input.var;
-        let op = $1.op;
-        let a2 = $1.a;
-        let b = $1.b;
-        return toList([
-          new Cmpq2(select_atm(b), select_atm(a2)),
-          new Set4(convert_op_to_cc(op), new Al()),
-          new Movzbq2(new Al(), new Var2(var$2))
-        ]);
-      } else if ($1 instanceof Plus2) {
-        let $2 = $1.a;
-        if ($2 instanceof Variable) {
-          let v = input.var;
-          let v1 = $2.v;
-          if (v === v1) {
-            let b = $1.b;
-            return toList([new Addq2(select_atm(b), new Var2(v))]);
-          } else {
-            let $3 = $1.b;
-            if ($3 instanceof Variable) {
-              let v$1 = input.var;
-              let v1$1 = $3.v;
-              if (v$1 === v1$1) {
-                let a2 = $2;
-                return toList([new Addq2(select_atm(a2), new Var2(v$1))]);
-              } else {
-                let v$2 = input.var;
-                let a2 = $2;
-                let b = $3;
-                return toList([
-                  new Movq2(select_atm(a2), new Var2(v$2)),
-                  new Addq2(select_atm(b), new Var2(v$2))
-                ]);
-              }
-            } else {
-              let v$1 = input.var;
-              let a2 = $2;
-              let b = $3;
-              return toList([
-                new Movq2(select_atm(a2), new Var2(v$1)),
-                new Addq2(select_atm(b), new Var2(v$1))
-              ]);
-            }
-          }
-        } else {
-          let $3 = $1.b;
-          if ($3 instanceof Variable) {
-            let v = input.var;
-            let v1 = $3.v;
-            if (v === v1) {
-              let a2 = $2;
-              return toList([new Addq2(select_atm(a2), new Var2(v))]);
-            } else {
-              let v$1 = input.var;
-              let a2 = $2;
-              let b = $3;
-              return toList([
-                new Movq2(select_atm(a2), new Var2(v$1)),
-                new Addq2(select_atm(b), new Var2(v$1))
-              ]);
-            }
-          } else {
-            let v = input.var;
-            let a2 = $2;
-            let b = $3;
-            return toList([
-              new Movq2(select_atm(a2), new Var2(v)),
-              new Addq2(select_atm(b), new Var2(v))
-            ]);
-          }
-        }
-      } else {
-        let $2 = $1.a;
-        if ($2 instanceof Variable) {
-          let v = input.var;
-          let v1 = $2.v;
-          if (v === v1) {
-            let b = $1.b;
-            return toList([new Subq2(select_atm(b), new Var2(v))]);
-          } else {
-            let $3 = $1.b;
-            if ($3 instanceof Variable) {
-              let v$1 = input.var;
-              let v1$1 = $3.v;
-              if (v$1 === v1$1) {
-                let a2 = $2;
-                return toList([
-                  new Negq2(new Var2(v$1)),
-                  new Addq2(select_atm(a2), new Var2(v$1))
-                ]);
-              } else {
-                let v$2 = input.var;
-                let a2 = $2;
-                let b = $3;
-                return toList([
-                  new Movq2(select_atm(a2), new Var2(v$2)),
-                  new Subq2(select_atm(b), new Var2(v$2))
-                ]);
-              }
-            } else {
-              let v$1 = input.var;
-              let a2 = $2;
-              let b = $3;
-              return toList([
-                new Movq2(select_atm(a2), new Var2(v$1)),
-                new Subq2(select_atm(b), new Var2(v$1))
-              ]);
-            }
-          }
-        } else {
-          let $3 = $1.b;
-          if ($3 instanceof Variable) {
-            let v = input.var;
-            let v1 = $3.v;
-            if (v === v1) {
-              let a2 = $2;
-              return toList([
-                new Negq2(new Var2(v)),
-                new Addq2(select_atm(a2), new Var2(v))
-              ]);
-            } else {
-              let v$1 = input.var;
-              let a2 = $2;
-              let b = $3;
-              return toList([
-                new Movq2(select_atm(a2), new Var2(v$1)),
-                new Subq2(select_atm(b), new Var2(v$1))
-              ]);
-            }
-          } else {
-            let v = input.var;
-            let a2 = $2;
-            let b = $3;
-            return toList([
-              new Movq2(select_atm(a2), new Var2(v)),
-              new Subq2(select_atm(b), new Var2(v))
-            ]);
-          }
-        }
-      }
-    }
-  } else {
-    return toList([new Callq2("read_int", 0)]);
-  }
-}
-function select_tail(input) {
-  if (input instanceof Return) {
-    let $ = input.a;
-    if ($ instanceof Atom) {
-      let atm = $.atm;
-      return toList([
-        new Movq2(select_atm(atm), new Reg2(new Rax())),
-        new Jmp2("conclusion")
-      ]);
-    } else {
-      let $1 = $.op;
-      if ($1 instanceof Read2) {
-        return toList([
-          new Callq2("read_int", 0),
-          new Jmp2("conclusion")
-        ]);
-      } else if ($1 instanceof Neg) {
-        let a2 = $1.a;
-        return toList([
-          new Movq2(select_atm(a2), new Reg2(new Rax())),
-          new Negq2(new Reg2(new Rax())),
-          new Jmp2("conclusion")
-        ]);
-      } else if ($1 instanceof Not2) {
-        throw makeError(
-          "panic",
-          FILEPATH10,
-          "eoc/passes/select_instructions",
-          121,
-          "select_tail",
-          "program returns boolean",
-          {}
-        );
-      } else if ($1 instanceof Cmp2) {
-        throw makeError(
-          "panic",
-          FILEPATH10,
-          "eoc/passes/select_instructions",
-          121,
-          "select_tail",
-          "program returns boolean",
-          {}
-        );
-      } else if ($1 instanceof Plus2) {
-        let a2 = $1.a;
-        let b = $1.b;
-        return toList([
-          new Movq2(select_atm(a2), new Reg2(new Rax())),
-          new Addq2(select_atm(b), new Reg2(new Rax())),
-          new Jmp2("conclusion")
-        ]);
-      } else {
-        let a2 = $1.a;
-        let b = $1.b;
-        return toList([
-          new Movq2(select_atm(a2), new Reg2(new Rax())),
-          new Subq2(select_atm(b), new Reg2(new Rax())),
-          new Jmp2("conclusion")
-        ]);
-      }
-    }
-  } else if (input instanceof Seq) {
-    let s = input.s;
-    let t = input.t;
-    return append3(select_stmt(s), select_tail(t));
-  } else if (input instanceof Goto) {
-    let label = input.label;
-    return toList([new Jmp2(label)]);
-  } else {
-    let $ = input.if_false;
-    if ($ instanceof Goto) {
-      let $1 = input.if_true;
-      if ($1 instanceof Goto) {
-        let $2 = input.cond;
-        if ($2 instanceof Prim2) {
-          let $3 = $2.op;
-          if ($3 instanceof Cmp2) {
-            let l2 = $.label;
-            let l1 = $1.label;
-            let op = $3.op;
-            let a2 = $3.a;
-            let b = $3.b;
-            return toList([
-              new Cmpq2(select_atm(b), select_atm(a2)),
-              new JmpIf2(convert_op_to_cc(op), l1),
-              new Jmp2(l2)
-            ]);
-          } else {
-            throw makeError(
-              "panic",
-              FILEPATH10,
-              "eoc/passes/select_instructions",
-              132,
-              "select_tail",
-              "invalid if statement",
-              {}
-            );
-          }
-        } else {
-          throw makeError(
-            "panic",
-            FILEPATH10,
-            "eoc/passes/select_instructions",
-            132,
-            "select_tail",
-            "invalid if statement",
-            {}
-          );
-        }
-      } else {
-        throw makeError(
-          "panic",
-          FILEPATH10,
-          "eoc/passes/select_instructions",
-          132,
-          "select_tail",
-          "invalid if statement",
-          {}
-        );
-      }
-    } else {
-      throw makeError(
-        "panic",
-        FILEPATH10,
-        "eoc/passes/select_instructions",
-        132,
-        "select_tail",
-        "invalid if statement",
-        {}
-      );
-    }
-  }
-}
-function select_instructions(input) {
-  let blocks = map_values(
-    input.body,
-    (_, tail) => {
-      let block = new_block();
-      return new Block2(
-        select_tail(tail),
-        block.live_before,
-        block.live_after
-      );
-    }
-  );
-  let _record = new_program();
-  return new X86Program2(blocks, _record.conflicts);
 }
 
 // build/dev/javascript/eoc/eoc/passes/shrink.mjs
@@ -13483,9 +11821,26 @@ function shrink_op(op) {
     let a2 = op.a;
     let b = op.b;
     return new If(shrink_expr(a2), new Bool(true), shrink_expr(b));
-  } else {
+  } else if (op instanceof Not) {
     let v = op.a;
     return new Prim(new Not(shrink_expr(v)));
+  } else if (op instanceof Vector) {
+    let fields = op.fields;
+    return new Prim(new Vector(map(fields, shrink_expr)));
+  } else if (op instanceof VectorLength) {
+    let v = op.v;
+    return new Prim(new VectorLength(shrink_expr(v)));
+  } else if (op instanceof VectorRef) {
+    let v = op.v;
+    let index4 = op.index;
+    return new Prim(new VectorRef(shrink_expr(v), shrink_expr(index4)));
+  } else {
+    let v = op.v;
+    let index4 = op.index;
+    let value = op.value;
+    return new Prim(
+      new VectorSet(shrink_expr(v), shrink_expr(index4), shrink_expr(value))
+    );
   }
 }
 function shrink_expr(expr) {
@@ -13516,10 +11871,14 @@ function shrink_expr(expr) {
     let stmts = expr.stmts;
     let result = expr.result;
     return new Begin(map(stmts, shrink_expr), shrink_expr(result));
-  } else {
+  } else if (expr instanceof WhileLoop) {
     let condition = expr.condition;
     let body = expr.body;
     return new WhileLoop(shrink_expr(condition), shrink_expr(body));
+  } else {
+    let value = expr.value;
+    let t = expr.t;
+    return new HasType(shrink_expr(value), t);
   }
 }
 function shrink(input) {
@@ -13529,88 +11888,120 @@ function shrink(input) {
 }
 
 // build/dev/javascript/eoc/eoc/passes/uncover_get.mjs
+var FILEPATH7 = "src/eoc/passes/uncover_get.gleam";
 function uncover_get_expr(e, vars) {
-  if (e instanceof Int) {
-    let value = e.value;
-    return new Int4(value);
-  } else if (e instanceof Bool) {
-    let value = e.value;
-    return new Bool4(value);
-  } else if (e instanceof Prim) {
+  if (e instanceof Int4) {
+    return e;
+  } else if (e instanceof Bool4) {
+    return e;
+  } else if (e instanceof Prim4) {
     let $ = e.op;
-    if ($ instanceof Read) {
-      return new Prim4(new Read5());
-    } else if ($ instanceof Void) {
-      return new Prim4(new Void5());
-    } else if ($ instanceof Negate) {
+    if ($ instanceof Read4) {
+      return e;
+    } else if ($ instanceof Void4) {
+      return e;
+    } else if ($ instanceof Negate3) {
       let value = $.value;
       return new Prim4(new Negate3(uncover_get_expr(value, vars)));
-    } else if ($ instanceof Plus) {
+    } else if ($ instanceof Plus4) {
       let a2 = $.a;
       let b = $.b;
       return new Prim4(
-        new Plus5(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
+        new Plus4(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
       );
-    } else if ($ instanceof Minus) {
+    } else if ($ instanceof Minus4) {
       let a2 = $.a;
       let b = $.b;
       return new Prim4(
-        new Minus5(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
+        new Minus4(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
       );
-    } else if ($ instanceof Cmp) {
+    } else if ($ instanceof Cmp4) {
       let op = $.op;
       let a2 = $.a;
       let b = $.b;
       return new Prim4(
-        new Cmp5(op, uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
+        new Cmp4(op, uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
       );
-    } else if ($ instanceof And) {
+    } else if ($ instanceof And2) {
       let a2 = $.a;
       let b = $.b;
       return new Prim4(
-        new And3(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
+        new And2(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
       );
-    } else if ($ instanceof Or) {
+    } else if ($ instanceof Or2) {
       let a2 = $.a;
       let b = $.b;
       return new Prim4(
-        new Or3(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
+        new Or2(uncover_get_expr(a2, vars), uncover_get_expr(b, vars))
+      );
+    } else if ($ instanceof Not4) {
+      let a2 = $.a;
+      return new Prim4(new Not4(uncover_get_expr(a2, vars)));
+    } else if ($ instanceof VectorLength4) {
+      let v = $.v;
+      return new Prim4(new VectorLength4(uncover_get_expr(v, vars)));
+    } else if ($ instanceof VectorRef4) {
+      let v = $.v;
+      let index4 = $.index;
+      return new Prim4(
+        new VectorRef4(
+          uncover_get_expr(v, vars),
+          uncover_get_expr(index4, vars)
+        )
       );
     } else {
-      let a2 = $.a;
-      return new Prim4(new Not5(uncover_get_expr(a2, vars)));
+      let v = $.v;
+      let index4 = $.index;
+      let value = $.value;
+      return new Prim4(
+        new VectorSet4(
+          uncover_get_expr(v, vars),
+          uncover_get_expr(index4, vars),
+          uncover_get_expr(value, vars)
+        )
+      );
     }
-  } else if (e instanceof Var) {
+  } else if (e instanceof Var3) {
     let name = e.name;
     let $ = contains(vars, name);
     if ($) {
       return new GetBang2(name);
     } else {
-      return new Var4(name);
+      return new Var3(name);
     }
-  } else if (e instanceof Let) {
+  } else if (e instanceof Let3) {
     let var$2 = e.var;
     let binding = e.binding;
     let expr = e.expr;
-    return new Let4(
+    return new Let3(
       var$2,
       uncover_get_expr(binding, vars),
       uncover_get_expr(expr, vars)
     );
-  } else if (e instanceof If) {
+  } else if (e instanceof If4) {
     let condition = e.condition;
     let if_true = e.if_true;
     let if_false = e.if_false;
-    return new If5(
+    return new If4(
       uncover_get_expr(condition, vars),
       uncover_get_expr(if_true, vars),
       uncover_get_expr(if_false, vars)
     );
-  } else if (e instanceof SetBang) {
+  } else if (e instanceof SetBang3) {
     let var$2 = e.var;
     let value = e.value;
-    return new SetBang4(var$2, uncover_get_expr(value, vars));
-  } else if (e instanceof Begin) {
+    return new SetBang3(var$2, uncover_get_expr(value, vars));
+  } else if (e instanceof GetBang2) {
+    throw makeError(
+      "panic",
+      FILEPATH7,
+      "eoc/passes/uncover_get",
+      14,
+      "uncover_get_expr",
+      "get! should not exist at this step",
+      {}
+    );
+  } else if (e instanceof Begin3) {
     let stmts = e.stmts;
     let result = e.result;
     let s2 = map(
@@ -13619,63 +12010,88 @@ function uncover_get_expr(e, vars) {
         return uncover_get_expr(_capture, vars);
       }
     );
-    return new Begin4(s2, uncover_get_expr(result, vars));
-  } else {
+    return new Begin3(s2, uncover_get_expr(result, vars));
+  } else if (e instanceof WhileLoop3) {
     let condition = e.condition;
     let body = e.body;
     return new WhileLoop3(
       uncover_get_expr(condition, vars),
       uncover_get_expr(body, vars)
     );
+  } else if (e instanceof HasType2) {
+    let value = e.value;
+    let t = e.t;
+    return new HasType2(uncover_get_expr(value, vars), t);
+  } else if (e instanceof Collect3) {
+    return e;
+  } else if (e instanceof Allocate3) {
+    return e;
+  } else {
+    return e;
   }
 }
 function collect_set_bang(loop$e) {
   while (true) {
     let e = loop$e;
-    if (e instanceof Int) {
+    if (e instanceof Int4) {
       return new$();
-    } else if (e instanceof Bool) {
+    } else if (e instanceof Bool4) {
       return new$();
-    } else if (e instanceof Prim) {
+    } else if (e instanceof Prim4) {
       let $ = e.op;
-      if ($ instanceof Read) {
+      if ($ instanceof Read4) {
         return new$();
-      } else if ($ instanceof Void) {
+      } else if ($ instanceof Void4) {
         return new$();
-      } else if ($ instanceof Negate) {
+      } else if ($ instanceof Negate3) {
         let value = $.value;
         loop$e = value;
-      } else if ($ instanceof Plus) {
+      } else if ($ instanceof Plus4) {
         let a2 = $.a;
         let b = $.b;
         return union(collect_set_bang(a2), collect_set_bang(b));
-      } else if ($ instanceof Minus) {
+      } else if ($ instanceof Minus4) {
         let a2 = $.a;
         let b = $.b;
         return union(collect_set_bang(a2), collect_set_bang(b));
-      } else if ($ instanceof Cmp) {
+      } else if ($ instanceof Cmp4) {
         let a2 = $.a;
         let b = $.b;
         return union(collect_set_bang(a2), collect_set_bang(b));
-      } else if ($ instanceof And) {
+      } else if ($ instanceof And2) {
         let a2 = $.a;
         let b = $.b;
         return union(collect_set_bang(a2), collect_set_bang(b));
-      } else if ($ instanceof Or) {
+      } else if ($ instanceof Or2) {
         let a2 = $.a;
         let b = $.b;
         return union(collect_set_bang(a2), collect_set_bang(b));
-      } else {
+      } else if ($ instanceof Not4) {
         let a2 = $.a;
         loop$e = a2;
+      } else if ($ instanceof VectorLength4) {
+        let v = $.v;
+        loop$e = v;
+      } else if ($ instanceof VectorRef4) {
+        let v = $.v;
+        let index4 = $.index;
+        return union(collect_set_bang(v), collect_set_bang(index4));
+      } else {
+        let v = $.v;
+        let index4 = $.index;
+        let value = $.value;
+        let _pipe = v;
+        let _pipe$1 = collect_set_bang(_pipe);
+        let _pipe$2 = union(_pipe$1, collect_set_bang(index4));
+        return union(_pipe$2, collect_set_bang(value));
       }
-    } else if (e instanceof Var) {
+    } else if (e instanceof Var3) {
       return new$();
-    } else if (e instanceof Let) {
+    } else if (e instanceof Let3) {
       let binding = e.binding;
       let expr = e.expr;
       return union(collect_set_bang(binding), collect_set_bang(expr));
-    } else if (e instanceof If) {
+    } else if (e instanceof If4) {
       let condition = e.condition;
       let if_true = e.if_true;
       let if_false = e.if_false;
@@ -13686,11 +12102,21 @@ function collect_set_bang(loop$e) {
           return union(acc, collect_set_bang(expr));
         }
       );
-    } else if (e instanceof SetBang) {
+    } else if (e instanceof SetBang3) {
       let var$2 = e.var;
       let value = e.value;
       return union(from_list2(toList([var$2])), collect_set_bang(value));
-    } else if (e instanceof Begin) {
+    } else if (e instanceof GetBang2) {
+      throw makeError(
+        "panic",
+        FILEPATH7,
+        "eoc/passes/uncover_get",
+        82,
+        "collect_set_bang",
+        "get! should not exist at this step",
+        {}
+      );
+    } else if (e instanceof Begin3) {
       let stmts = e.stmts;
       let result = e.result;
       return union(
@@ -13703,10 +12129,19 @@ function collect_set_bang(loop$e) {
         ),
         collect_set_bang(result)
       );
-    } else {
+    } else if (e instanceof WhileLoop3) {
       let condition = e.condition;
       let body = e.body;
       return union(collect_set_bang(condition), collect_set_bang(body));
+    } else if (e instanceof HasType2) {
+      let value = e.value;
+      loop$e = value;
+    } else if (e instanceof Collect3) {
+      return new$();
+    } else if (e instanceof Allocate3) {
+      return new$();
+    } else {
+      return new$();
     }
   }
 }
@@ -13717,7 +12152,7 @@ function uncover_get(input) {
 }
 
 // build/dev/javascript/eoc/eoc/passes/uniquify.mjs
-var FILEPATH11 = "src/eoc/passes/uniquify.gleam";
+var FILEPATH8 = "src/eoc/passes/uniquify.gleam";
 function get_var2(env, name) {
   let $ = map_get(env, name);
   if ($ instanceof Ok) {
@@ -13726,9 +12161,9 @@ function get_var2(env, name) {
   } else {
     throw makeError(
       "panic",
-      FILEPATH11,
+      FILEPATH8,
       "eoc/passes/uniquify",
-      114,
+      145,
       "get_var",
       "referenced unknown variable",
       {}
@@ -13827,7 +12262,7 @@ function uniquify_exp(e, env, counter) {
       b1 = $2[0];
       counter2 = $2[1];
       return [new Prim(new Or(a1, b1)), counter2];
-    } else {
+    } else if ($ instanceof Not) {
       let a2 = $.a;
       let $1 = uniquify_exp(a2, env, counter);
       let a1;
@@ -13835,6 +12270,62 @@ function uniquify_exp(e, env, counter) {
       a1 = $1[0];
       counter1 = $1[1];
       return [new Prim(new Not(a1)), counter1];
+    } else if ($ instanceof Vector) {
+      let fields = $.fields;
+      let $1 = map_fold(
+        fields,
+        counter,
+        (c, stmt) => {
+          return swap(uniquify_exp(stmt, env, c));
+        }
+      );
+      let counter1;
+      let fields1;
+      counter1 = $1[0];
+      fields1 = $1[1];
+      return [new Prim(new Vector(fields1)), counter1];
+    } else if ($ instanceof VectorLength) {
+      let v = $.v;
+      let $1 = uniquify_exp(v, env, counter);
+      let v1;
+      let counter1;
+      v1 = $1[0];
+      counter1 = $1[1];
+      return [new Prim(new VectorLength(v1)), counter1];
+    } else if ($ instanceof VectorRef) {
+      let v = $.v;
+      let index4 = $.index;
+      let $1 = uniquify_exp(v, env, counter);
+      let v1;
+      let counter1;
+      v1 = $1[0];
+      counter1 = $1[1];
+      let $2 = uniquify_exp(index4, env, counter1);
+      let index1;
+      let counter2;
+      index1 = $2[0];
+      counter2 = $2[1];
+      return [new Prim(new VectorRef(v1, index1)), counter2];
+    } else {
+      let v = $.v;
+      let index4 = $.index;
+      let value = $.value;
+      let $1 = uniquify_exp(v, env, counter);
+      let v1;
+      let counter1;
+      v1 = $1[0];
+      counter1 = $1[1];
+      let $2 = uniquify_exp(index4, env, counter1);
+      let index1;
+      let counter2;
+      index1 = $2[0];
+      counter2 = $2[1];
+      let $3 = uniquify_exp(value, env, counter2);
+      let value1;
+      let counter3;
+      value1 = $3[0];
+      counter3 = $3[1];
+      return [new Prim(new VectorSet(v1, index1, value1)), counter3];
     }
   } else if (e instanceof Var) {
     let v = e.name;
@@ -13905,7 +12396,7 @@ function uniquify_exp(e, env, counter) {
     result1 = $1[0];
     counter2 = $1[1];
     return [new Begin(stmts1, result1), counter2];
-  } else {
+  } else if (e instanceof WhileLoop) {
     let condition = e.condition;
     let body = e.body;
     let $ = uniquify_exp(condition, env, counter);
@@ -13919,6 +12410,15 @@ function uniquify_exp(e, env, counter) {
     body1 = $1[0];
     counter2 = $1[1];
     return [new WhileLoop(condition1, body1), counter2];
+  } else {
+    let value = e.value;
+    let t = e.t;
+    let $ = uniquify_exp(value, env, counter);
+    let value1;
+    let counter1;
+    value1 = $[0];
+    counter1 = $[1];
+    return [new HasType(value1, t), counter1];
   }
 }
 function uniquify(p) {
@@ -13929,6 +12429,29 @@ function uniquify(p) {
 }
 
 // build/dev/javascript/eoc/eoc/compile.mjs
+var Parse = class extends CustomType {
+};
+var TypeCheck = class extends CustomType {
+};
+var Shrink = class extends CustomType {
+};
+var Uniquify = class extends CustomType {
+};
+var ExplicateControl = class extends CustomType {
+};
+function pass_to_string(p) {
+  if (p instanceof Parse) {
+    return "parse";
+  } else if (p instanceof TypeCheck) {
+    return "type_check";
+  } else if (p instanceof Shrink) {
+    return "shrink";
+  } else if (p instanceof Uniquify) {
+    return "uniquify";
+  } else {
+    return "explicate_control";
+  }
+}
 function interpret2(input) {
   return try$(
     map_error(tokens(input), inspect2),
@@ -13943,51 +12466,105 @@ function interpret2(input) {
           } else if ($ instanceof BoolValue) {
             let v = $.v;
             return inspect2(v);
-          } else {
+          } else if ($ instanceof VoidValue) {
             return "void";
+          } else {
+            let i = $.i;
+            return "(heap-ref " + to_string(i) + ")";
           }
         }
       );
     }
   );
 }
-function compile3(input) {
+function compile3(input, pass) {
   return try$(
     map_error(tokens(input), inspect2),
     (tokens2) => {
       return try$(
         map_error(parse(tokens2), inspect2),
         (program2) => {
-          return map3(
-            map_error(type_check_program(program2), inspect2),
-            (pt) => {
-              let _pipe = pt;
-              let _pipe$1 = shrink(_pipe);
-              let _pipe$2 = uniquify(_pipe$1);
-              let _pipe$3 = uncover_get(_pipe$2);
-              let _pipe$4 = remove_complex_operands(
-                _pipe$3
-              );
-              let _pipe$5 = explicate_control(_pipe$4);
-              let _pipe$6 = select_instructions(_pipe$5);
-              let _pipe$7 = uncover_live(_pipe$6);
-              let _pipe$8 = build_interference(_pipe$7);
-              let _pipe$9 = allocate_registers(_pipe$8);
-              let _pipe$10 = patch_instructions(_pipe$9);
-              let _pipe$11 = generate_prelude_and_conclusion(
-                _pipe$10
-              );
-              return program_to_text(
-                _pipe$11,
-                "main"
-              );
-            }
-          );
+          if (pass instanceof Parse) {
+            let _pipe = program2;
+            let _pipe$1 = format_program(_pipe);
+            let _pipe$2 = to_string4(_pipe$1, 80);
+            return new Ok(_pipe$2);
+          } else if (pass instanceof TypeCheck) {
+            return map3(
+              map_error(type_check_program(program2), inspect2),
+              (p) => {
+                let _pipe = p;
+                let _pipe$1 = format_program(_pipe);
+                return to_string4(_pipe$1, 80);
+              }
+            );
+          } else if (pass instanceof Shrink) {
+            return map3(
+              map_error(type_check_program(program2), inspect2),
+              (p) => {
+                let _pipe = p;
+                let _pipe$1 = shrink(_pipe);
+                let _pipe$2 = format_program(_pipe$1);
+                return to_string4(_pipe$2, 80);
+              }
+            );
+          } else if (pass instanceof Uniquify) {
+            return map3(
+              map_error(type_check_program(program2), inspect2),
+              (p) => {
+                let _pipe = p;
+                let _pipe$1 = shrink(_pipe);
+                let _pipe$2 = uniquify(_pipe$1);
+                let _pipe$3 = format_program(_pipe$2);
+                return to_string4(_pipe$3, 80);
+              }
+            );
+          } else {
+            return map3(
+              map_error(type_check_program(program2), inspect2),
+              (p) => {
+                let _pipe = p;
+                let _pipe$1 = shrink(_pipe);
+                let _pipe$2 = uniquify(_pipe$1);
+                let _pipe$3 = expose_allocation(_pipe$2);
+                let _pipe$4 = uncover_get(_pipe$3);
+                let _pipe$5 = remove_complex_operands(
+                  _pipe$4
+                );
+                let _pipe$6 = explicate_control(_pipe$5);
+                let _pipe$7 = format_program2(_pipe$6);
+                return to_string4(_pipe$7, 80);
+              }
+            );
+          }
         }
       );
     }
   );
 }
+var default_last_pass = /* @__PURE__ */ new ExplicateControl();
+function string_to_pass(s) {
+  if (s === "explicate_control") {
+    return new ExplicateControl();
+  } else if (s === "shrink") {
+    return new Shrink();
+  } else if (s === "uniquify") {
+    return new Uniquify();
+  } else if (s === "parse") {
+    return new Parse();
+  } else if (s === "type_check") {
+    return new TypeCheck();
+  } else {
+    return default_last_pass;
+  }
+}
+var pass_order = /* @__PURE__ */ toList([
+  /* @__PURE__ */ new Parse(),
+  /* @__PURE__ */ new TypeCheck(),
+  /* @__PURE__ */ new Shrink(),
+  /* @__PURE__ */ new Uniquify(),
+  /* @__PURE__ */ new ExplicateControl()
+]);
 
 // build/dev/javascript/gleam_community_colour/gleam_community/colour.mjs
 var Rgba = class extends CustomType {
@@ -14002,7 +12579,7 @@ var Rgba = class extends CustomType {
 function valid_colour_value(c) {
   let $ = c > 1 || c < 0;
   if ($) {
-    return new Error2(void 0);
+    return new Error(void 0);
   } else {
     return new Ok(c);
   }
@@ -14095,7 +12672,7 @@ function to_rgba(colour2) {
 }
 
 // build/dev/javascript/eoc/eoc/ui/colour.mjs
-var FILEPATH12 = "src/eoc/ui/colour.gleam";
+var FILEPATH9 = "src/eoc/ui/colour.gleam";
 var ColourPalette = class extends CustomType {
   constructor(base, primary, secondary, success2, warning, danger) {
     super();
@@ -14137,7 +12714,7 @@ function rgb(r, g, b) {
   } else {
     throw makeError(
       "let_assert",
-      FILEPATH12,
+      FILEPATH9,
       "eoc/ui/colour",
       63,
       "rgb",
@@ -14385,13 +12962,13 @@ function default_dark_palette() {
 
 // build/dev/javascript/eoc/eoc/ui/theme.mjs
 var Theme = class extends CustomType {
-  constructor(id, selector, font2, radius2, space, light, dark) {
+  constructor(id, selector, font2, radius2, space2, light, dark) {
     super();
     this.id = id;
     this.selector = selector;
     this.font = font2;
     this.radius = radius2;
-    this.space = space;
+    this.space = space2;
     this.light = light;
     this.dark = dark;
   }
@@ -14844,7 +13421,7 @@ function default$() {
   let id = "lustre-ui-default";
   let font$1 = new Fonts(sans, sans, code);
   let radius$1 = perfect_fifth(0.75);
-  let space = golden_ratio(0.75);
+  let space2 = golden_ratio(0.75);
   let light = default_light_palette();
   let dark = default_dark_palette();
   return new Theme(
@@ -14852,7 +13429,7 @@ function default$() {
     new Global(),
     font$1,
     radius$1,
-    space,
+    space2,
     light,
     new Some([new Class("dark"), dark])
   );
@@ -14877,12 +13454,13 @@ function button2(attributes, children) {
 }
 
 // build/dev/javascript/eoc/eoc/ui.mjs
-var FILEPATH13 = "src/eoc/ui.gleam";
+var FILEPATH10 = "src/eoc/ui.gleam";
 var Model = class extends CustomType {
-  constructor(input, output) {
+  constructor(input, output, pass) {
     super();
     this.input = input;
     this.output = output;
+    this.pass = pass;
   }
 };
 var InputUpdated = class extends CustomType {
@@ -14891,26 +13469,37 @@ var InputUpdated = class extends CustomType {
     this.input = input;
   }
 };
+var PassSelected = class extends CustomType {
+  constructor(pass) {
+    super();
+    this.pass = pass;
+  }
+};
 var Compile = class extends CustomType {
 };
 var Interpet = class extends CustomType {
 };
 function init(_) {
-  return new Model("", "");
+  return new Model("", "", new ExplicateControl());
 }
 function update3(model, msg) {
   if (msg instanceof InputUpdated) {
     let input = msg.input;
-    return new Model(input, model.output);
+    return new Model(input, model.output, model.pass);
+  } else if (msg instanceof PassSelected) {
+    let pass = msg.pass;
+    return new Model(model.input, model.output, string_to_pass(pass));
   } else if (msg instanceof Compile) {
     return new Model(
       model.input,
-      unwrap_both(compile3(model.input))
+      unwrap_both(compile3(model.input, model.pass)),
+      model.pass
     );
   } else {
     return new Model(
       model.input,
-      unwrap_both(interpret2(model.input))
+      unwrap_both(interpret2(model.input)),
+      model.pass
     );
   }
 }
@@ -14954,7 +13543,28 @@ function view(model) {
                   style("font-size", spacing.lg),
                   class$("mr-2")
                 ]),
-                toList([text2("Elements of Compilation")])
+                toList([text2("Essentials of Compilation")])
+              ),
+              select(
+                toList([
+                  use_primary(),
+                  class$("mr-2"),
+                  on_change((var0) => {
+                    return new PassSelected(var0);
+                  })
+                ]),
+                (() => {
+                  let _pipe = pass_order;
+                  return map(
+                    _pipe,
+                    (p) => {
+                      return option(
+                        toList([selected(isEqual(model.pass, p))]),
+                        pass_to_string(p)
+                      );
+                    }
+                  );
+                })()
               ),
               button2(
                 toList([
@@ -14995,12 +13605,12 @@ function main() {
   if (!($ instanceof Ok)) {
     throw makeError(
       "let_assert",
-      FILEPATH13,
+      FILEPATH10,
       "eoc/ui",
-      14,
+      15,
       "main",
       "Pattern match failed, no pattern matched the value.",
-      { value: $, start: 330, end: 379, pattern_start: 341, pattern_end: 346 }
+      { value: $, start: 404, end: 453, pattern_start: 415, pattern_end: 420 }
     );
   }
   return void 0;

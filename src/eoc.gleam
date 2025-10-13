@@ -75,3 +75,25 @@ import eoc/ui
 pub fn main() {
   ui.main()
 }
+// import eoc/langs/l_tup as l
+// import eoc/passes/parse
+// import glam/doc
+// import gleam/io
+
+// pub fn main() {
+//   let p =
+//     "(let ([sum 0])
+//      (let ([i 5])
+//        (begin
+//          (while (> i 0)
+//            (begin
+//              (set! sum (+ sum i))
+//             (set! i (- i 1))))
+//          sum)))"
+//   //
+//   //           X       v
+//   // let p = "(let ([x 5]) x)"
+//   let assert Ok(tokens) = parse.tokens(p)
+//   let assert Ok(p) = parse.parse(tokens)
+//   p |> l.format_program |> doc.to_string(80) |> io.println
+// }
