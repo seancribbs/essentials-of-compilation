@@ -1,5 +1,5 @@
 import eoc/langs/l_tup.{type Cmp, type Type} as l
-import eoc/langs/pretty.{bool_to_doc, int_to_doc, parenthesize}
+import eoc/langs/pretty.{int_to_doc, parenthesize}
 import glam/doc
 import gleam/dict
 import gleam/io

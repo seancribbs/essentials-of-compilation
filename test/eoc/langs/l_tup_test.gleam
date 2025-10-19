@@ -1,10 +1,5 @@
 import eoc/langs/l_tup as l
-import eoc/passes/expose_allocation
 import eoc/passes/parse
-import eoc/passes/remove_complex_operands
-import eoc/passes/shrink
-import eoc/passes/uncover_get
-import eoc/passes/uniquify
 import gleeunit/should
 
 fn parsed(input: String) -> l.Program {

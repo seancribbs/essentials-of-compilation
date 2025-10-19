@@ -1,6 +1,6 @@
-import eoc/langs/l_while as l
-import eoc/passes/parse
-import gleeunit/should
+// import eoc/langs/l_while as l
+// import eoc/passes/parse
+// import gleeunit/should
 // pub fn l_while_test() {
 //   let p =
 //     "(let ([sum 0])
