@@ -9,13 +9,13 @@ import eoc/cfg
 import eoc/langs/x86_base.{
   type Location, LocReg, LocVar, Rax, Rsp, bytereg_to_quad,
 }
-import eoc/langs/x86_var_if.{type Block, Block}
+import eoc/langs/x86_global.{type Block, Block} as x86
 import gleam/dict
 import gleam/list
 import gleam/result
 import gleam/set
 
-pub fn uncover_live(input: x86_var_if.X86Program) -> x86_var_if.X86Program {
+pub fn uncover_live(input: x86.X86Program) -> x86.X86Program {
   let new_blocks =
     input.body
     |> build_cfg()
@@ -26,7 +26,7 @@ pub fn uncover_live(input: x86_var_if.X86Program) -> x86_var_if.X86Program {
       Block(..block, live_before:, live_after:)
     })
 
-  x86_var_if.X86Program(..input, body: new_blocks)
+  x86.X86Program(..input, body: new_blocks)
 }
 
 type LiveSet =
@@ -95,10 +95,7 @@ fn analyze_dataflow_loop(
   }
 }
 
-fn transfer(
-  instrs: List(x86_var_if.Instr),
-  live_after: LiveSet,
-) -> List(LiveSet) {
+fn transfer(instrs: List(x86.Instr), live_after: LiveSet) -> List(LiveSet) {
   use live_after, instr <- list.fold_right(instrs, [live_after])
 
   let assert Ok(next) = list.first(live_after)
@@ -113,7 +110,7 @@ fn build_cfg(blocks: Blocks) -> CFG {
   use g, instr <- list.fold(block.body, cfg.add_vertex(g, block_name))
 
   case instr {
-    x86_var_if.JmpIf(cmp: _, label:) | x86_var_if.Jmp(label:) ->
+    x86.JmpIf(cmp: _, label:) | x86.Jmp(label:) ->
       g
       |> cfg.add_vertex(label)
       |> cfg.add_edge(label, block_name)
@@ -121,31 +118,31 @@ fn build_cfg(blocks: Blocks) -> CFG {
   }
 }
 
-fn before_set(after: LiveSet, instr: x86_var_if.Instr) -> LiveSet {
+fn before_set(after: LiveSet, instr: x86.Instr) -> LiveSet {
   after
   |> set.difference(write_location_in_inst(instr))
   |> set.union(read_locations_in_inst(instr))
 }
 
-pub fn locations_in_arg(arg: x86_var_if.Arg) -> LiveSet {
+pub fn locations_in_arg(arg: x86.Arg) -> LiveSet {
   case arg {
-    // x86_var_if.Deref(_, _) -> todo
-    x86_var_if.Imm(_) -> set.new()
-    x86_var_if.Reg(reg) -> set.from_list([LocReg(reg)])
-    x86_var_if.Var(name) -> set.from_list([LocVar(name)])
+    x86.Imm(_) -> set.new()
+    x86.Reg(reg) -> set.from_list([LocReg(reg)])
+    x86.Var(name) -> set.from_list([LocVar(name)])
+    x86.Deref(reg:, offset: _) -> set.from_list([LocReg(reg)])
+    x86.Global(label: _) -> set.new()
   }
 }
 
-fn read_locations_in_inst(inst: x86_var_if.Instr) -> LiveSet {
+fn read_locations_in_inst(inst: x86.Instr) -> LiveSet {
   case inst {
-    x86_var_if.Addq(a, b) -> set.union(locations_in_arg(a), locations_in_arg(b))
-    x86_var_if.Subq(a, b) -> set.union(locations_in_arg(a), locations_in_arg(b))
-    x86_var_if.Movq(a, _) -> locations_in_arg(a)
-    x86_var_if.Negq(a) -> locations_in_arg(a)
-    x86_var_if.Popq(_) -> set.from_list([LocReg(Rsp)])
-    x86_var_if.Pushq(a) ->
-      set.union(locations_in_arg(a), set.from_list([LocReg(Rsp)]))
-    x86_var_if.Callq(_, arity) ->
+    x86.Addq(a, b) -> set.union(locations_in_arg(a), locations_in_arg(b))
+    x86.Subq(a, b) -> set.union(locations_in_arg(a), locations_in_arg(b))
+    x86.Movq(a, _) -> locations_in_arg(a)
+    x86.Negq(a) -> locations_in_arg(a)
+    x86.Popq(_) -> set.from_list([LocReg(Rsp)])
+    x86.Pushq(a) -> set.union(locations_in_arg(a), set.from_list([LocReg(Rsp)]))
+    x86.Callq(_, arity) ->
       [
         LocReg(x86_base.Rdi),
         LocReg(x86_base.Rsi),
@@ -156,37 +153,37 @@ fn read_locations_in_inst(inst: x86_var_if.Instr) -> LiveSet {
       ]
       |> list.take(arity)
       |> set.from_list()
-    x86_var_if.Retq -> set.from_list([LocReg(Rax)])
+    x86.Retq -> set.from_list([LocReg(Rax)])
     // Correct?
-    x86_var_if.Jmp(_) -> set.new()
+    x86.Jmp(_) -> set.new()
     // Correct?
-    x86_var_if.Cmpq(a:, b:) ->
-      set.union(locations_in_arg(a), locations_in_arg(b))
-    x86_var_if.JmpIf(cmp: _, label: _) -> set.new()
-    x86_var_if.Movzbq(a:, b: _) -> set.from_list([LocReg(bytereg_to_quad(a))])
-    x86_var_if.Set(cmp: _, arg: _) -> set.new()
-    x86_var_if.Xorq(a:, b:) ->
-      set.union(locations_in_arg(a), locations_in_arg(b))
+    x86.Cmpq(a:, b:) -> set.union(locations_in_arg(a), locations_in_arg(b))
+    x86.JmpIf(cmp: _, label: _) -> set.new()
+    x86.Movzbq(a:, b: _) -> set.from_list([LocReg(bytereg_to_quad(a))])
+    x86.Set(cmp: _, arg: _) -> set.new()
+    x86.Xorq(a:, b:) -> set.union(locations_in_arg(a), locations_in_arg(b))
+    x86.Andq(a:, b:) -> set.union(locations_in_arg(a), locations_in_arg(b))
+    x86.Sarq(a:, b:) -> set.union(locations_in_arg(a), locations_in_arg(b))
   }
 }
 
-pub fn write_location_in_inst(inst: x86_var_if.Instr) -> LiveSet {
+pub fn write_location_in_inst(inst: x86.Instr) -> LiveSet {
   case inst {
-    x86_var_if.Addq(_, b) -> locations_in_arg(b)
-    x86_var_if.Subq(_, b) -> locations_in_arg(b)
-    x86_var_if.Callq(_, _) -> set.from_list([LocReg(Rax)])
-    x86_var_if.Movq(_, b) -> locations_in_arg(b)
-    x86_var_if.Negq(a) -> locations_in_arg(a)
-    x86_var_if.Popq(a) ->
-      set.union(locations_in_arg(a), set.from_list([LocReg(Rsp)]))
-    x86_var_if.Pushq(_) -> set.from_list([LocReg(Rsp)])
-    x86_var_if.Retq -> set.new()
-    x86_var_if.Jmp(_) -> set.new()
-    x86_var_if.Cmpq(a: _, b: _) -> set.new()
-    x86_var_if.JmpIf(cmp: _, label: _) -> set.new()
-    x86_var_if.Movzbq(a: _, b:) -> locations_in_arg(b)
-    x86_var_if.Set(cmp: _, arg:) ->
-      set.from_list([LocReg(bytereg_to_quad(arg))])
-    x86_var_if.Xorq(a: _, b:) -> locations_in_arg(b)
+    x86.Addq(_, b) -> locations_in_arg(b)
+    x86.Subq(_, b) -> locations_in_arg(b)
+    x86.Callq(_, _) -> set.from_list([LocReg(Rax)])
+    x86.Movq(_, b) -> locations_in_arg(b)
+    x86.Negq(a) -> locations_in_arg(a)
+    x86.Popq(a) -> set.union(locations_in_arg(a), set.from_list([LocReg(Rsp)]))
+    x86.Pushq(_) -> set.from_list([LocReg(Rsp)])
+    x86.Retq -> set.new()
+    x86.Jmp(_) -> set.new()
+    x86.Cmpq(a: _, b: _) -> set.new()
+    x86.JmpIf(cmp: _, label: _) -> set.new()
+    x86.Movzbq(a: _, b:) -> locations_in_arg(b)
+    x86.Set(cmp: _, arg:) -> set.from_list([LocReg(bytereg_to_quad(arg))])
+    x86.Xorq(a: _, b:) -> locations_in_arg(b)
+    x86.Andq(a: _, b:) -> locations_in_arg(b)
+    x86.Sarq(a: _, b:) -> locations_in_arg(b)
   }
 }
