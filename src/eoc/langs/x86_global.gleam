@@ -27,8 +27,12 @@
 //    popq  %rbp
 //    retq
 import eoc/interference_graph
+import eoc/langs/l_tup as l
 import eoc/langs/x86_base.{type ByteReg, type Cc, type Location, type Register}
+import glam/doc
 import gleam/dict
+import gleam/int
+import gleam/list
 import gleam/set.{type Set}
 
 pub type Arg {
@@ -40,7 +44,7 @@ pub type Arg {
   Deref(reg: Register, offset: Int)
   // var (gets replaced in register allocation)
   Var(name: String)
-  // label(%rip)
+  // labels(%rip)
   Global(label: String)
 }
 
@@ -72,7 +76,11 @@ pub type Block {
 }
 
 pub fn new_program() -> X86Program {
-  X86Program(body: dict.new(), conflicts: interference_graph.new())
+  X86Program(
+    body: dict.new(),
+    types: dict.new(),
+    conflicts: interference_graph.new(),
+  )
 }
 
 pub fn new_block() -> Block {
@@ -82,6 +90,107 @@ pub fn new_block() -> Block {
 pub type X86Program {
   X86Program(
     body: dict.Dict(String, Block),
+    types: dict.Dict(String, l.Type),
     conflicts: interference_graph.Graph,
   )
+}
+
+pub fn format_program(input: X86Program) -> doc.Document {
+  input.body
+  |> dict.to_list
+  |> list.map(format_block)
+  |> doc.concat_join(with: [doc.line, doc.line])
+}
+
+pub fn format_block(block: #(String, Block)) -> doc.Document {
+  let #(block_name, block_body) = block
+  let label = doc.concat([doc.from_string(block_name <> ":"), doc.line])
+
+  block_body.body
+  |> list.map(format_instr)
+  |> doc.concat_join(with: [doc.line])
+  |> doc.prepend(label)
+  |> doc.nest(2)
+  |> doc.group()
+}
+
+pub fn format_instr(instr: Instr) -> doc.Document {
+  let comma = doc.from_string(", ")
+  case instr {
+    Addq(a:, b:) ->
+      doc.concat([doc.from_string("addq "), format_arg(a), comma, format_arg(b)])
+    Andq(a:, b:) ->
+      doc.concat([doc.from_string("andq "), format_arg(a), comma, format_arg(b)])
+    Cmpq(a:, b:) ->
+      doc.concat([doc.from_string("cmpq "), format_arg(a), comma, format_arg(b)])
+    Movq(a:, b:) ->
+      doc.concat([doc.from_string("movq "), format_arg(a), comma, format_arg(b)])
+    Movzbq(a:, b:) ->
+      doc.concat([
+        doc.from_string("movzbq "),
+        x86_base.format_bytereg(a),
+        comma,
+        format_arg(b),
+      ])
+    Negq(a:) -> doc.concat([doc.from_string("negq "), format_arg(a)])
+    Popq(a:) -> doc.concat([doc.from_string("popq "), format_arg(a)])
+    Pushq(a:) -> doc.concat([doc.from_string("pushq "), format_arg(a)])
+    Sarq(a:, b:) ->
+      doc.concat([doc.from_string("sarq "), format_arg(a), comma, format_arg(b)])
+    Subq(a:, b:) ->
+      doc.concat([doc.from_string("subq "), format_arg(a), comma, format_arg(b)])
+    Xorq(a:, b:) ->
+      doc.concat([doc.from_string("xorq "), format_arg(a), comma, format_arg(b)])
+    Set(cmp:, arg:) ->
+      doc.concat([
+        doc.from_string(
+          "set"
+          <> case cmp {
+            x86_base.E -> "e"
+            x86_base.G -> "g"
+            x86_base.Ge -> "ge"
+            x86_base.L -> "l"
+            x86_base.Le -> "le"
+          }
+          <> " ",
+        ),
+        x86_base.format_bytereg(arg),
+      ])
+    Callq(label:, arity: _) -> doc.from_string("callq " <> label)
+    Jmp(label:) -> doc.from_string("jmp " <> label)
+    JmpIf(cmp:, label:) ->
+      doc.from_string(
+        case cmp {
+          x86_base.E -> "je"
+          x86_base.G -> "jg"
+          x86_base.Ge -> "jge"
+          x86_base.L -> "jl"
+          x86_base.Le -> "jle"
+        }
+        <> " "
+        <> label,
+      )
+    Retq -> doc.from_string("retq")
+  }
+}
+
+fn format_arg(a: Arg) -> doc.Document {
+  case a {
+    Deref(reg:, offset:) ->
+      doc.concat([
+        // offset(reg)
+        doc.from_string(int.to_string(offset)),
+        doc.from_string("("),
+        x86_base.format_register(reg),
+        doc.from_string(")"),
+      ])
+    Global(label:) -> doc.from_string(label <> "(%rip)")
+    Imm(value:) ->
+      doc.concat([
+        doc.from_string("$"),
+        doc.from_string(int.to_string(value)),
+      ])
+    Reg(reg:) -> x86_base.format_register(reg)
+    Var(name:) -> doc.from_string(name)
+  }
 }

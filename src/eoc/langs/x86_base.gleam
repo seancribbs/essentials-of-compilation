@@ -1,3 +1,4 @@
+import glam/doc
 import gleam/int
 import gleam/order
 import gleam/string
@@ -96,5 +97,39 @@ pub fn bytereg_to_quad(br: ByteReg) -> Register {
     Bh | Bl -> Rbx
     Ch | Cl -> Rcx
     Dh | Dl -> Rdx
+  }
+}
+
+pub fn format_register(r: Register) -> doc.Document {
+  case r {
+    R10 -> doc.from_string("%r10")
+    R11 -> doc.from_string("%r11")
+    R12 -> doc.from_string("%r12")
+    R13 -> doc.from_string("%r13")
+    R14 -> doc.from_string("%r14")
+    R15 -> doc.from_string("%r15")
+    R8 -> doc.from_string("%r8")
+    R9 -> doc.from_string("%r9")
+    Rax -> doc.from_string("%rax")
+    Rbp -> doc.from_string("%rbp")
+    Rbx -> doc.from_string("%rbx")
+    Rcx -> doc.from_string("%rcx")
+    Rdi -> doc.from_string("%rdi")
+    Rdx -> doc.from_string("%rdx")
+    Rsi -> doc.from_string("%rsi")
+    Rsp -> doc.from_string("%rsp")
+  }
+}
+
+pub fn format_bytereg(r: ByteReg) -> doc.Document {
+  case r {
+    Ah -> doc.from_string("%ah")
+    Al -> doc.from_string("%al")
+    Bh -> doc.from_string("%bh")
+    Bl -> doc.from_string("%bl")
+    Ch -> doc.from_string("%ch")
+    Cl -> doc.from_string("%cl")
+    Dh -> doc.from_string("%dh")
+    Dl -> doc.from_string("%dl")
   }
 }

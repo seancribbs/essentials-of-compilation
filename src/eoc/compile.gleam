@@ -1,5 +1,7 @@
 import eoc/langs/c_tup as c
 import eoc/langs/l_tup as l
+import eoc/langs/x86_global as x86
+import eoc/passes/select_instructions
 
 // import eoc/passes/allocate_registers
 // import eoc/passes/build_interference
@@ -30,9 +32,10 @@ pub type Pass {
   Shrink
   Uniquify
   ExplicateControl
+  SelectInstructions
 }
 
-pub const default_last_pass: Pass = ExplicateControl
+pub const default_last_pass: Pass = SelectInstructions
 
 pub const pass_order: List(Pass) = [
   Parse,
@@ -40,15 +43,17 @@ pub const pass_order: List(Pass) = [
   Shrink,
   Uniquify,
   ExplicateControl,
+  SelectInstructions,
 ]
 
 pub fn pass_to_string(p: Pass) -> String {
   case p {
     Parse -> "parse"
     TypeCheck -> "type_check"
-    ExplicateControl -> "explicate_control"
     Shrink -> "shrink"
     Uniquify -> "uniquify"
+    ExplicateControl -> "explicate_control"
+    SelectInstructions -> "select_instructions"
   }
 }
 
@@ -59,6 +64,7 @@ pub fn string_to_pass(s: String) -> Pass {
     "uniquify" -> Uniquify
     "parse" -> Parse
     "type_check" -> TypeCheck
+    "select_instructions" -> SelectInstructions
     _ -> default_last_pass
   }
 }
@@ -137,6 +143,22 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> remove_complex_operands.remove_complex_operands
       |> explicate_control.explicate_control
       |> c.format_program()
+      |> doc.to_string(80)
+    }
+    SelectInstructions -> {
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> expose_allocation.expose_allocation
+      |> uncover_get.uncover_get
+      |> remove_complex_operands.remove_complex_operands
+      |> explicate_control.explicate_control
+      |> select_instructions.select_instructions
+      |> x86.format_program()
       |> doc.to_string(80)
     }
   }

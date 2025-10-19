@@ -29,7 +29,7 @@ type Msg {
 }
 
 fn init(_args) -> Model {
-  Model("", "", compile.ExplicateControl)
+  Model("", "", compile.default_last_pass)
 }
 
 fn update(model: Model, msg: Msg) {

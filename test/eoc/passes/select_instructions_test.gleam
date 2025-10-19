@@ -2,6 +2,7 @@ import eoc/langs/c_tup as c
 import eoc/passes/expose_allocation
 import eoc/passes/shrink
 import eoc/passes/uncover_get
+import gleam/io
 
 import eoc/langs/l_tup as l
 import eoc/langs/x86_base.{Rax}
@@ -13,6 +14,7 @@ import eoc/passes/remove_complex_operands
 import eoc/passes/select_instructions.{select_instructions}
 
 import eoc/passes/uniquify
+import glam/doc
 import gleam/dict
 import gleam/list
 import gleeunit/should
@@ -260,7 +262,8 @@ pub fn select_instructions_tuple_test() {
     |> parsed
     |> prepasses
 
-  let x86.X86Program(blocks, _) = select_instructions(p)
+  let x86.X86Program(blocks, _, _) = select_instructions(p)
+
   let assert Ok(x86.Block(body:, live_before: _, live_after: _)) =
     dict.get(blocks, "block_1")
   let expected = [
