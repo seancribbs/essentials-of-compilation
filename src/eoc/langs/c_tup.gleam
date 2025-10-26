@@ -10,6 +10,7 @@ pub type Atm {
   Bool(value: Bool)
   Variable(v: String)
   Void
+  HasType(value: Atm, t: Type)
 }
 
 pub type PrimOp {
@@ -135,6 +136,7 @@ fn format_atm(a: Atm) -> doc.Document {
     Int(value:) -> int_to_doc(value)
     Variable(v:) -> doc.from_string(v)
     Void -> parenthesize(doc.from_string("void"))
+    HasType(value:, t: _) -> format_atm(value)
   }
 }
 

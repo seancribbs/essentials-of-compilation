@@ -1,10 +1,11 @@
-import eoc/langs/l_while as l
+import eoc/langs/l_tup as l
 import eoc/langs/x86_base.{E, LocReg, LocVar, Rax, Rsp}
 import eoc/langs/x86_global.{
   Addq, Block, Callq, Cmpq, Imm, Jmp, JmpIf, Movq, Movzbq, Negq, Reg, Set, Var,
   X86Program,
-}
+} as x86
 import eoc/passes/explicate_control
+import eoc/passes/expose_allocation
 import eoc/passes/parse.{parse, tokens}
 import eoc/passes/remove_complex_operands
 import eoc/passes/select_instructions
@@ -46,8 +47,8 @@ pub fn uncover_live_figure_35_test() {
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
-  let base_block = x86_var_if.new_block()
-  let base_program = x86_var_if.new_program()
+  let base_block = x86.new_block()
+  let base_program = x86.new_program()
 
   let p =
     X86Program(
@@ -79,8 +80,8 @@ pub fn uncover_live_with_callq_test() {
     set.from_list([LocReg(Rax), LocReg(Rsp)]),
   ]
 
-  let base_block = x86_var_if.new_block()
-  let base_program = x86_var_if.new_program()
+  let base_block = x86.new_block()
+  let base_program = x86.new_program()
 
   let p =
     X86Program(
@@ -99,7 +100,7 @@ pub fn uncover_live_with_callq_test() {
 }
 
 pub fn uncover_live_with_branching_test() {
-  let base_block = x86_var_if.new_block()
+  let base_block = x86.new_block()
 
   let start = [
     Callq("read_int", 0),
@@ -130,7 +131,7 @@ pub fn uncover_live_with_branching_test() {
     // [Rax, Rsp]
   ]
 
-  let base_program = x86_var_if.new_program()
+  let base_program = x86.new_program()
 
   let p =
     X86Program(
@@ -187,8 +188,8 @@ pub fn uncover_live_assign_boolean_var_test() {
     // [Rax, Rsp]
   ]
 
-  let base_block = x86_var_if.new_block()
-  let base_program = x86_var_if.new_program()
+  let base_block = x86.new_block()
+  let base_program = x86.new_program()
 
   let p =
     X86Program(
@@ -232,6 +233,7 @@ pub fn uncover_live_while_loop_test() {
     |> parsed
     |> shrink.shrink
     |> uniquify.uniquify
+    |> expose_allocation.expose_allocation
     |> uncover_get.uncover_get
     |> remove_complex_operands.remove_complex_operands
     |> explicate_control.explicate_control

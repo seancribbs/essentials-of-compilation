@@ -34,6 +34,8 @@ fn explicate_tail(input: l_mon.Expr, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
     l_mon.Atomic(l_mon.Int(i)) -> #(c.Return(c.Atom(c.Int(i))), blocks)
     l_mon.Atomic(l_mon.Bool(b)) -> #(c.Return(c.Atom(c.Bool(b))), blocks)
     l_mon.Atomic(l_mon.Void) -> #(c.Return(c.Atom(c.Void)), blocks)
+    l_mon.Atomic(l_mon.HasType(_, _)) ->
+      panic as "typed expression in tail position"
     l_mon.Let(v, b, e) -> {
       let #(tail, new_blocks) = explicate_tail(e, blocks)
       explicate_assign(b, v, tail, new_blocks)
@@ -433,5 +435,6 @@ fn convert_atm(input: l_mon.Atm) -> c.Atm {
     l_mon.Var(v) -> c.Variable(v)
     l_mon.Bool(b) -> c.Bool(b)
     l_mon.Void -> c.Void
+    l_mon.HasType(value:, t:) -> c.HasType(convert_atm(value), t)
   }
 }

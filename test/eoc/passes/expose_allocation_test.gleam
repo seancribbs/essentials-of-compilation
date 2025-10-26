@@ -20,14 +20,41 @@ pub fn expose_allocation_test() {
   let p2 =
     la.Program(
       la.Prim(la.VectorRef(
-        la.Prim(la.VectorRef(
-          la.Let(
-            "vecinit5",
+        la.HasType(
+          la.Prim(la.VectorRef(
             la.Let(
-              "vecinit1",
-              la.Int(42),
+              "vecinit5",
               la.Let(
-                "_4",
+                "vecinit1",
+                la.Int(42),
+                la.Let(
+                  "_4",
+                  la.If(
+                    la.Prim(la.Cmp(
+                      l.Lt,
+                      la.Prim(la.Plus(la.GlobalValue("free_ptr"), la.Int(16))),
+                      la.GlobalValue("fromspace_end"),
+                    )),
+                    la.Prim(la.Void),
+                    la.Collect(16),
+                  ),
+                  la.Let(
+                    "alloc2",
+                    la.Allocate(1, l.VectorT([l.IntegerT])),
+                    la.Let(
+                      "_3",
+                      la.Prim(la.VectorSet(
+                        la.HasType(la.Var("alloc2"), l.VectorT([l.IntegerT])),
+                        la.Int(0),
+                        la.Var("vecinit1"),
+                      )),
+                      la.HasType(la.Var("alloc2"), l.VectorT([l.IntegerT])),
+                    ),
+                  ),
+                ),
+              ),
+              la.Let(
+                "_8",
                 la.If(
                   la.Prim(la.Cmp(
                     l.Lt,
@@ -38,48 +65,30 @@ pub fn expose_allocation_test() {
                   la.Collect(16),
                 ),
                 la.Let(
-                  "alloc2",
-                  la.Allocate(1, l.VectorT([l.IntegerT])),
+                  "alloc6",
+                  la.Allocate(1, l.VectorT([l.VectorT([l.IntegerT])])),
                   la.Let(
-                    "_3",
+                    "_7",
                     la.Prim(la.VectorSet(
-                      la.Var("alloc2"),
+                      la.HasType(
+                        la.Var("alloc6"),
+                        l.VectorT([l.VectorT([l.IntegerT])]),
+                      ),
                       la.Int(0),
-                      la.Var("vecinit1"),
+                      la.Var("vecinit5"),
                     )),
-                    la.Var("alloc2"),
+                    la.HasType(
+                      la.Var("alloc6"),
+                      l.VectorT([l.VectorT([l.IntegerT])]),
+                    ),
                   ),
                 ),
               ),
             ),
-            la.Let(
-              "_8",
-              la.If(
-                la.Prim(la.Cmp(
-                  l.Lt,
-                  la.Prim(la.Plus(la.GlobalValue("free_ptr"), la.Int(16))),
-                  la.GlobalValue("fromspace_end"),
-                )),
-                la.Prim(la.Void),
-                la.Collect(16),
-              ),
-              la.Let(
-                "alloc6",
-                la.Allocate(1, l.VectorT([l.VectorT([l.IntegerT])])),
-                la.Let(
-                  "_7",
-                  la.Prim(la.VectorSet(
-                    la.Var("alloc6"),
-                    la.Int(0),
-                    la.Var("vecinit5"),
-                  )),
-                  la.Var("alloc6"),
-                ),
-              ),
-            ),
-          ),
-          la.Int(0),
-        )),
+            la.Int(0),
+          )),
+          l.VectorT([l.IntegerT]),
+        ),
         la.Int(0),
       )),
     )

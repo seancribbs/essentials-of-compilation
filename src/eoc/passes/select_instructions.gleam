@@ -3,6 +3,7 @@
 import gleam/dict
 import gleam/int
 import gleam/list
+import gleam/option.{type Option, None, Some}
 
 import eoc/langs/c_tup as c
 import eoc/langs/l_tup as l
@@ -20,16 +21,22 @@ pub fn select_instructions(input: c.CProgram) -> x86.X86Program {
   x86.X86Program(..x86.new_program(), body:, types:)
 }
 
-fn select_atm(input: c.Atm) -> x86.Arg {
+fn select_atm(input: c.Atm) -> #(x86.Arg, Option(l.Type)) {
   case input {
-    c.Int(i) -> x86.Imm(i)
-    c.Variable(v) -> x86.Var(v)
-    c.Bool(bool) ->
+    c.Int(i) -> #(x86.Imm(i), Some(l.IntegerT))
+    c.Variable(v) -> #(x86.Var(v), None)
+    c.Bool(bool) -> #(
       case bool {
         True -> x86.Imm(1)
         False -> x86.Imm(0)
-      }
-    c.Void -> x86.Imm(0)
+      },
+      Some(l.BooleanT),
+    )
+    c.Void -> #(x86.Imm(0), Some(l.VoidT))
+    c.HasType(value:, t:) -> {
+      let #(a, inner_t) = select_atm(value)
+      #(a, option.or(inner_t, Some(t)))
+    }
   }
 }
 
@@ -49,84 +56,138 @@ fn select_atm(input: c.Atm) -> x86.Arg {
 fn select_stmt(input: c.Stmt) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
   let types = dict.new()
   case input {
-    c.Assign(v, c.Atom(atm)) -> #(
-      [x86.Movq(select_atm(atm), x86.Var(v))],
-      types,
-    )
+    c.Assign(v, c.Atom(atm)) -> {
+      let #(value, t) = select_atm(atm)
+      #(
+        [x86.Movq(value, x86.Var(v))],
+        t
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.unwrap(types),
+      )
+    }
     c.Assign(v, c.Prim(c.Read)) -> #(
       [
         x86.Callq("read_int", 0),
         x86.Movq(x86.Reg(Rax), x86.Var(v)),
       ],
-      types,
+      dict.insert(types, v, l.IntegerT),
     )
     c.Assign(v, c.Prim(c.Neg(c.Variable(v1)))) if v == v1 -> #(
       [
         x86.Negq(x86.Var(v)),
       ],
-      types,
+      dict.insert(types, v, l.IntegerT),
     )
-    c.Assign(v, c.Prim(c.Neg(atm))) -> #(
-      [
-        x86.Movq(select_atm(atm), x86.Var(v)),
-        x86.Negq(x86.Var(v)),
-      ],
-      types,
-    )
-    c.Assign(v, c.Prim(c.Plus(c.Variable(v1), b))) if v == v1 -> #(
-      [
-        x86.Addq(select_atm(b), x86.Var(v)),
-      ],
-      types,
-    )
-    c.Assign(v, c.Prim(c.Plus(a, c.Variable(v1)))) if v == v1 -> #(
-      [
-        x86.Addq(select_atm(a), x86.Var(v)),
-      ],
-      types,
-    )
-    c.Assign(v, c.Prim(c.Plus(a, b))) -> #(
-      [
-        x86.Movq(select_atm(a), x86.Var(v)),
-        x86.Addq(select_atm(b), x86.Var(v)),
-      ],
-      types,
-    )
-    c.Assign(v, c.Prim(c.Minus(c.Variable(v1), b))) if v == v1 -> #(
-      [
-        x86.Subq(select_atm(b), x86.Var(v)),
-      ],
-      types,
-    )
-    c.Assign(v, c.Prim(c.Minus(a, c.Variable(v1)))) if v == v1 -> #(
-      [
-        x86.Negq(x86.Var(v)),
-        x86.Addq(select_atm(a), x86.Var(v)),
-      ],
-      types,
-    )
-    c.Assign(v, c.Prim(c.Minus(a, b))) -> #(
-      [
-        x86.Movq(select_atm(a), x86.Var(v)),
-        x86.Subq(select_atm(b), x86.Var(v)),
-      ],
-      types,
-    )
-    c.Assign(var:, expr: c.Prim(op: c.Not(a:))) -> #(
-      [
-        x86.Movq(select_atm(a), x86.Var(var)),
-        x86.Xorq(x86.Imm(1), x86.Var(var)),
-      ],
-      types,
-    )
-    c.Assign(var:, expr: c.Prim(op: c.Cmp(op:, a:, b:))) -> #(
-      [
-        x86.Cmpq(select_atm(b), select_atm(a)),
-        x86.Set(convert_op_to_cc(op), x86_base.Al),
-        x86.Movzbq(x86_base.Al, x86.Var(var)),
-      ],
-      types,
-    )
+    c.Assign(v, c.Prim(c.Neg(atm))) -> {
+      let #(atm, t) = select_atm(atm)
+      #(
+        [
+          x86.Movq(atm, x86.Var(v)),
+          x86.Negq(x86.Var(v)),
+        ],
+        // Neg operator only takes and returns integers
+        t
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, v, l.IntegerT) }),
+      )
+    }
+    c.Assign(v, c.Prim(c.Plus(c.Variable(v1), b))) if v == v1 -> {
+      let #(atm, t) = select_atm(b)
+      #(
+        [
+          x86.Addq(atm, x86.Var(v)),
+        ],
+        t
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, v, l.IntegerT) }),
+      )
+    }
+    c.Assign(v, c.Prim(c.Plus(a, c.Variable(v1)))) if v == v1 -> {
+      let #(atm, t) = select_atm(a)
+      #(
+        [
+          x86.Addq(atm, x86.Var(v)),
+        ],
+        t
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, v, l.IntegerT) }),
+      )
+    }
+    c.Assign(v, c.Prim(c.Plus(a, b))) -> {
+      let #(a, ta) = select_atm(a)
+      let #(b, tb) = select_atm(b)
+      #(
+        [
+          x86.Movq(a, x86.Var(v)),
+          x86.Addq(b, x86.Var(v)),
+        ],
+        ta
+          |> option.or(tb)
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, v, l.IntegerT) }),
+      )
+    }
+    c.Assign(v, c.Prim(c.Minus(c.Variable(v1), b))) if v == v1 -> {
+      let #(atm, t) = select_atm(b)
+      #(
+        [
+          x86.Subq(atm, x86.Var(v)),
+        ],
+        t
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, v, l.IntegerT) }),
+      )
+    }
+    c.Assign(v, c.Prim(c.Minus(a, c.Variable(v1)))) if v == v1 -> {
+      let #(atm, t) = select_atm(a)
+      #(
+        [
+          x86.Negq(x86.Var(v)),
+          x86.Addq(atm, x86.Var(v)),
+        ],
+        t
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, v, l.IntegerT) }),
+      )
+    }
+    c.Assign(v, c.Prim(c.Minus(a, b))) -> {
+      let #(a, ta) = select_atm(a)
+      let #(b, tb) = select_atm(b)
+      #(
+        [
+          x86.Movq(a, x86.Var(v)),
+          x86.Subq(b, x86.Var(v)),
+        ],
+        ta
+          |> option.or(tb)
+          |> option.map(fn(t) { dict.insert(types, v, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, v, l.IntegerT) }),
+      )
+    }
+    c.Assign(var:, expr: c.Prim(op: c.Not(a:))) -> {
+      let #(atm, t) = select_atm(a)
+      #(
+        [
+          x86.Movq(atm, x86.Var(var)),
+          x86.Xorq(x86.Imm(1), x86.Var(var)),
+        ],
+        t
+          |> option.map(fn(t) { dict.insert(types, var, t) })
+          |> option.lazy_unwrap(fn() { dict.insert(types, var, l.BooleanT) }),
+      )
+    }
+    c.Assign(var:, expr: c.Prim(op: c.Cmp(op:, a:, b:))) -> {
+      let #(a, _) = select_atm(a)
+      let #(b, _) = select_atm(b)
+      #(
+        [
+          x86.Cmpq(b, a),
+          x86.Set(convert_op_to_cc(op), x86_base.Al),
+          x86.Movzbq(x86_base.Al, x86.Var(var)),
+        ],
+        dict.insert(types, var, l.BooleanT),
+      )
+    }
     c.ReadStmt -> #([x86.Callq("read_int", 0)], types)
     c.Assign(var:, expr: c.Allocate(amount:, t:)) -> #(
       [
@@ -153,41 +214,57 @@ fn select_stmt(input: c.Stmt) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
           x86.Andq(x86.Imm(63), x86.Reg(Rax)),
           x86.Movq(x86.Reg(Rax), x86.Var(var)),
         ],
-        types,
+        dict.insert(types, var, l.IntegerT),
       )
     }
     c.Assign(var:, expr: c.Prim(op: c.VectorRef(v:, index:))) -> {
-      let assert c.Variable(varname) = v
+      let #(v, vt) = select_atm(v)
+      let assert x86.Var(varname) = v
       let assert c.Int(n) = index
+      let t = option.then(vt, fn(vt) { l.type_at_index(vt, n) })
       #(
         [
-          x86.Movq(x86.Var(varname), x86.Reg(R11)),
+          x86.Movq(v, x86.Reg(R11)),
           x86.Movq(x86.Deref(R11, 8 * { n + 1 }), x86.Var(var)),
         ],
-        types,
+        t
+          |> option.map(fn(t) { dict.insert(types, var, t) })
+          |> option.then(fn(types) {
+            option.map(vt, fn(vt) { dict.insert(types, varname, vt) })
+          })
+          |> option.unwrap(types),
       )
     }
     c.Assign(var:, expr: c.Prim(op: c.VectorSet(v:, index:, value:))) -> {
-      let assert c.Variable(varname) = v
+      let #(vec, vt) = select_atm(v)
+      let assert x86.Var(vecname) = vec
+      let #(atm, _) = select_atm(value)
       let assert c.Int(n) = index
       #(
         [
-          x86.Movq(x86.Var(varname), x86.Reg(R11)),
-          x86.Movq(select_atm(value), x86.Deref(R11, 8 * { n + 1 })),
+          x86.Movq(vec, x86.Reg(R11)),
+          x86.Movq(atm, x86.Deref(R11, 8 * { n + 1 })),
           x86.Movq(x86.Imm(0), x86.Var(var)),
         ],
-        types,
+        vt
+          |> option.map(fn(vt) { dict.insert(types, vecname, vt) })
+          |> option.unwrap(types)
+          |> dict.insert(var, l.VoidT),
       )
     }
     c.VectorSetStmt(v:, index:, value:) -> {
-      let assert c.Variable(varname) = v
+      let #(vec, vt) = select_atm(v)
+      let assert x86.Var(vecname) = vec
+      let #(atm, _) = select_atm(value)
       let assert c.Int(n) = index
       #(
         [
-          x86.Movq(x86.Var(varname), x86.Reg(R11)),
-          x86.Movq(select_atm(value), x86.Deref(R11, 8 * { n + 1 })),
+          x86.Movq(vec, x86.Reg(R11)),
+          x86.Movq(atm, x86.Deref(R11, 8 * { n + 1 })),
         ],
-        types,
+        vt
+          |> option.map(fn(vt) { dict.insert(types, vecname, vt) })
+          |> option.unwrap(types),
       )
     }
     c.Collect(amount:) -> #(
@@ -209,13 +286,16 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
       let #(t_instrs, t_types) = select_tail(t)
       #(list.append(s_instrs, t_instrs), dict.merge(s_types, t_types))
     }
-    c.Return(c.Atom(atm)) -> #(
-      [
-        x86.Movq(select_atm(atm), x86.Reg(Rax)),
-        x86.Jmp("conclusion"),
-      ],
-      types,
-    )
+    c.Return(c.Atom(atm)) -> {
+      let #(atm, _) = select_atm(atm)
+      #(
+        [
+          x86.Movq(atm, x86.Reg(Rax)),
+          x86.Jmp("conclusion"),
+        ],
+        types,
+      )
+    }
     c.Return(c.Prim(c.Read)) -> #(
       [
         x86.Callq("read_int", 0),
@@ -223,30 +303,41 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
       ],
       types,
     )
-    c.Return(c.Prim(c.Neg(a))) -> #(
-      [
-        x86.Movq(select_atm(a), x86.Reg(Rax)),
-        x86.Negq(x86.Reg(Rax)),
-        x86.Jmp("conclusion"),
-      ],
-      types,
-    )
-    c.Return(c.Prim(c.Plus(a, b))) -> #(
-      [
-        x86.Movq(select_atm(a), x86.Reg(Rax)),
-        x86.Addq(select_atm(b), x86.Reg(Rax)),
-        x86.Jmp("conclusion"),
-      ],
-      types,
-    )
-    c.Return(c.Prim(c.Minus(a, b))) -> #(
-      [
-        x86.Movq(select_atm(a), x86.Reg(Rax)),
-        x86.Subq(select_atm(b), x86.Reg(Rax)),
-        x86.Jmp("conclusion"),
-      ],
-      types,
-    )
+    c.Return(c.Prim(c.Neg(a))) -> {
+      let #(atm, _) = select_atm(a)
+      #(
+        [
+          x86.Movq(atm, x86.Reg(Rax)),
+          x86.Negq(x86.Reg(Rax)),
+          x86.Jmp("conclusion"),
+        ],
+        types,
+      )
+    }
+    c.Return(c.Prim(c.Plus(a, b))) -> {
+      let #(a, _) = select_atm(a)
+      let #(b, _) = select_atm(b)
+      #(
+        [
+          x86.Movq(a, x86.Reg(Rax)),
+          x86.Addq(b, x86.Reg(Rax)),
+          x86.Jmp("conclusion"),
+        ],
+        types,
+      )
+    }
+    c.Return(c.Prim(c.Minus(a, b))) -> {
+      let #(a, _) = select_atm(a)
+      let #(b, _) = select_atm(b)
+      #(
+        [
+          x86.Movq(a, x86.Reg(Rax)),
+          x86.Subq(b, x86.Reg(Rax)),
+          x86.Jmp("conclusion"),
+        ],
+        types,
+      )
+    }
     c.Return(c.Prim(c.Cmp(_, _, _))) | c.Return(c.Prim(op: c.Not(_))) ->
       panic as "program returns boolean"
     c.Goto(label:) -> #([x86.Jmp(label)], types)
@@ -254,38 +345,50 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
       cond: c.Prim(c.Cmp(op:, a:, b:)),
       if_true: c.Goto(l1),
       if_false: c.Goto(l2),
-    ) -> #(
-      [
-        x86.Cmpq(select_atm(b), select_atm(a)),
-        x86.JmpIf(convert_op_to_cc(op), l1),
-        x86.Jmp(l2),
-      ],
-      types,
-    )
-    c.If(_, _, _) -> panic as "invalid if statement"
-    c.Return(a: c.Prim(op: c.VectorLength(v:))) -> {
-      let assert c.Variable(varname) = v
+    ) -> {
+      let #(a, _) = select_atm(a)
+      let #(b, _) = select_atm(b)
       #(
         [
-          x86.Movq(x86.Var(varname), x86.Reg(R11)),
+          x86.Cmpq(b, a),
+          x86.JmpIf(convert_op_to_cc(op), l1),
+          x86.Jmp(l2),
+        ],
+        types,
+      )
+    }
+    c.If(_, _, _) -> panic as "invalid if statement"
+    c.Return(a: c.Prim(op: c.VectorLength(v:))) -> {
+      let #(vec, vt) = select_atm(v)
+      let assert x86.Var(vecname) = vec
+      #(
+        [
+          x86.Movq(vec, x86.Reg(R11)),
           x86.Movq(x86.Deref(R11, 0), x86.Reg(Rax)),
           x86.Sarq(x86.Imm(1), x86.Reg(Rax)),
           x86.Andq(x86.Imm(63), x86.Reg(Rax)),
           x86.Jmp("conclusion"),
         ],
-        types,
+        vt
+          |> option.map(fn(vt) { dict.insert(types, vecname, vt) })
+          |> option.unwrap(types),
       )
     }
     c.Return(a: c.Prim(op: c.VectorRef(v:, index:))) -> {
-      let assert c.Variable(varname) = v
+      let #(vec, vt) = select_atm(v)
+      let assert x86.Var(vecname) = vec
       let assert c.Int(n) = index
+      let assert option.Some(l.IntegerT) =
+        option.then(vt, fn(vt) { l.type_at_index(vt, n) })
       #(
         [
-          x86.Movq(x86.Var(varname), x86.Reg(R11)),
+          x86.Movq(vec, x86.Reg(R11)),
           x86.Movq(x86.Deref(R11, 8 * { n + 1 }), x86.Reg(Rax)),
           x86.Jmp("conclusion"),
         ],
-        types,
+        vt
+          |> option.map(fn(vt) { dict.insert(types, vecname, vt) })
+          |> option.unwrap(types),
       )
     }
     c.Return(a: c.Prim(op: c.VectorSet(v: _, index: _, value: _))) ->

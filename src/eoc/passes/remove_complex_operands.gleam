@@ -103,7 +103,10 @@ fn rco_atom(
       let #(new_var, new_counter) = new_var(counter)
       #(l_mon.Var(new_var), [#(new_var, l_mon.GlobalValue(name:))], new_counter)
     }
-    l.HasType(value:, t: _) -> rco_atom(value, counter)
+    l.HasType(value:, t:) -> {
+      let #(atm, bindings, new_counter) = rco_atom(value, counter)
+      #(l_mon.HasType(atm, t), bindings, new_counter)
+    }
   }
 }
 

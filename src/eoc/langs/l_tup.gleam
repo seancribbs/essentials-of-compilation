@@ -3,6 +3,7 @@ import eoc/runtime
 import glam/doc
 import gleam/dict
 import gleam/list
+import gleam/option
 import gleam/pair
 import gleam/result
 
@@ -409,14 +410,14 @@ pub fn type_check_op(
     VectorLength(v:) -> {
       use #(e, t) <- result.try(type_check_exp(v, env))
       use _ <- result.map(is_vector_type(e, t))
-      #(VectorLength(e), t)
+      #(VectorLength(maybe_wrap_with_type(e, t)), t)
     }
     VectorRef(v:, index:) -> {
       use #(v1, t1) <- result.try(type_check_exp(v, env))
       use item_types <- result.try(is_vector_type(v1, t1))
       use i <- result.map(check_vector_index(index, list.length(item_types)))
       let assert Ok(item_type) = list.first(list.drop(item_types, i))
-      #(VectorRef(v1, index), item_type)
+      #(VectorRef(maybe_wrap_with_type(v1, t1), index), item_type)
     }
     VectorSet(v:, index:, value:) -> {
       use #(v1, t1) <- result.try(type_check_exp(v, env))
@@ -429,7 +430,7 @@ pub fn type_check_op(
         vt1,
         Prim(VectorSet(v1, index, val1)),
       ))
-      #(VectorSet(v1, index, val1), VoidT)
+      #(VectorSet(maybe_wrap_with_type(v1, t1), index, val1), VoidT)
     }
   }
 }
@@ -453,6 +454,24 @@ fn is_vector_type(e: Expr, t: Type) -> Result(List(Type), TypeError) {
   case t {
     VectorT(ts) -> Ok(ts)
     _ -> Error(TypeError(t, VectorT([]), e))
+  }
+}
+
+fn maybe_wrap_with_type(e: Expr, t: Type) -> Expr {
+  case e {
+    HasType(_, _) -> e
+    other -> HasType(other, t)
+  }
+}
+
+pub fn type_at_index(t: Type, index: Int) -> option.Option(Type) {
+  case t {
+    VectorT(fields) ->
+      fields
+      |> list.drop(index)
+      |> list.first()
+      |> option.from_result()
+    _ -> option.None
   }
 }
 

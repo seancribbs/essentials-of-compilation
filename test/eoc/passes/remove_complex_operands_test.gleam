@@ -258,14 +258,20 @@ pub fn rco_transform_vector_ref_condition_test() {
               l_mon.Let(
                 "_5",
                 l_mon.Prim(l_mon.VectorSet(
-                  l_mon.Var("alloc3"),
+                  l_mon.HasType(
+                    l_mon.Var("alloc3"),
+                    l_tup.VectorT([l_tup.IntegerT, l_tup.BooleanT]),
+                  ),
                   l_mon.Int(0),
                   l_mon.Var("vecinit1"),
                 )),
                 l_mon.Let(
                   "_4",
                   l_mon.Prim(l_mon.VectorSet(
-                    l_mon.Var("alloc3"),
+                    l_mon.HasType(
+                      l_mon.Var("alloc3"),
+                      l_tup.VectorT([l_tup.IntegerT, l_tup.BooleanT]),
+                    ),
                     l_mon.Int(1),
                     l_mon.Var("vecinit2"),
                   )),
@@ -279,11 +285,23 @@ pub fn rco_transform_vector_ref_condition_test() {
       l_mon.If(
         l_mon.Let(
           "tmp.4",
-          l_mon.Prim(l_mon.VectorRef(l_mon.Var("v1.1"), l_mon.Int(1))),
+          l_mon.Prim(l_mon.VectorRef(
+            l_mon.HasType(
+              l_mon.Var("v1.1"),
+              l_tup.VectorT([l_tup.IntegerT, l_tup.BooleanT]),
+            ),
+            l_mon.Int(1),
+          )),
           l_mon.Prim(l_mon.Cmp(l_tup.Eq, l_mon.Var("tmp.4"), l_mon.Bool(True))),
         ),
         l_mon.Atomic(l_mon.Int(5)),
-        l_mon.Prim(l_mon.VectorRef(l_mon.Var("v1.1"), l_mon.Int(0))),
+        l_mon.Prim(l_mon.VectorRef(
+          l_mon.HasType(
+            l_mon.Var("v1.1"),
+            l_tup.VectorT([l_tup.IntegerT, l_tup.BooleanT]),
+          ),
+          l_mon.Int(0),
+        )),
       ),
     ))
 

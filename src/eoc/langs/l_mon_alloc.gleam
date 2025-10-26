@@ -4,6 +4,7 @@ pub type Atm {
   Int(value: Int)
   Var(name: String)
   Bool(value: Bool)
+  HasType(value: Atm, t: Type)
   Void
 }
 

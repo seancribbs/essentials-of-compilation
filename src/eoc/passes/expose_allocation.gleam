@@ -32,14 +32,15 @@ fn expose_expr(e: l.Expr, counter: Int) -> #(la.Expr, Int) {
           #(cn, #(var, en))
         })
       let #(alloc, c2) = fresh_var("alloc", c1)
+      let alloc_var = la.HasType(la.Var(alloc), t)
       let #(set_fields, c3, _) =
-        list.fold_right(exprs, #(la.Var(alloc), c2, len - 1), fn(acc, varexp) {
+        list.fold_right(exprs, #(alloc_var, c2, len - 1), fn(acc, varexp) {
           let nested = acc.0
           let field = acc.2
           let #(ignore, count) = fresh_var("_", acc.1)
           let set =
             la.Prim(la.VectorSet(
-              v: la.Var(alloc),
+              v: alloc_var,
               index: la.Int(field),
               value: la.Var(varexp.0),
             ))
@@ -66,7 +67,10 @@ fn expose_expr(e: l.Expr, counter: Int) -> #(la.Expr, Int) {
         c4,
       )
     }
-    l.HasType(value: _, t: _) -> panic as "unexpected type wrapper"
+    l.HasType(value:, t:) -> {
+      let #(v1, c1) = expose_expr(value, counter)
+      #(la.HasType(v1, t), c1)
+    }
     l.If(condition:, if_true:, if_false:) -> {
       let #(condition, c1) = expose_expr(condition, counter)
       let #(if_true, c2) = expose_expr(if_true, c1)

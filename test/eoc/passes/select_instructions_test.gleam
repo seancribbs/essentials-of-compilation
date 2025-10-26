@@ -2,7 +2,6 @@ import eoc/langs/c_tup as c
 import eoc/passes/expose_allocation
 import eoc/passes/shrink
 import eoc/passes/uncover_get
-import gleam/io
 
 import eoc/langs/l_tup as l
 import eoc/langs/x86_base.{Rax}
@@ -52,6 +51,11 @@ pub fn select_instructions_test() {
           ]),
         ),
       ]),
+      types: dict.from_list([
+        #("x.2", l.IntegerT),
+        #("x.1", l.IntegerT),
+        #("y.3", l.IntegerT),
+      ]),
     )
 
   cp |> select_instructions() |> should.equal(x)
@@ -82,6 +86,7 @@ pub fn select_instructions_neg_test() {
           ]),
         ),
       ]),
+      types: dict.from_list([#("tmp.1", l.IntegerT)]),
     )
 
   cp |> select_instructions() |> should.equal(x)
@@ -161,6 +166,7 @@ pub fn select_instructions_branches_test() {
           ]),
         ),
       ]),
+      types: dict.from_list([#("tmp.1", l.IntegerT), #("tmp.2", l.IntegerT)]),
     )
 
   // let p1 = select_instructions(p)
@@ -195,6 +201,7 @@ pub fn select_instructions_void_test() {
           ]),
         ),
       ]),
+      types: dict.from_list([#("x.1", l.VoidT)]),
     )
 
   p |> select_instructions |> should.equal(p2)
@@ -225,6 +232,7 @@ pub fn select_instructions_read_stmt_test() {
           ]),
         ),
       ]),
+      types: dict.from_list([#("x.1", l.IntegerT)]),
     )
 
   p |> select_instructions |> should.equal(p2)
@@ -262,7 +270,7 @@ pub fn select_instructions_tuple_test() {
     |> parsed
     |> prepasses
 
-  let x86.X86Program(blocks, _, _) = select_instructions(p)
+  let x86.X86Program(blocks, types, _) = select_instructions(p)
 
   let assert Ok(x86.Block(body:, live_before: _, live_after: _)) =
     dict.get(blocks, "block_1")
@@ -273,35 +281,21 @@ pub fn select_instructions_tuple_test() {
     x86.Movq(x86.Reg(x86_base.R11), x86.Var("alloc6")),
   ]
   body |> list.take(4) |> should.equal(expected)
-  // #(
-  //   "block_1",
-  //   c.Seq(
-  //     c.Assign(
-  //       "alloc6",
-  //       c.Allocate(1, l.VectorT([l.VectorT([l.IntegerT])])),
-  //     ),
-  //     c.Seq(
-  //       c.Assign(
-  //         "_7",
-  //         c.Prim(c.VectorSet(
-  //           c.Variable("alloc6"),
-  //           c.Int(0),
-  //           c.Variable("vecinit5"),
-  //         )),
-  //       ),
-  //       c.Seq(
-  //         c.Assign("tmp.7", c.Atom(c.Variable("alloc6"))),
-  //         c.Seq(
-  //           c.Assign(
-  //             "tmp.8",
-  //             c.Prim(c.VectorRef(c.Variable("tmp.7"), c.Int(0))),
-  //           ),
-  //           c.Return(c.Prim(c.VectorRef(c.Variable("tmp.8"), c.Int(0)))),
-  //         ),
-  //       ),
-  //     ),
-  //   ),
-  // )
+
+  types
+  |> dict.get("alloc6")
+  |> should.be_ok()
+  |> should.equal(l.VectorT([l.VectorT([l.IntegerT])]))
+
+  types
+  |> dict.get("alloc2")
+  |> should.be_ok()
+  |> should.equal(l.VectorT([l.IntegerT]))
+
+  types
+  |> dict.get("tmp.8")
+  |> should.be_ok()
+  |> should.equal(l.VectorT([l.IntegerT]))
 }
 
 fn parsed(input: String) -> l.Program {

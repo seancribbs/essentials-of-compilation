@@ -386,7 +386,10 @@ pub fn explicate_control_vector_ref_test() {
               c.Assign(
                 "_7",
                 c.Prim(c.VectorSet(
-                  c.Variable("alloc6"),
+                  c.HasType(
+                    c.Variable("alloc6"),
+                    l.VectorT([l.VectorT([l.IntegerT])]),
+                  ),
                   c.Int(0),
                   c.Variable("vecinit5"),
                 )),
@@ -398,7 +401,12 @@ pub fn explicate_control_vector_ref_test() {
                     "tmp.8",
                     c.Prim(c.VectorRef(c.Variable("tmp.7"), c.Int(0))),
                   ),
-                  c.Return(c.Prim(c.VectorRef(c.Variable("tmp.8"), c.Int(0)))),
+                  c.Return(
+                    c.Prim(c.VectorRef(
+                      c.HasType(c.Variable("tmp.8"), l.VectorT([l.IntegerT])),
+                      c.Int(0),
+                    )),
+                  ),
                 ),
               ),
             ),
@@ -414,7 +422,7 @@ pub fn explicate_control_vector_ref_test() {
               c.Assign(
                 "_3",
                 c.Prim(c.VectorSet(
-                  c.Variable("alloc2"),
+                  c.HasType(c.Variable("alloc2"), l.VectorT([l.IntegerT])),
                   c.Int(0),
                   c.Variable("vecinit1"),
                 )),
