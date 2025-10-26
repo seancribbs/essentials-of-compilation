@@ -11,9 +11,8 @@ import eoc/passes/explicate_control
 import eoc/passes/parse
 import eoc/passes/remove_complex_operands
 import eoc/passes/select_instructions.{select_instructions}
-
 import eoc/passes/uniquify
-import glam/doc
+
 import gleam/dict
 import gleam/list
 import gleeunit/should

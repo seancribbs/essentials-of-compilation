@@ -1,4 +1,5 @@
 import eoc/interference_graph
+import eoc/langs/l_tup as l
 import eoc/langs/x86_base
 import eoc/langs/x86_global as x86
 import eoc/passes/uncover_live
@@ -8,7 +9,27 @@ import gleam/set
 
 pub fn build_interference(program: x86.X86Program) -> x86.X86Program {
   let conflicts =
-    dict.fold(program.body, program.conflicts, fn(ig, _, block) {
+    program.types
+    |> dict.fold(program.conflicts, fn(g, var, t) {
+      case t {
+        // Conflicts must be added between callee-saved registers and
+        // tuple-typed variables so that they are not clobbered by the GC.
+        l.VectorT(_) ->
+          g
+          |> interference_graph.add_locations(
+            set.from_list([x86_base.LocVar(var)]),
+          )
+          |> list.fold(x86_base.callee_saved_registers, _, fn(g, reg) {
+            interference_graph.add_conflict(
+              g,
+              x86_base.LocVar(var),
+              x86_base.LocReg(reg),
+            )
+          })
+        _ -> g
+      }
+    })
+    |> dict.fold(program.body, _, fn(ig, _, block) {
       determine_conflicts(ig, block.body, block.live_after)
     })
   x86.X86Program(..program, conflicts:)

@@ -46,6 +46,28 @@ pub type Location {
   LocVar(name: String)
 }
 
+pub const callee_saved_registers: List(Register) = [
+  Rsp,
+  Rbp,
+  Rbx,
+  R12,
+  R13,
+  R14,
+  R15,
+]
+
+pub const caller_saved_registers: List(Register) = [
+  Rax,
+  Rcx,
+  Rdx,
+  Rsi,
+  Rdi,
+  R8,
+  R9,
+  R10,
+  R11,
+]
+
 pub fn is_callee_saved(reg: Register) -> Bool {
   case reg {
     Rsp | Rbp | Rbx | R12 | R13 | R14 | R15 -> True

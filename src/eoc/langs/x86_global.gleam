@@ -104,7 +104,14 @@ pub fn format_program(input: X86Program) -> doc.Document {
 
 pub fn format_block(block: #(String, Block)) -> doc.Document {
   let #(block_name, block_body) = block
-  let label = doc.concat([doc.from_string(block_name <> ":"), doc.line])
+  let label =
+    doc.concat([
+      doc.from_string(block_name <> ":"),
+      doc.space,
+      doc.from_string("# live before: "),
+      format_live_set(block_body.live_before),
+      doc.line,
+    ])
 
   block_body.body
   |> list.map(format_instr)
@@ -112,6 +119,22 @@ pub fn format_block(block: #(String, Block)) -> doc.Document {
   |> doc.prepend(label)
   |> doc.nest(2)
   |> doc.group()
+}
+
+fn format_live_set(set: Set(Location)) -> doc.Document {
+  set
+  |> set.map(format_location)
+  |> set.to_list()
+  |> doc.concat_join(with: [doc.from_string(", ")])
+  |> doc.prepend(doc.from_string("{"))
+  |> doc.append(doc.from_string("}"))
+}
+
+fn format_location(loc: Location) -> doc.Document {
+  case loc {
+    x86_base.LocReg(reg:) -> x86_base.format_register(reg)
+    x86_base.LocVar(name:) -> doc.from_string(name)
+  }
 }
 
 pub fn format_instr(instr: Instr) -> doc.Document {
