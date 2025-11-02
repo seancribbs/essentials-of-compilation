@@ -15,9 +15,7 @@ import eoc/passes/shrink
 import eoc/passes/uncover_get
 import eoc/passes/uncover_live
 import eoc/passes/uniquify
-import glam/doc
 import gleam/dict
-import gleam/io
 import gleam/set
 import gleeunit/should
 
@@ -238,7 +236,6 @@ pub fn build_interference_vector_test() {
     |> prepasses
     |> build_interference.build_interference
 
-  io.println(x86.format_program(p) |> doc.to_string(80))
   // Tuple-typed variables must conflict with callee- and caller-saved registers
   ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(Rsp)) |> should.be_true
   ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rbp))

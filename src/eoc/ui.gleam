@@ -1,6 +1,5 @@
 import eoc/ui/button.{button}
 import gleam/list
-import gleam/result
 import lustre
 import lustre/attribute.{type Attribute, class, style}
 import lustre/element.{type Element, text}
@@ -38,10 +37,10 @@ fn update(model: Model, msg: Msg) {
     Compile ->
       Model(
         ..model,
-        output: result.unwrap_both(compile.compile(model.input, model.pass)),
+        output: unwrap_both(compile.compile(model.input, model.pass)),
       )
     Interpet ->
-      Model(..model, output: result.unwrap_both(compile.interpret(model.input)))
+      Model(..model, output: unwrap_both(compile.interpret(model.input)))
     PassSelected(pass:) -> Model(..model, pass: string_to_pass(pass))
   }
 }
@@ -110,4 +109,11 @@ fn code_component(attrs: List(Attribute(Msg)), body: String) -> Element(Msg) {
       body,
     ),
   ])
+}
+
+fn unwrap_both(res: Result(a, a)) -> a {
+  case res {
+    Error(e) -> e
+    Ok(o) -> o
+  }
 }
