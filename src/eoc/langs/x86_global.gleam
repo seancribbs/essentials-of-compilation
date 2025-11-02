@@ -75,24 +75,30 @@ pub type Block {
   )
 }
 
-pub fn new_program() -> X86Program {
-  X86Program(
-    body: dict.new(),
-    types: dict.new(),
-    conflicts: interference_graph.new(),
-  )
-}
-
-pub fn new_block() -> Block {
-  Block([], set.new(), [])
-}
-
 pub type X86Program {
   X86Program(
     body: dict.Dict(String, Block),
     types: dict.Dict(String, l.Type),
     conflicts: interference_graph.Graph,
+    stack_vars: Int,
+    used_callee: set.Set(x86_base.Register),
+    root_stack_size: Int,
   )
+}
+
+pub fn new_program() -> X86Program {
+  X86Program(
+    body: dict.new(),
+    types: dict.new(),
+    conflicts: interference_graph.new(),
+    stack_vars: 0,
+    used_callee: set.new(),
+    root_stack_size: 0,
+  )
+}
+
+pub fn new_block() -> Block {
+  Block([], set.new(), [])
 }
 
 pub fn format_program(input: X86Program) -> doc.Document {

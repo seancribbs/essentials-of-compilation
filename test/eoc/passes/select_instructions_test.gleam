@@ -269,7 +269,7 @@ pub fn select_instructions_tuple_test() {
     |> parsed
     |> prepasses
 
-  let x86.X86Program(blocks, types, _) = select_instructions(p)
+  let x86.X86Program(blocks, types, _, _, _, _) = select_instructions(p)
 
   let assert Ok(x86.Block(body:, live_before: _, live_after: _)) =
     dict.get(blocks, "block_1")
