@@ -19,7 +19,7 @@
 // jmp conclusion
 
 import eoc/langs/x86_base.{Rax}
-import eoc/langs/x86_if as x86
+import eoc/langs/x86_global as x86
 import gleam/dict
 import gleam/list
 
@@ -27,7 +27,7 @@ pub fn patch_instructions(input: x86.X86Program) -> x86.X86Program {
   let body =
     input.body
     |> dict.map_values(fn(_, block) {
-      x86.Block(body: patch_instructions_block(block.body))
+      x86.Block(..block, body: patch_instructions_block(block.body))
     })
 
   x86.X86Program(..input, body:)

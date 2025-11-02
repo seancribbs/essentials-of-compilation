@@ -110,8 +110,13 @@ pub fn format_program(input: X86Program) -> doc.Document {
 
 pub fn format_block(block: #(String, Block)) -> doc.Document {
   let #(block_name, block_body) = block
+  let prefix = case block_name {
+    "main" -> doc.concat([doc.from_string("\t.globl main"), doc.line])
+    _ -> doc.empty
+  }
   let label =
     doc.concat([
+      prefix,
       doc.from_string(block_name <> ":"),
       doc.space,
       doc.from_string("# live before: "),

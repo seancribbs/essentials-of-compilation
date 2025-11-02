@@ -129,7 +129,7 @@ fn translate_location(
       let assert Ok(arg) = dict.get(assignments, x86_base.LocVar(v))
       arg
     }
-    x86.Imm(_) | x86.Reg(_) | x86.Deref(_, _) | x86.Global(_) -> l
+    _ -> l
   }
 }
 
