@@ -64,31 +64,31 @@ pub fn build_interference_test() {
 
   // io.debug(conflicts)
   // movq $1, v v interferes with rsp,
-  ig.has_conflict(conflicts, LocVar("v"), LocReg(Rsp)) |> should.be_true
+  assert ig.has_conflict(conflicts, LocVar("v"), LocReg(Rsp))
   // movq $42, w w interferes with v and rsp,
-  ig.has_conflict(conflicts, LocVar("w"), LocVar("v")) |> should.be_true
-  ig.has_conflict(conflicts, LocVar("w"), LocReg(Rsp)) |> should.be_true
+  assert ig.has_conflict(conflicts, LocVar("w"), LocVar("v"))
+  assert ig.has_conflict(conflicts, LocVar("w"), LocReg(Rsp))
   // movq v, x x interferes with w and rsp,
   // addq $7, x x interferes with w and rsp,
-  ig.has_conflict(conflicts, LocVar("x"), LocVar("w")) |> should.be_true
-  ig.has_conflict(conflicts, LocVar("x"), LocReg(Rsp)) |> should.be_true
+  assert ig.has_conflict(conflicts, LocVar("x"), LocVar("w"))
+  assert ig.has_conflict(conflicts, LocVar("x"), LocReg(Rsp))
   // movq x, y y interferes with w and rsp but not x,
-  ig.has_conflict(conflicts, LocVar("y"), LocReg(Rsp)) |> should.be_true
-  ig.has_conflict(conflicts, LocVar("y"), LocVar("w")) |> should.be_true
-  ig.has_conflict(conflicts, LocVar("y"), LocVar("x")) |> should.be_false
+  assert ig.has_conflict(conflicts, LocVar("y"), LocReg(Rsp))
+  assert ig.has_conflict(conflicts, LocVar("y"), LocVar("w"))
+  assert !ig.has_conflict(conflicts, LocVar("y"), LocVar("x"))
   // movq x, z z interferes with w, y, and rsp,
   // addq w, z z interferes with y and rsp,
-  ig.has_conflict(conflicts, LocVar("z"), LocReg(Rsp)) |> should.be_true
-  ig.has_conflict(conflicts, LocVar("z"), LocVar("w")) |> should.be_true
-  ig.has_conflict(conflicts, LocVar("z"), LocVar("y")) |> should.be_true
+  assert ig.has_conflict(conflicts, LocVar("z"), LocReg(Rsp))
+  assert ig.has_conflict(conflicts, LocVar("z"), LocVar("w"))
+  assert ig.has_conflict(conflicts, LocVar("z"), LocVar("y"))
   // movq y, t t interferes with z and rsp,
   // negq t t interferes with z and rsp,
-  ig.has_conflict(conflicts, LocVar("t"), LocVar("z")) |> should.be_true
-  ig.has_conflict(conflicts, LocVar("t"), LocReg(Rsp)) |> should.be_true
+  assert ig.has_conflict(conflicts, LocVar("t"), LocVar("z"))
+  assert ig.has_conflict(conflicts, LocVar("t"), LocReg(Rsp))
   // movq z, %rax rax interferes with t and rsp,
   // addq t, %rax rax interferes with rsp,
-  ig.has_conflict(conflicts, LocReg(Rax), LocVar("t")) |> should.be_true
-  ig.has_conflict(conflicts, LocReg(Rax), LocReg(Rsp)) |> should.be_true
+  assert ig.has_conflict(conflicts, LocReg(Rax), LocVar("t"))
+  assert ig.has_conflict(conflicts, LocReg(Rax), LocReg(Rsp))
   // jmp conclusion no interference
 }
 
@@ -121,7 +121,7 @@ pub fn build_interference_call_test() {
   // callq read_int
   // addq $42, rax
   // jmp conclusion
-  ig.has_conflict(conflicts, LocReg(Rax), LocReg(Rsp)) |> should.be_true
+  assert ig.has_conflict(conflicts, LocReg(Rax), LocReg(Rsp))
 }
 
 pub fn build_interference_with_branching_test() {
@@ -172,7 +172,7 @@ pub fn build_interference_with_branching_test() {
   let conflicts = p2.conflicts
 
   // a and %rsp are live at the same time
-  ig.has_conflict(conflicts, LocReg(Rsp), LocVar("a")) |> should.be_true
+  assert ig.has_conflict(conflicts, LocReg(Rsp), LocVar("a"))
 }
 
 pub fn build_interference_assign_boolean_var_test() {
@@ -226,7 +226,7 @@ pub fn build_interference_assign_boolean_var_test() {
 
   let conflicts = p2.conflicts
 
-  ig.has_conflict(conflicts, LocReg(Rsp), LocVar("x")) |> should.be_true
+  assert ig.has_conflict(conflicts, LocReg(Rsp), LocVar("x"))
 }
 
 pub fn build_interference_vector_test() {
@@ -237,19 +237,13 @@ pub fn build_interference_vector_test() {
     |> build_interference.build_interference
 
   // Tuple-typed variables must conflict with callee- and caller-saved registers
-  ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(Rsp)) |> should.be_true
-  ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rbp))
-  |> should.be_true
-  ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rbx))
-  |> should.be_true
-  ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R12))
-  |> should.be_true
-  ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R13))
-  |> should.be_true
-  ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R14))
-  |> should.be_true
-  ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R15))
-  |> should.be_true
+  assert ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(Rsp))
+  assert ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rbp))
+  assert ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rbx))
+  assert ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R12))
+  assert ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R13))
+  assert ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R14))
+  assert ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.R15))
   // ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rax))
   // |> should.be_true
   // ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rcx))

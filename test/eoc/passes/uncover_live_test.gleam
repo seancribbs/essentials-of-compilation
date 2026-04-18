@@ -63,7 +63,7 @@ pub fn uncover_live_figure_35_test() {
       ]),
     )
 
-  p |> uncover_live.uncover_live |> should.equal(p2)
+  assert uncover_live.uncover_live(p) == p2
 }
 
 pub fn uncover_live_with_callq_test() {
@@ -96,7 +96,7 @@ pub fn uncover_live_with_callq_test() {
       ]),
     )
 
-  p |> uncover_live.uncover_live |> should.equal(p2)
+  assert uncover_live.uncover_live(p) == p2
 }
 
 pub fn uncover_live_with_branching_test() {
@@ -146,13 +146,13 @@ pub fn uncover_live_with_branching_test() {
   let p2 = uncover_live.uncover_live(p)
 
   let assert Ok(s) = dict.get(p2.body, "start")
-  s.live_before |> should.equal(set.from_list([LocReg(Rsp)]))
+  assert s.live_before == set.from_list([LocReg(Rsp)])
 
   let assert Ok(b1) = dict.get(p2.body, "block_1")
-  b1.live_before |> should.equal(set.from_list([LocReg(Rsp)]))
+  assert b1.live_before == set.from_list([LocReg(Rsp)])
 
   let assert Ok(b2) = dict.get(p2.body, "block_2")
-  b2.live_before |> should.equal(set.from_list([LocReg(Rsp), LocVar("a")]))
+  assert b2.live_before == set.from_list([LocReg(Rsp), LocVar("a")])
 }
 
 pub fn uncover_live_assign_boolean_var_test() {
@@ -204,13 +204,13 @@ pub fn uncover_live_assign_boolean_var_test() {
   let p2 = uncover_live.uncover_live(p)
 
   let assert Ok(s) = dict.get(p2.body, "start")
-  s.live_before |> should.equal(set.from_list([LocReg(Rsp)]))
+  assert s.live_before == set.from_list([LocReg(Rsp)])
 
   let assert Ok(b1) = dict.get(p2.body, "block_1")
-  b1.live_before |> should.equal(set.from_list([LocReg(Rsp)]))
+  assert b1.live_before == set.from_list([LocReg(Rsp)])
 
   let assert Ok(b2) = dict.get(p2.body, "block_2")
-  b2.live_before |> should.equal(set.from_list([LocReg(Rsp)]))
+  assert b2.live_before == set.from_list([LocReg(Rsp)])
 
   let assert [_, set_instr, movzbq, ..] = s.live_after
   set.contains(set_instr, LocReg(Rax)) |> should.be_true
@@ -242,19 +242,18 @@ pub fn uncover_live_while_loop_test() {
   let p2 = uncover_live.uncover_live(p)
 
   let assert Ok(s) = dict.get(p2.body, "block_1")
-  s.live_before |> should.equal(set.from_list([LocVar("sum.1"), LocReg(Rsp)]))
+  assert s.live_before == set.from_list([LocVar("sum.1"), LocReg(Rsp)])
 
   let assert Ok(s) = dict.get(p2.body, "start")
-  s.live_before
-  |> should.equal(set.from_list([LocReg(Rsp)]))
+  assert s.live_before == set.from_list([LocReg(Rsp)])
 
   let assert Ok(s) = dict.get(p2.body, "block_2")
-  s.live_before
-  |> should.equal(set.from_list([LocVar("sum.1"), LocVar("i.2"), LocReg(Rsp)]))
+  assert s.live_before
+    == set.from_list([LocVar("sum.1"), LocVar("i.2"), LocReg(Rsp)])
 
   let assert Ok(s) = dict.get(p2.body, "loop_1")
-  s.live_before
-  |> should.equal(set.from_list([LocVar("sum.1"), LocVar("i.2"), LocReg(Rsp)]))
+  assert s.live_before
+    == set.from_list([LocVar("sum.1"), LocVar("i.2"), LocReg(Rsp)])
   // X86Program(
   //   dict.from_list([
   //     #(
