@@ -2,6 +2,9 @@ name = "eoc"
 version = "1.0.0"
 # target = "javascript"
 
+[javascript]
+source_maps = true
+
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 nibble = ">= 1.1.3 and < 2.0.0"

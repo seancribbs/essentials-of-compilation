@@ -5,7 +5,7 @@
 // movq $10, b   | {b, c}     |  {c}
 // addq b, c     | {}         |  {b, c}
 
-import eoc/cfg
+import eoc/graf
 import eoc/langs/x86_base.{
   type Location, LocReg, LocVar, Rax, Rsp, bytereg_to_quad,
 }
@@ -39,7 +39,7 @@ type Blocks =
   dict.Dict(String, Block)
 
 type CFG =
-  cfg.CFG(String, Nil)
+  graf.Graph(String, Nil)
 
 type Worklist =
   List(String)
@@ -67,8 +67,8 @@ fn analyze_dataflow_loop(
     [node, ..worklist] -> {
       let input =
         g
-        |> cfg.in_neighbors(node)
-        |> list.fold(set.new(), fn(state, pred) {
+        |> graf.in_neighbors(node)
+        |> set.fold(set.new(), fn(state, pred) {
           let assert Ok(live_sets) = dict.get(mapping, pred)
           let before =
             live_sets
@@ -88,7 +88,7 @@ fn analyze_dataflow_loop(
             g,
             blocks,
             dict.insert(mapping, node, output),
-            list.append(worklist, cfg.out_neighbors(g, node)),
+            list.append(worklist, set.to_list(graf.out_neighbors(g, node))),
           )
       }
     }
@@ -104,16 +104,16 @@ fn transfer(instrs: List(x86.Instr), live_after: LiveSet) -> List(LiveSet) {
 
 fn build_cfg(blocks: Blocks) -> CFG {
   // construct a graph from the dict of blocks
-  use g, block_name, block <- dict.fold(blocks, cfg.new())
+  use g, block_name, block <- dict.fold(blocks, graf.new())
 
   // add vertexes for jmp instructions inside the body of each block
-  use g, instr <- list.fold(block.body, cfg.add_vertex(g, block_name))
+  use g, instr <- list.fold(block.body, graf.insert_node(g, block_name, Nil))
 
   case instr {
     x86.JmpIf(cmp: _, label:) | x86.Jmp(label:) ->
       g
-      |> cfg.add_vertex(label)
-      |> cfg.add_edge(label, block_name)
+      |> graf.insert_node(label, Nil)
+      |> graf.insert_directed_edge(label, block_name)
     _ -> g
   }
 }

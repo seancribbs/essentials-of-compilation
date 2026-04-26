@@ -2,6 +2,7 @@ import eoc/langs/c_tup as c
 import eoc/langs/l_tup as l
 import eoc/langs/x86_global as x86
 import eoc/passes/allocate_registers
+import eoc/passes/build_interference
 import eoc/passes/generate_prelude_and_conclusion
 import eoc/passes/patch_instructions
 import eoc/passes/select_instructions
@@ -212,6 +213,7 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> explicate_control.explicate_control
       |> select_instructions.select_instructions
       |> uncover_live.uncover_live
+      |> build_interference.build_interference
       |> allocate_registers.allocate_registers
       |> x86.format_program()
       |> doc.to_string(80)
@@ -230,6 +232,7 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> explicate_control.explicate_control
       |> select_instructions.select_instructions
       |> uncover_live.uncover_live
+      |> build_interference.build_interference
       |> allocate_registers.allocate_registers
       |> patch_instructions.patch_instructions
       |> x86.format_program()
@@ -249,6 +252,7 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> explicate_control.explicate_control
       |> select_instructions.select_instructions
       |> uncover_live.uncover_live
+      |> build_interference.build_interference
       |> allocate_registers.allocate_registers
       |> patch_instructions.patch_instructions
       |> generate_prelude_and_conclusion.generate_prelude_and_conclusion

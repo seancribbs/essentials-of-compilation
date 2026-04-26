@@ -1,4 +1,4 @@
-import eoc/graph
+import eoc/graf
 import eoc/interference_graph as ig
 import eoc/langs/l_tup as l
 import eoc/langs/x86_base
@@ -153,21 +153,21 @@ fn color_graph_step(g: ig.Graph) -> Result(#(ig.Node, ig.Graph), Nil) {
   //   Pick an unassigned vertex with the highest saturation (breaking ties randomly)
   case pick_vertex(g) {
     Ok(location) -> {
-      let assert Ok(#(context, graph)) = graph.match(g.graph, location)
+      let assert Ok(node) = graf.get_node(g, location)
       // Find the lowest color c that is not in the colors of adjacent nodes (saturation set)
-      let color = pick_color(context.node.value.saturation)
+      let color = pick_color(node.saturation)
       // Assign the color c to the current vertex
-      let value = ig.Node(..context.node.value, assignment: Some(color))
+      let value = ig.Node(..node, assignment: Some(color))
       //     - Update all adjacent nodes to include the assigned color in their saturation set
       let new_graph =
-        context.edges
-        |> dict.keys()
-        |> list.fold(graph, fn(g, node_id) {
-          graph.modify_value(g, node_id, fn(node) {
+        graf.in_neighbors(g, location)
+        |> set.fold(g, fn(g, node_id) {
+          graf.modify(g, node_id, fn(node) {
             ig.Node(..node, saturation: set.insert(node.saturation, color))
           })
         })
-      Ok(#(value, ig.Graph(new_graph)))
+        |> graf.insert_node(location, value)
+      Ok(#(value, new_graph))
     }
     _ -> Error(Nil)
   }
@@ -185,12 +185,12 @@ fn pick_color_internal(set: set.Set(Int), candidate: Int) -> Int {
 }
 
 fn pick_vertex(g: ig.Graph) -> Result(x86_base.Location, Nil) {
-  g.graph
-  |> graph.nodes()
+  g
+  |> graf.node_weights()
   |> list.filter_map(fn(node) {
-    case node.value.assignment {
+    case node.assignment {
       Some(_) -> Error(Nil)
-      None -> Ok(#(set.size(node.value.saturation), node.id))
+      None -> Ok(#(set.size(node.saturation), node.location))
     }
   })
   |> list.sort(fn(a, b) {
