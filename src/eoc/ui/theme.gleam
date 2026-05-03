@@ -726,7 +726,10 @@ fn to_css_variables(theme: Theme) -> String {
   ])
 }
 
-fn to_color_palette_variables(palette: ColourPalette, scheme: String) -> String {
+fn to_color_palette_variables(
+  palette: ColourPalette,
+  scheme: String,
+) -> String {
   string.concat([
     to_css_variable("color-scheme", scheme),
     //

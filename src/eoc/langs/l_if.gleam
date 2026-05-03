@@ -160,7 +160,10 @@ pub fn type_check_program(p: Program) -> Result(Program, TypeError) {
   }
 }
 
-pub fn type_check_exp(e: Expr, env: TypeEnv) -> Result(#(Expr, Type), TypeError) {
+pub fn type_check_exp(
+  e: Expr,
+  env: TypeEnv,
+) -> Result(#(Expr, Type), TypeError) {
   case e {
     Bool(_) -> Ok(#(e, Boolean))
     Int(_) -> Ok(#(e, Integer))

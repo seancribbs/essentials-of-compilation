@@ -222,7 +222,9 @@ pub fn colour_scale_decoder() -> decode.Decoder(ColourScale) {
   ))
 }
 
-pub fn decode_palette(json: Dynamic) -> Result(ColourPalette, List(DecodeError)) {
+pub fn decode_palette(
+  json: Dynamic,
+) -> Result(ColourPalette, List(DecodeError)) {
   decode.run(json, palette_decoder())
 }
 

@@ -4,7 +4,9 @@ import gleam/dict
 import gleam/list
 import gleam/set
 
-pub fn generate_prelude_and_conclusion(input: x86.X86Program) -> x86.X86Program {
+pub fn generate_prelude_and_conclusion(
+  input: x86.X86Program,
+) -> x86.X86Program {
   let alignment = compute_frame_alignment(input)
   let saved_regs = get_saved_registers(input)
   let main = generate_main(alignment, saved_regs, input.root_stack_size)

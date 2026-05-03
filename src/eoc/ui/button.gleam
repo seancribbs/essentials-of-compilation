@@ -215,7 +215,10 @@ pub fn shortcut_badge(
 ///
 /// If the count is greater than 99, the badge will display `"99+"`.
 ///
-pub fn count_badge(attributes: List(Attribute(msg)), count: Int) -> Element(msg) {
+pub fn count_badge(
+  attributes: List(Attribute(msg)),
+  count: Int,
+) -> Element(msg) {
   html.span([attribute.class("button-badge"), ..attributes], [
     html.text(case count < 100 {
       True -> int.to_string(count)
