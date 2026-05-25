@@ -1,37 +1,31 @@
-import eoc/langs/c_tup as c
-import eoc/langs/l_tup as l
-import eoc/langs/x86_global as x86
-import eoc/passes/allocate_registers
-import eoc/passes/build_interference
-import eoc/passes/generate_prelude_and_conclusion
-import eoc/passes/patch_instructions
-import eoc/passes/select_instructions
-import eoc/passes/uncover_live
+// import eoc/langs/c_tup as c
+import eoc/langs/l_fun as l
+import gleam/bool
 
+// import eoc/langs/x86_global as x86
 // import eoc/passes/allocate_registers
 // import eoc/passes/build_interference
-import eoc/passes/explicate_control
-import eoc/passes/expose_allocation
-
+// import eoc/passes/explicate_control
+// import eoc/passes/expose_allocation
 // import eoc/passes/generate_prelude_and_conclusion
 import eoc/passes/parse
 
 // import eoc/passes/patch_instructions
-import eoc/passes/remove_complex_operands
-
+// import eoc/passes/remove_complex_operands
 // import eoc/passes/select_instructions
 import eoc/passes/shrink
-import eoc/passes/uncover_get
 
+// import eoc/passes/uncover_get
 // import eoc/passes/uncover_live
-import eoc/passes/uniquify
+// import eoc/passes/uniquify
+
 import glam/doc
 import gleam/int
-
 import gleam/result
 import gleam/string
 
 pub type Pass {
+  Tokenize
   Parse
   TypeCheck
   Shrink
@@ -47,6 +41,7 @@ pub type Pass {
 pub const default_last_pass: Pass = GeneratePreludeAndConclusion
 
 pub const pass_order: List(Pass) = [
+  Tokenize,
   Parse,
   TypeCheck,
   Shrink,
@@ -61,6 +56,7 @@ pub const pass_order: List(Pass) = [
 
 pub fn pass_to_string(p: Pass) -> String {
   case p {
+    Tokenize -> "tokenize"
     Parse -> "parse"
     TypeCheck -> "type_check"
     Shrink -> "shrink"
@@ -76,6 +72,7 @@ pub fn pass_to_string(p: Pass) -> String {
 
 pub fn string_to_pass(s: String) -> Pass {
   case s {
+    "tokenize" -> Tokenize
     "explicate_control" -> ExplicateControl
     "shrink" -> Shrink
     "uniquify" -> Uniquify
@@ -101,16 +98,21 @@ pub fn interpret(input: String) -> Result(String, String) {
     l.IntValue(v:) -> string.inspect(v)
     l.VoidValue -> "void"
     l.HeapRef(i:) -> "(heap-ref " <> int.to_string(i) <> ")"
+    l.FunValue(_, _) -> "(function)"
   }
 }
 
 pub fn compile(input: String, pass: Pass) -> Result(String, String) {
   use tokens <- result.try(result.map_error(parse.tokens(input), string.inspect))
+  use <- bool.lazy_guard(when: pass == Tokenize, return: fn() {
+    Ok(string.inspect(tokens))
+  })
   use program <- result.try(result.map_error(
     parse.parse(tokens),
     string.inspect,
   ))
   case pass {
+    Tokenize -> panic as "unreachable"
     Parse ->
       program
       |> l.format_program()
@@ -139,125 +141,132 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
     }
 
     Uniquify -> {
-      use p <- result.map(result.map_error(
-        l.type_check_program(program),
-        string.inspect,
-      ))
-      p
-      |> shrink.shrink
-      |> uniquify.uniquify
-      |> l.format_program()
-      |> doc.to_string(80)
+      // use p <- result.map(result.map_error(
+      //   l.type_check_program(program),
+      //   string.inspect,
+      // ))
+      // p
+      // |> shrink.shrink
+      // |> uniquify.uniquify
+      // |> l.format_program()
+      // |> doc.to_string(80)
+      Ok("")
     }
 
     // ==== a few passes later...
     ExplicateControl -> {
-      use p <- result.map(result.map_error(
-        l.type_check_program(program),
-        string.inspect,
-      ))
-      p
-      |> shrink.shrink
-      |> uniquify.uniquify
-      |> expose_allocation.expose_allocation
-      |> uncover_get.uncover_get
-      |> remove_complex_operands.remove_complex_operands
-      |> explicate_control.explicate_control
-      |> c.format_program()
-      |> doc.to_string(80)
+      // use p <- result.map(result.map_error(
+      //   l.type_check_program(program),
+      //   string.inspect,
+      // ))
+      // p
+      // |> shrink.shrink
+      // |> uniquify.uniquify
+      // |> expose_allocation.expose_allocation
+      // |> uncover_get.uncover_get
+      // |> remove_complex_operands.remove_complex_operands
+      // |> explicate_control.explicate_control
+      // |> c.format_program()
+      // |> doc.to_string(80)
+      Ok("")
     }
     SelectInstructions -> {
-      use p <- result.map(result.map_error(
-        l.type_check_program(program),
-        string.inspect,
-      ))
-      p
-      |> shrink.shrink
-      |> uniquify.uniquify
-      |> expose_allocation.expose_allocation
-      |> uncover_get.uncover_get
-      |> remove_complex_operands.remove_complex_operands
-      |> explicate_control.explicate_control
-      |> select_instructions.select_instructions
-      |> x86.format_program()
-      |> doc.to_string(80)
+      // use p <- result.map(result.map_error(
+      //   l.type_check_program(program),
+      //   string.inspect,
+      // ))
+      // p
+      // |> shrink.shrink
+      // |> uniquify.uniquify
+      // |> expose_allocation.expose_allocation
+      // |> uncover_get.uncover_get
+      // |> remove_complex_operands.remove_complex_operands
+      // |> explicate_control.explicate_control
+      // |> select_instructions.select_instructions
+      // |> x86.format_program()
+      // |> doc.to_string(80)
+      Ok("")
     }
     UncoverLive -> {
-      use p <- result.map(result.map_error(
-        l.type_check_program(program),
-        string.inspect,
-      ))
-      p
-      |> shrink.shrink
-      |> uniquify.uniquify
-      |> expose_allocation.expose_allocation
-      |> uncover_get.uncover_get
-      |> remove_complex_operands.remove_complex_operands
-      |> explicate_control.explicate_control
-      |> select_instructions.select_instructions
-      |> uncover_live.uncover_live
-      |> x86.format_program()
-      |> doc.to_string(80)
+      // use p <- result.map(result.map_error(
+      //   l.type_check_program(program),
+      //   string.inspect,
+      // ))
+      // p
+      // |> shrink.shrink
+      // |> uniquify.uniquify
+      // |> expose_allocation.expose_allocation
+      // |> uncover_get.uncover_get
+      // |> remove_complex_operands.remove_complex_operands
+      // |> explicate_control.explicate_control
+      // |> select_instructions.select_instructions
+      // |> uncover_live.uncover_live
+      // |> x86.format_program()
+      // |> doc.to_string(80)
+      Ok("")
     }
     AllocateRegisters -> {
-      use p <- result.map(result.map_error(
-        l.type_check_program(program),
-        string.inspect,
-      ))
-      p
-      |> shrink.shrink
-      |> uniquify.uniquify
-      |> expose_allocation.expose_allocation
-      |> uncover_get.uncover_get
-      |> remove_complex_operands.remove_complex_operands
-      |> explicate_control.explicate_control
-      |> select_instructions.select_instructions
-      |> uncover_live.uncover_live
-      |> build_interference.build_interference
-      |> allocate_registers.allocate_registers
-      |> x86.format_program()
-      |> doc.to_string(80)
+      // use p <- result.map(result.map_error(
+      //   l.type_check_program(program),
+      //   string.inspect,
+      // ))
+      // p
+      // |> shrink.shrink
+      // |> uniquify.uniquify
+      // |> expose_allocation.expose_allocation
+      // |> uncover_get.uncover_get
+      // |> remove_complex_operands.remove_complex_operands
+      // |> explicate_control.explicate_control
+      // |> select_instructions.select_instructions
+      // |> uncover_live.uncover_live
+      // |> build_interference.build_interference
+      // |> allocate_registers.allocate_registers
+      // |> x86.format_program()
+      // |> doc.to_string(80)
+      Ok("")
     }
     PatchInstructions -> {
-      use p <- result.map(result.map_error(
-        l.type_check_program(program),
-        string.inspect,
-      ))
-      p
-      |> shrink.shrink
-      |> uniquify.uniquify
-      |> expose_allocation.expose_allocation
-      |> uncover_get.uncover_get
-      |> remove_complex_operands.remove_complex_operands
-      |> explicate_control.explicate_control
-      |> select_instructions.select_instructions
-      |> uncover_live.uncover_live
-      |> build_interference.build_interference
-      |> allocate_registers.allocate_registers
-      |> patch_instructions.patch_instructions
-      |> x86.format_program()
-      |> doc.to_string(80)
+      // use p <- result.map(result.map_error(
+      //   l.type_check_program(program),
+      //   string.inspect,
+      // ))
+      // p
+      // |> shrink.shrink
+      // |> uniquify.uniquify
+      // |> expose_allocation.expose_allocation
+      // |> uncover_get.uncover_get
+      // |> remove_complex_operands.remove_complex_operands
+      // |> explicate_control.explicate_control
+      // |> select_instructions.select_instructions
+      // |> uncover_live.uncover_live
+      // |> build_interference.build_interference
+      // |> allocate_registers.allocate_registers
+      // |> patch_instructions.patch_instructions
+      // |> x86.format_program()
+      // |> doc.to_string(80)
+      Ok("")
     }
     GeneratePreludeAndConclusion -> {
-      use p <- result.map(result.map_error(
-        l.type_check_program(program),
-        string.inspect,
-      ))
-      p
-      |> shrink.shrink
-      |> uniquify.uniquify
-      |> expose_allocation.expose_allocation
-      |> uncover_get.uncover_get
-      |> remove_complex_operands.remove_complex_operands
-      |> explicate_control.explicate_control
-      |> select_instructions.select_instructions
-      |> uncover_live.uncover_live
-      |> build_interference.build_interference
-      |> allocate_registers.allocate_registers
-      |> patch_instructions.patch_instructions
-      |> generate_prelude_and_conclusion.generate_prelude_and_conclusion
-      |> x86.format_program()
-      |> doc.to_string(80)
+      // use p <- result.map(result.map_error(
+      //   l.type_check_program(program),
+      //   string.inspect,
+      // ))
+      // p
+      // |> shrink.shrink
+      // |> uniquify.uniquify
+      // |> expose_allocation.expose_allocation
+      // |> uncover_get.uncover_get
+      // |> remove_complex_operands.remove_complex_operands
+      // |> explicate_control.explicate_control
+      // |> select_instructions.select_instructions
+      // |> uncover_live.uncover_live
+      // |> build_interference.build_interference
+      // |> allocate_registers.allocate_registers
+      // |> patch_instructions.patch_instructions
+      // |> generate_prelude_and_conclusion.generate_prelude_and_conclusion
+      // |> x86.format_program()
+      // |> doc.to_string(80)
+      Ok("")
     }
   }
 }

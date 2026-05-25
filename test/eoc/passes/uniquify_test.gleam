@@ -3,7 +3,6 @@ import eoc/langs/l_tup.{
   Bool, Cmp, Gte, If, Int, Let, Lt, Minus, Or, Plus, Prim, Program, Read, Var,
 }
 import eoc/passes/uniquify.{uniquify}
-import gleeunit/should
 
 // (let ([x 32]) (+ let ([x 10]) x) x)
 // (let ([x.1 32]) (+ let ([x.2 10]) x.2) x.1)
@@ -18,7 +17,7 @@ pub fn uniquify_test() {
       Prim(Plus(Let("x.2", Int(10), Var("x.2")), Var("x.1"))),
     ))
 
-  p |> uniquify() |> should.equal(p1)
+  assert uniquify(p) == p1
 }
 
 // (let ([x (let ([x 4]) (+ x 1))]) (+ x 2))
@@ -38,7 +37,7 @@ pub fn uniquify_inner_let_test() {
       Prim(Plus(Var("x.2"), Int(2))),
     ))
 
-  p |> uniquify() |> should.equal(p1)
+  assert uniquify(p) == p1
 }
 
 // (if (< 5 2) (let ([x 42]) (+ x 10)) (let ([y 30]) (- y 5)))
@@ -58,7 +57,7 @@ pub fn uniquify_if_test() {
       Let("y.2", Int(30), Prim(Minus(Var("y.2"), Int(5)))),
     ))
 
-  p |> uniquify |> should.equal(p2)
+  assert uniquify(p) == p2
 }
 
 // (let ([x (if (>= (read) 10) #f #t)]) (if (or x #t) 5 10))
@@ -77,5 +76,5 @@ pub fn uniquify_boolean_ops_test() {
       If(Prim(Or(Var("x.1"), Bool(True))), Int(5), Int(10)),
     ))
 
-  p |> uniquify |> should.equal(p2)
+  assert uniquify(p) == p2
 }

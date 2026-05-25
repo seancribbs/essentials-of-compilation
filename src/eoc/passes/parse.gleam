@@ -1,4 +1,4 @@
-import eoc/langs/l_tup as lang
+import eoc/langs/l_fun as lang
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/set
@@ -10,11 +10,14 @@ pub type Token {
   RParen
   LBracket
   RBracket
+  Colon
+  Arrow
   Integer(Int)
   Boolean(Bool)
   Keyword(Keyword)
   Cmp(lang.Cmp)
   Identifier(String)
+  TypeName(String)
 }
 
 pub type Keyword {
@@ -34,6 +37,7 @@ pub type Keyword {
   VectorRef
   VectorSet
   VectorLength
+  Define
 }
 
 pub fn tokens(input: String) -> Result(List(lexer.Token(Token)), lexer.Error) {
@@ -53,6 +57,8 @@ pub fn tokens(input: String) -> Result(List(lexer.Token(Token)), lexer.Error) {
         set.new(),
         fn(text) {
           case text {
+            ":" -> Colon
+            "->" -> Arrow
             "+" -> Keyword(Plus)
             "-" -> Keyword(Minus)
             ">=" -> Cmp(lang.Gte)
@@ -74,6 +80,8 @@ pub fn tokens(input: String) -> Result(List(lexer.Token(Token)), lexer.Error) {
             "vector-ref" -> Keyword(VectorRef)
             "vector-set!" -> Keyword(VectorSet)
             "vector-length" -> Keyword(VectorLength)
+            "define" -> Keyword(Define)
+            "Integer" | "Boolean" | "Void" | "Vector" -> TypeName(text)
             id -> Identifier(id)
           }
         },
@@ -89,29 +97,144 @@ pub fn parse(
   nibble.run(tokens, program())
 }
 
+type TopLevel {
+  Def(lang.Definition)
+  Expr(lang.Expr)
+}
+
+// (
+//  definition | expression
+// )
+//  definition --> read more
+//  expression --> stop reading
+//
+// #(defs, Option(expr))
+//
+
+type TopLevels =
+  #(List(lang.Definition), lang.Expr)
+
+fn parenthesized_top_level() -> Parser(TopLevel, Token, Nil) {
+  parenthesized({
+    nibble.one_of([
+      nibble.map(definition(), Def),
+      nibble.map(nested_expression(), Expr),
+    ])
+  })
+}
+
+fn top_level_step(
+  acc: List(lang.Definition),
+) -> Parser(nibble.Loop(TopLevels, List(lang.Definition)), Token, Nil) {
+  use tl <- do(
+    nibble.one_of([
+      nibble.map(basic_expression(), Expr),
+      parenthesized_top_level(),
+    ]),
+  )
+  return(case tl {
+    Def(d) -> nibble.Continue([d, ..acc])
+    Expr(e) -> nibble.Break(#(list.reverse(acc), e))
+  })
+}
+
 fn program() -> Parser(lang.Program, Token, Nil) {
+  use #(defs, body) <- do(nibble.loop([], top_level_step))
+  use _ <- do(nibble.eof())
+  return(lang.ProgramDefsExp(defs:, body:))
+}
+
+fn definition() -> Parser(lang.Definition, Token, Nil) {
+  use _ <- do(nibble.token(Keyword(Define)))
+  use _ <- do(nibble.token(LParen))
+  use name <- do(identifier())
+  use arguments <- do(nibble.many(argument_definition()))
+  use _ <- do(nibble.token(RParen))
+  use _ <- do(nibble.token(Colon))
+  use return_t <- do(type_())
   use body <- do(expression())
-  return(lang.Program(body:))
+  return(lang.Definition(name:, arguments:, return: return_t, body:))
+}
+
+fn argument_definition() -> Parser(#(String, lang.Type), Token, Nil) {
+  use _ <- do(nibble.token(LBracket))
+  use var <- do(identifier())
+  use _ <- do(nibble.token(Colon))
+  use ty <- do(type_())
+  use _ <- do(nibble.token(RBracket))
+  return(#(var, ty))
+}
+
+fn type_() -> Parser(lang.Type, Token, Nil) {
+  nibble.one_of([
+    scalar_type(),
+    parenthesized(nibble.one_of([vector_type(), function_type()])),
+  ])
+}
+
+fn function_type() -> Parser(lang.Type, Token, Nil) {
+  use arguments <- do(nibble.many(nibble.lazy(type_)))
+  use _ <- do(nibble.token(Arrow))
+  use rt <- do(type_())
+  return(lang.FunT(arguments:, return: rt))
+}
+
+fn vector_type() -> Parser(lang.Type, Token, Nil) {
+  use _ <- do(nibble.token(TypeName("Vector")))
+  use field_types <- do(nibble.many(type_()))
+  return(lang.VectorT(field_types))
+}
+
+fn scalar_type() -> Parser(lang.Type, Token, Nil) {
+  use tok <- nibble.take_map("expected type name")
+  case tok {
+    TypeName("Integer") -> Some(lang.IntegerT)
+    TypeName("Boolean") -> Some(lang.BooleanT)
+    TypeName("Void") -> Some(lang.VoidT)
+    _ -> None
+  }
+}
+
+fn basic_expression() -> Parser(lang.Expr, Token, Nil) {
+  nibble.one_of([
+    integer(),
+    boolean(),
+    variable(),
+  ])
 }
 
 fn expression() -> Parser(lang.Expr, Token, Nil) {
-  nibble.one_of([integer(), boolean(), variable(), nested()])
+  nibble.one_of([
+    integer(),
+    boolean(),
+    variable(),
+    parenthesized(nested_expression()),
+  ])
 }
 
-fn nested() -> Parser(lang.Expr, Token, Nil) {
+fn parenthesized(inner: Parser(a, Token, Nil)) -> Parser(a, Token, Nil) {
   use _ <- do(nibble.token(LParen))
-  use expr <- do(
-    nibble.one_of([
-      if_expr(),
-      let_expr(),
-      primitive(),
-      begin_expr(),
-      while_expr(),
-      set_expr(),
-    ]),
-  )
+  use inner_result <- do(inner)
   use _ <- do(nibble.token(RParen))
-  return(expr)
+  return(inner_result)
+}
+
+fn nested_expression() -> Parser(lang.Expr, Token, Nil) {
+  nibble.one_of([
+    if_expr(),
+    let_expr(),
+    primitive(),
+    begin_expr(),
+    while_expr(),
+    set_expr(),
+    apply_expr(),
+  ])
+}
+
+fn apply_expr() -> Parser(lang.Expr, Token, Nil) {
+  use f <- do(nibble.lazy(expression))
+  use args <- do(nibble.many(expression()))
+  return(lang.Apply(f, args))
 }
 
 fn begin_expr() -> Parser(lang.Expr, Token, Nil) {

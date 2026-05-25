@@ -2,7 +2,6 @@ import eoc/langs/x86_base.{E, Rax, Rbp, Rcx, Rsp}
 import eoc/langs/x86_global as x86
 import eoc/passes/patch_instructions.{patch_instructions}
 import gleam/dict
-import gleeunit/should
 
 pub fn patch_instructions_test() {
   let base_program = x86.new_program()
@@ -47,7 +46,7 @@ pub fn patch_instructions_test() {
       stack_vars: 24,
     )
 
-  p1 |> patch_instructions() |> should.equal(p2)
+  assert patch_instructions(p1) == p2
 }
 
 pub fn patch_instructions_ch3_test() {
@@ -102,7 +101,7 @@ pub fn patch_instructions_ch3_test() {
       stack_vars: 24,
     )
 
-  p1 |> patch_instructions() |> should.equal(p2)
+  assert patch_instructions(p1) == p2
 }
 
 pub fn patch_instructions_cmp_immediate_test() {
@@ -134,7 +133,7 @@ pub fn patch_instructions_cmp_immediate_test() {
   ]
 
   let assert Ok(start_block) = dict.get(p.body, "start")
-  start_block.body |> should.equal(body_expected)
+  assert start_block.body == body_expected
 }
 
 pub fn patch_instructions_movzbq_stack_test() {
@@ -176,5 +175,5 @@ pub fn patch_instructions_movzbq_stack_test() {
   ]
 
   let assert Ok(start_block) = dict.get(p.body, "start")
-  start_block.body |> should.equal(body_expected)
+  assert start_block.body == body_expected
 }

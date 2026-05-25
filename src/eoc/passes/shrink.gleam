@@ -1,10 +1,22 @@
-import eoc/langs/l_tup as l
+import eoc/langs/l_fun as l
 import gleam/list
 
 pub fn shrink(input: l.Program) -> l.Program {
-  input.body
-  |> shrink_expr()
-  |> l.Program
+  let assert l.ProgramDefsExp(defs:, body:) = input
+  let main_body = shrink_expr(body)
+  let main =
+    l.Definition(
+      name: "main",
+      arguments: [],
+      return: l.IntegerT,
+      body: main_body,
+    )
+  let defs =
+    list.map(defs, fn(def) {
+      let body = shrink_expr(def.body)
+      l.Definition(..def, body:)
+    })
+  l.ProgramDefs(defs: [main, ..defs])
 }
 
 fn shrink_expr(expr: l.Expr) -> l.Expr {
@@ -20,6 +32,8 @@ fn shrink_expr(expr: l.Expr) -> l.Expr {
     l.WhileLoop(condition:, body:) ->
       l.WhileLoop(shrink_expr(condition), shrink_expr(body))
     l.HasType(value:, t:) -> l.HasType(shrink_expr(value), t)
+    l.Apply(function:, arguments:) ->
+      l.Apply(shrink_expr(function), list.map(arguments, shrink_expr))
   }
 }
 
