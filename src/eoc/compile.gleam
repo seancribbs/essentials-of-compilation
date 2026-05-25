@@ -1,5 +1,7 @@
 // import eoc/langs/c_tup as c
 import eoc/langs/l_fun as l
+import eoc/langs/l_funref as lfr
+import eoc/passes/reveal_functions
 import gleam/bool
 
 // import eoc/langs/x86_global as x86
@@ -30,6 +32,7 @@ pub type Pass {
   TypeCheck
   Shrink
   Uniquify
+  RevealFunctions
   ExplicateControl
   SelectInstructions
   UncoverLive
@@ -46,6 +49,7 @@ pub const pass_order: List(Pass) = [
   TypeCheck,
   Shrink,
   Uniquify,
+  RevealFunctions,
   ExplicateControl,
   SelectInstructions,
   UncoverLive,
@@ -61,6 +65,7 @@ pub fn pass_to_string(p: Pass) -> String {
     TypeCheck -> "type_check"
     Shrink -> "shrink"
     Uniquify -> "uniquify"
+    RevealFunctions -> "reveal_functions"
     ExplicateControl -> "explicate_control"
     SelectInstructions -> "select_instructions"
     UncoverLive -> "uncover_live"
@@ -76,6 +81,7 @@ pub fn string_to_pass(s: String) -> Pass {
     "explicate_control" -> ExplicateControl
     "shrink" -> Shrink
     "uniquify" -> Uniquify
+    "reveal_functions" -> RevealFunctions
     "parse" -> Parse
     "type_check" -> TypeCheck
     "select_instructions" -> SelectInstructions
@@ -149,6 +155,19 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> shrink.shrink
       |> uniquify.uniquify
       |> l.format_program()
+      |> doc.to_string(80)
+    }
+
+    RevealFunctions -> {
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> lfr.format_program
       |> doc.to_string(80)
     }
 
