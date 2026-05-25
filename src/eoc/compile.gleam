@@ -17,7 +17,7 @@ import eoc/passes/shrink
 
 // import eoc/passes/uncover_get
 // import eoc/passes/uncover_live
-// import eoc/passes/uniquify
+import eoc/passes/uniquify
 
 import glam/doc
 import gleam/int
@@ -141,16 +141,15 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
     }
 
     Uniquify -> {
-      // use p <- result.map(result.map_error(
-      //   l.type_check_program(program),
-      //   string.inspect,
-      // ))
-      // p
-      // |> shrink.shrink
-      // |> uniquify.uniquify
-      // |> l.format_program()
-      // |> doc.to_string(80)
-      Ok("")
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> l.format_program()
+      |> doc.to_string(80)
     }
 
     // ==== a few passes later...

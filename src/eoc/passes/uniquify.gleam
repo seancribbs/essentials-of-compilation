@@ -1,4 +1,4 @@
-import eoc/langs/l_tup as l
+import eoc/langs/l_fun as l
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -13,8 +13,28 @@ import gleam/pair
 // (let ([x (let ([x 4]) (+ x 1))]) (+ x 2))
 // (let ([x.2 (let ([x.1 4]) (+ x.1 1))]) (+ x.2 2))
 pub fn uniquify(p: l.Program) -> l.Program {
-  let #(expr, _) = uniquify_exp(p.body, dict.new(), 0)
-  l.Program(expr)
+  let assert l.ProgramDefs(defs) = p
+  let env = defs |> list.map(fn(d) { #(d.name, d.name) }) |> dict.from_list
+  let #(_, defs) =
+    list.map_fold(defs, 0, fn(acc, d) {
+      pair.swap(uniquify_definition(d, env, acc))
+    })
+  l.ProgramDefs(defs)
+}
+
+fn uniquify_definition(
+  d: l.Definition,
+  env: dict.Dict(String, String),
+  counter: Int,
+) -> #(l.Definition, Int) {
+  let #(#(env, counter), arguments) = {
+    use acc, arg <- list.map_fold(d.arguments, #(env, counter))
+    let counter = acc.1 + 1
+    let name = arg.0 <> "." <> int.to_string(counter)
+    #(#(dict.insert(acc.0, arg.0, name), counter), #(name, arg.1))
+  }
+  let #(body, counter) = uniquify_exp(d.body, env, counter)
+  #(l.Definition(..d, arguments:, body:), counter)
 }
 
 fn uniquify_exp(
@@ -136,6 +156,15 @@ fn uniquify_exp(
     l.HasType(value:, t:) -> {
       let #(value1, counter1) = uniquify_exp(value, env, counter)
       #(l.HasType(value: value1, t:), counter1)
+    }
+
+    l.Apply(function:, arguments:) -> {
+      let #(function, counter1) = uniquify_exp(function, env, counter)
+      let #(counter2, arguments) =
+        list.map_fold(arguments, counter1, fn(c, stmt) {
+          pair.swap(uniquify_exp(stmt, env, c))
+        })
+      #(l.Apply(function:, arguments:), counter2)
     }
   }
 }
