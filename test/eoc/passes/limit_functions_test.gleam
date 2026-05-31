@@ -61,6 +61,78 @@ pub fn limit_function_arguments_to_6_test() {
     ])
 }
 
+pub fn limit_functions_keeps_6_arg_funs_test() {
+  let p =
+    program(
+      "(define
+    (foo
+      [a : Integer]
+      [b : Integer]
+      [c : Integer]
+      [d : Integer]
+      [e : Integer]
+      [f : Integer]
+      )
+    :
+    Integer
+
+
+    (+ (+ (+ (+ (+ a b) c) d) e) f))
+  (foo 1 2 3 4 5 6)",
+    )
+    |> limit_functions
+
+  let assert Ok(foo) = list.find(p.defs, fn(def) { def.name == "foo" })
+  assert list.length(foo.arguments) == 6
+  assert Ok(#("f.6", l.IntegerT)) == list.last(foo.arguments)
+
+  let assert Ok(main) = list.find(p.defs, fn(def) { def.name == "main" })
+  assert main.body
+    == lfr.Apply(lfr.FunRef("foo", 6), [
+      lfr.Int(1),
+      lfr.Int(2),
+      lfr.Int(3),
+      lfr.Int(4),
+      lfr.Int(5),
+      lfr.Int(6),
+    ])
+}
+
+pub fn limit_functions_keeps_lt_6_arg_funs_test() {
+  let p =
+    program(
+      "(define
+    (foo
+      [a : Integer]
+      [b : Integer]
+      [c : Integer]
+      [d : Integer]
+      [e : Integer]
+      )
+    :
+    Integer
+
+
+    (+ (+ (+ (+ a b) c) d) e))
+  (foo 1 2 3 4 5)",
+    )
+    |> limit_functions
+
+  let assert Ok(foo) = list.find(p.defs, fn(def) { def.name == "foo" })
+  assert list.length(foo.arguments) == 5
+  assert Ok(#("e.5", l.IntegerT)) == list.last(foo.arguments)
+
+  let assert Ok(main) = list.find(p.defs, fn(def) { def.name == "main" })
+  assert main.body
+    == lfr.Apply(lfr.FunRef("foo", 5), [
+      lfr.Int(1),
+      lfr.Int(2),
+      lfr.Int(3),
+      lfr.Int(4),
+      lfr.Int(5),
+    ])
+}
+
 fn program(input: String) -> lfr.Program {
   let assert Ok(toks) = parse.tokens(input)
   let assert Ok(p) = parse.parse(toks)
