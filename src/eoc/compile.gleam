@@ -1,26 +1,14 @@
 // import eoc/langs/c_tup as c
+import eoc/langs/l_alloc_funref as lfra
 import eoc/langs/l_fun as l
 import eoc/langs/l_funref as lfr
+import eoc/passes/expose_allocation
 import eoc/passes/limit_functions
-import eoc/passes/reveal_functions
-import gleam/bool
-
-// import eoc/langs/x86_global as x86
-// import eoc/passes/allocate_registers
-// import eoc/passes/build_interference
-// import eoc/passes/explicate_control
-// import eoc/passes/expose_allocation
-// import eoc/passes/generate_prelude_and_conclusion
 import eoc/passes/parse
-
-// import eoc/passes/patch_instructions
-// import eoc/passes/remove_complex_operands
-// import eoc/passes/select_instructions
+import eoc/passes/reveal_functions
 import eoc/passes/shrink
-
-// import eoc/passes/uncover_get
-// import eoc/passes/uncover_live
 import eoc/passes/uniquify
+import gleam/bool
 
 import glam/doc
 import gleam/int
@@ -35,6 +23,7 @@ pub type Pass {
   Uniquify
   RevealFunctions
   LimitFunctions
+  ExposeAllocation
   ExplicateControl
   SelectInstructions
   UncoverLive
@@ -53,6 +42,7 @@ pub const pass_order: List(Pass) = [
   Uniquify,
   RevealFunctions,
   LimitFunctions,
+  ExposeAllocation,
   ExplicateControl,
   SelectInstructions,
   UncoverLive,
@@ -70,6 +60,7 @@ pub fn pass_to_string(p: Pass) -> String {
     Uniquify -> "uniquify"
     RevealFunctions -> "reveal_functions"
     LimitFunctions -> "limit_functions"
+    ExposeAllocation -> "expose_allocation"
     ExplicateControl -> "explicate_control"
     SelectInstructions -> "select_instructions"
     UncoverLive -> "uncover_live"
@@ -87,6 +78,7 @@ pub fn string_to_pass(s: String) -> Pass {
     "uniquify" -> Uniquify
     "reveal_functions" -> RevealFunctions
     "limit_functions" -> LimitFunctions
+    "expose_allocation" -> ExposeAllocation
     "parse" -> Parse
     "type_check" -> TypeCheck
     "select_instructions" -> SelectInstructions
@@ -187,6 +179,21 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> reveal_functions.reveal_functions
       |> limit_functions.limit_functions
       |> lfr.format_program
+      |> doc.to_string(80)
+    }
+
+    ExposeAllocation -> {
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> limit_functions.limit_functions
+      |> expose_allocation.expose_allocation
+      |> lfra.format_program
       |> doc.to_string(80)
     }
 
