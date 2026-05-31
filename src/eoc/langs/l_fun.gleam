@@ -425,7 +425,7 @@ pub fn type_check_exp(
         })
         |> result.all()
       use args <- result.map(checked_args)
-      #(Apply(function: f, arguments: args), rt)
+      #(Apply(function: HasType(f, ftype), arguments: args), rt)
     }
   }
 }

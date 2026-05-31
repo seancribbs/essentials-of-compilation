@@ -39,13 +39,25 @@ pub fn reveal_functions_test() {
   assert main
     == lfr.Prim(lfr.VectorRef(
       lfr.HasType(
-        lfr.Apply(lfr.FunRef("map", 2), [
-          lfr.FunRef("inc", 1),
+        lfr.Apply(
           lfr.HasType(
-            lfr.Prim(lfr.Vector([lfr.Int(0), lfr.Int(41)])),
-            l.VectorT([l.IntegerT, l.IntegerT]),
+            lfr.FunRef("map", 2),
+            l.FunT(
+              [
+                l.FunT([l.IntegerT], l.IntegerT),
+                l.VectorT([l.IntegerT, l.IntegerT]),
+              ],
+              l.VectorT([l.IntegerT, l.IntegerT]),
+            ),
           ),
-        ]),
+          [
+            lfr.FunRef("inc", 1),
+            lfr.HasType(
+              lfr.Prim(lfr.Vector([lfr.Int(0), lfr.Int(41)])),
+              l.VectorT([l.IntegerT, l.IntegerT]),
+            ),
+          ],
+        ),
         l.VectorT([l.IntegerT, l.IntegerT]),
       ),
       lfr.Int(1),
