@@ -7,6 +7,7 @@ import eoc/passes/limit_functions
 import eoc/passes/parse
 import eoc/passes/reveal_functions
 import eoc/passes/shrink
+import eoc/passes/uncover_get
 import eoc/passes/uniquify
 import gleam/bool
 
@@ -24,6 +25,7 @@ pub type Pass {
   RevealFunctions
   LimitFunctions
   ExposeAllocation
+  UncoverGet
   ExplicateControl
   SelectInstructions
   UncoverLive
@@ -43,6 +45,7 @@ pub const pass_order: List(Pass) = [
   RevealFunctions,
   LimitFunctions,
   ExposeAllocation,
+  UncoverGet,
   ExplicateControl,
   SelectInstructions,
   UncoverLive,
@@ -61,6 +64,7 @@ pub fn pass_to_string(p: Pass) -> String {
     RevealFunctions -> "reveal_functions"
     LimitFunctions -> "limit_functions"
     ExposeAllocation -> "expose_allocation"
+    UncoverGet -> "uncover_get!"
     ExplicateControl -> "explicate_control"
     SelectInstructions -> "select_instructions"
     UncoverLive -> "uncover_live"
@@ -79,6 +83,7 @@ pub fn string_to_pass(s: String) -> Pass {
     "reveal_functions" -> RevealFunctions
     "limit_functions" -> LimitFunctions
     "expose_allocation" -> ExposeAllocation
+    "uncover_get!" -> UncoverGet
     "parse" -> Parse
     "type_check" -> TypeCheck
     "select_instructions" -> SelectInstructions
@@ -193,6 +198,22 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> reveal_functions.reveal_functions
       |> limit_functions.limit_functions
       |> expose_allocation.expose_allocation
+      |> lfra.format_program
+      |> doc.to_string(80)
+    }
+
+    UncoverGet -> {
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> limit_functions.limit_functions
+      |> expose_allocation.expose_allocation
+      |> uncover_get.uncover_get
       |> lfra.format_program
       |> doc.to_string(80)
     }
