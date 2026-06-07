@@ -1,20 +1,28 @@
 import gleam/list
 import gleam/set
 
-import eoc/langs/l_alloc as l
+import eoc/langs/l_alloc_funref as l
 
 pub fn uncover_get(input: l.Program) -> l.Program {
-  let muts = collect_set_bang(input.body)
-  let body = uncover_get_expr(input.body, muts)
-  l.Program(body)
+  input.defs
+  |> list.map(fn(def) {
+    let muts = collect_set_bang(def.body)
+    let body = uncover_get_expr(def.body, muts)
+    l.Definition(..def, body:)
+  })
+  |> l.Program()
 }
 
 fn uncover_get_expr(e: l.Expr, vars: set.Set(String)) -> l.Expr {
   case e {
     l.GetBang(_) -> panic as "get! should not exist at this step"
 
-    l.Bool(_) | l.Int(_) | l.Allocate(_, _) | l.Collect(_) | l.GlobalValue(_) ->
-      e
+    l.Bool(_)
+    | l.Int(_)
+    | l.Allocate(_, _)
+    | l.Collect(_)
+    | l.GlobalValue(_)
+    | l.FunRef(_, _) -> e
 
     l.Var(name:) -> {
       case set.contains(vars, name) {
@@ -74,6 +82,12 @@ fn uncover_get_expr(e: l.Expr, vars: set.Set(String)) -> l.Expr {
         uncover_get_expr(index, vars),
         uncover_get_expr(value, vars),
       ))
+
+    l.Apply(function:, arguments:) ->
+      l.Apply(
+        uncover_get_expr(function, vars),
+        list.map(arguments, uncover_get_expr(_, vars)),
+      )
   }
 }
 
@@ -86,7 +100,8 @@ pub fn collect_set_bang(e: l.Expr) -> set.Set(String) {
     | l.Bool(_)
     | l.Allocate(_, _)
     | l.Collect(_)
-    | l.GlobalValue(_) -> set.new()
+    | l.GlobalValue(_)
+    | l.FunRef(_, _) -> set.new()
     l.Let(var: _, binding:, expr:) ->
       set.union(collect_set_bang(binding), collect_set_bang(expr))
     l.SetBang(var:, value:) ->
@@ -130,5 +145,13 @@ pub fn collect_set_bang(e: l.Expr) -> set.Set(String) {
       |> collect_set_bang()
       |> set.union(collect_set_bang(index))
       |> set.union(collect_set_bang(value))
+    l.Apply(function:, arguments:) ->
+      function
+      |> collect_set_bang()
+      |> set.union(
+        list.fold(arguments, set.new(), fn(acc, item) {
+          set.union(acc, collect_set_bang(item))
+        }),
+      )
   }
 }

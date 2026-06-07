@@ -27,6 +27,7 @@ pub type Expr {
   FunRef(name: String, arity: Int)
   Let(var: String, binding: Expr, expr: Expr)
   If(condition: Expr, if_true: Expr, if_false: Expr)
+  GetBang(var: String)
   SetBang(var: String, value: Expr)
   Begin(stmts: List(Expr), result: Expr)
   WhileLoop(condition: Expr, body: Expr)
@@ -144,6 +145,11 @@ fn format_expr(e: Expr) -> doc.Document {
       ]
       |> doc.concat_join(with: [doc.space])
       |> doc.force_break
+      |> parenthesize
+
+    GetBang(var:) ->
+      [doc.from_string("get!"), doc.from_string(var)]
+      |> doc.concat_join(with: [doc.space])
       |> parenthesize
 
     SetBang(var:, value:) ->
