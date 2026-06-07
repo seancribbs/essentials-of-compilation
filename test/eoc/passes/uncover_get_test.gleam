@@ -1,5 +1,5 @@
 import eoc/langs/l_alloc_funref as l
-import eoc/langs/l_fun.{IntegerT}
+import eoc/langs/l_fun.{IntegerT, type_check_program}
 import eoc/passes/expose_allocation
 import eoc/passes/limit_functions
 import eoc/passes/parse
@@ -11,7 +11,8 @@ import gleam/set
 
 fn parsed(input: String) -> l.Program {
   let assert Ok(tokens) = parse.tokens(input)
-  let assert Ok(ast) = parse.parse(tokens)
+  let assert Ok(untyped) = parse.parse(tokens)
+  let assert Ok(ast) = type_check_program(untyped)
   ast
   |> shrink.shrink
   |> uniquify.uniquify

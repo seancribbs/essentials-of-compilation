@@ -1,17 +1,26 @@
 // remove_complex_operands (ensures atomic operands of primitive ops)
 //    Lwhile -> LMonWhile
 
-import eoc/langs/l_tup.{Eq}
+import eoc/langs/l_fun.{Eq}
 import gleam/int
 import gleam/list
 import gleam/pair
 
-import eoc/langs/l_alloc as l
-import eoc/langs/l_mon_alloc as l_mon
+import eoc/langs/l_alloc_funref as l
+import eoc/langs/l_mon_funref as l_mon
 
 pub fn remove_complex_operands(input: l.Program) -> l_mon.Program {
-  let #(rco, _) = rco_exp(input.body, 0)
-  l_mon.Program(rco)
+  input.defs
+  |> list.map(fn(def) {
+    let #(body, _) = rco_exp(def.body, 0)
+    l_mon.Definition(
+      name: def.name,
+      arguments: def.arguments,
+      return: def.return,
+      body:,
+    )
+  })
+  |> l_mon.Program()
 }
 
 // (+ 42 (- 10))
@@ -106,6 +115,30 @@ fn rco_atom(
     l.HasType(value:, t:) -> {
       let #(atm, bindings, new_counter) = rco_atom(value, counter)
       #(l_mon.HasType(atm, t), bindings, new_counter)
+    }
+    l.FunRef(name:, arity:) -> {
+      let #(new_var, new_counter) = new_var(counter)
+      #(
+        l_mon.Var(new_var),
+        [#(new_var, l_mon.FunRef(name:, arity:))],
+        new_counter,
+      )
+    }
+    l.Apply(function:, arguments:) -> {
+      let #(function, f_bindings, counter) = rco_atom(function, counter)
+      let #(#(counter, a_bindings), arguments) =
+        list.map_fold(arguments, #(counter, []), fn(acc, arg) {
+          let #(atm, bindings, counter) = rco_atom(arg, acc.0)
+          #(#(counter, list.append(acc.1, bindings)), atm)
+        })
+      let #(new_var, counter) = new_var(counter)
+      #(
+        l_mon.Var(new_var),
+        f_bindings
+          |> list.append(a_bindings)
+          |> list.append([#(new_var, l_mon.Apply(function:, arguments:))]),
+        counter,
+      )
     }
   }
 }
@@ -261,6 +294,22 @@ fn rco_exp(input: l.Expr, counter: Int) -> #(l_mon.Expr, Int) {
           fn(exp, pair) { l_mon.Let(pair.0, pair.1, exp) },
         )
       #(new_expr, new_counter)
+    }
+    l.FunRef(name:, arity:) -> #(l_mon.FunRef(name:, arity:), counter)
+    l.Apply(function:, arguments:) -> {
+      let #(function, f_bindings, counter) = rco_atom(function, counter)
+      let #(#(counter, a_bindings), arguments) =
+        list.map_fold(arguments, #(counter, []), fn(acc, arg) {
+          let #(atm, bindings, counter) = rco_atom(arg, acc.0)
+          #(#(counter, list.append(acc.1, bindings)), atm)
+        })
+      let apply =
+        f_bindings
+        |> list.append(a_bindings)
+        |> list.fold_right(l_mon.Apply(function:, arguments:), fn(exp, pair) {
+          l_mon.Let(pair.0, pair.1, exp)
+        })
+      #(apply, counter)
     }
   }
 }
