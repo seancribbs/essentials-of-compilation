@@ -1,6 +1,6 @@
-import eoc/langs/c_tup as c
-import eoc/langs/l_mon_alloc as l_mon
-import eoc/langs/l_tup as l
+import eoc/langs/c_fun as c
+import eoc/langs/l_fun as l
+import eoc/langs/l_mon_funref as l_mon
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -24,8 +24,22 @@ import gleam/list
 //   return y.3;
 
 pub fn explicate_control(input: l_mon.Program) -> c.CProgram {
-  let #(tail, blocks) = explicate_tail(input.body, dict.new())
-  c.CProgram(dict.new(), dict.insert(blocks, "start", tail))
+  input.defs
+  |> list.map(explicate_definition)
+  |> c.CProgram(dict.new(), _)
+}
+
+fn explicate_definition(def: l_mon.Definition) -> c.Definition {
+  let blocks = c.Blocks(dict.new(), def.name)
+  let #(tail, blocks) = explicate_tail(def.body, blocks)
+  let body = insert_block(blocks, def.name, tail)
+
+  c.Definition(
+    name: def.name,
+    arguments: def.arguments,
+    return: def.return,
+    body:,
+  )
 }
 
 fn explicate_tail(input: l_mon.Expr, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
@@ -40,10 +54,10 @@ fn explicate_tail(input: l_mon.Expr, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
       let #(tail, new_blocks) = explicate_tail(e, blocks)
       explicate_assign(b, v, tail, new_blocks)
     }
-    l_mon.If(cond:, if_true:, if_false:) -> {
+    l_mon.If(condition:, if_true:, if_false:) -> {
       let #(t1, b1) = explicate_tail(if_true, blocks)
       let #(f1, b2) = explicate_tail(if_false, b1)
-      explicate_pred(cond, t1, f1, b2)
+      explicate_pred(condition, t1, f1, b2)
     }
     l_mon.Prim(l_mon.Read) -> {
       #(c.Return(c.Prim(c.Read)), blocks)
@@ -108,10 +122,15 @@ fn explicate_tail(input: l_mon.Expr, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
       let #(loop_condition, blocks2) =
         explicate_pred(condition, if_true, if_false, blocks1)
       // Add the entrypoint of the loop to the blocks
-      let blocks3 = dict.insert(blocks2, loop_label, loop_condition)
+      let blocks3 = insert_block(blocks2, loop_label, loop_condition)
       // Jump into the loop
       #(loop_start, blocks3)
     }
+    l_mon.FunRef(name:, arity:) -> #(c.Return(c.FunRef(name, arity)), blocks)
+    l_mon.Apply(function:, arguments:) -> #(
+      c.TailCall(convert_atm(function), list.map(arguments, convert_atm)),
+      blocks,
+    )
     l_mon.Allocate(amount: _, t: _)
     | l_mon.Collect(amount: _)
     | l_mon.GlobalValue(name: _) ->
@@ -220,11 +239,11 @@ fn explicate_assign(
     //
     // block_1:
     //   ...cont
-    l_mon.If(cond:, if_true:, if_false:) -> {
+    l_mon.If(condition:, if_true:, if_false:) -> {
       let #(new_cont, new_blocks) = create_block(cont, blocks)
       let #(t1, b1) = explicate_assign(if_true, v, new_cont, new_blocks)
       let #(f1, b2) = explicate_assign(if_false, v, new_cont, b1)
-      explicate_pred(cond, t1, f1, b2)
+      explicate_pred(condition, t1, f1, b2)
     }
     l_mon.GetBang(var:) -> #(
       c.Seq(c.Assign(v, c.Atom(c.Variable(var))), cont),
@@ -261,7 +280,7 @@ fn explicate_assign(
       let #(loop_condition, blocks3) =
         explicate_pred(condition, if_true, if_false, blocks2)
       // Add the entrypoint of the loop to the blocks
-      let blocks4 = dict.insert(blocks3, loop_label, loop_condition)
+      let blocks4 = insert_block(blocks3, loop_label, loop_condition)
       // Jump into the loop
       #(loop_start, blocks4)
     }
@@ -276,6 +295,20 @@ fn explicate_assign(
     // Collect is generated from the compiler, not the user so
     // we can discard the assignment.
     l_mon.Collect(amount:) -> #(c.Seq(c.Collect(amount), cont), blocks)
+    l_mon.FunRef(name:, arity:) -> #(
+      c.Seq(c.Assign(v, c.FunRef(name, arity)), cont),
+      blocks,
+    )
+    l_mon.Apply(function:, arguments:) -> #(
+      c.Seq(
+        c.Assign(
+          v,
+          c.Call(convert_atm(function), list.map(arguments, convert_atm)),
+        ),
+        cont,
+      ),
+      blocks,
+    )
   }
 }
 
@@ -329,7 +362,7 @@ fn explicate_pred(
       )
     }
 
-    l_mon.If(cond: c_inner, if_true: t_inner, if_false: f_inner) -> {
+    l_mon.If(condition: c_inner, if_true: t_inner, if_false: f_inner) -> {
       let #(thn_block, b1) = create_block(if_true, blocks)
       let #(els_block, b2) = create_block(if_false, b1)
       let #(t1, b3) = explicate_pred(t_inner, thn_block, els_block, b2)
@@ -343,7 +376,18 @@ fn explicate_pred(
         explicate_effect(stmt, acc.0, acc.1)
       })
     }
-
+    l_mon.Apply(function:, arguments:) -> {
+      let #(thn_block, b1) = create_block(if_true, blocks)
+      let #(els_block, b2) = create_block(if_false, b1)
+      #(
+        c.If(
+          c.Call(convert_atm(function), list.map(arguments, convert_atm)),
+          thn_block,
+          els_block,
+        ),
+        b2,
+      )
+    }
     _ -> panic as "explicate_pred unhandled case"
     // l_mon.Atomic(value: l_mon.Int(value:)) -> todo
     // l_mon.Prim(op: l_mon.Minus(a:, b:)) -> todo
@@ -357,6 +401,7 @@ fn explicate_pred(
     // l_mon.Collect(amount:) -> todo
     // l_mon.Allocate(amount:, t:) -> todo
     // l_mon.GlobalValue(name:) -> todo
+    // l_mon.FunRef(name:, arity:) -> todo
   }
 }
 
@@ -367,7 +412,10 @@ fn explicate_effect(
 ) -> #(c.Tail, c.Blocks) {
   case expr {
     l_mon.Prim(l_mon.Read) -> #(c.Seq(c.ReadStmt, cont), blocks)
-    l_mon.Atomic(_) | l_mon.GetBang(_) | l_mon.Prim(_) -> #(cont, blocks)
+    l_mon.Atomic(_)
+    | l_mon.GetBang(_)
+    | l_mon.Prim(_)
+    | l_mon.FunRef(name: _, arity: _) -> #(cont, blocks)
     l_mon.SetBang(var:, value:) -> {
       explicate_assign(value, var, cont, blocks)
     }
@@ -381,11 +429,11 @@ fn explicate_effect(
         explicate_effect(stmt, acc.0, acc.1)
       })
     }
-    l_mon.If(cond:, if_true:, if_false:) -> {
+    l_mon.If(condition:, if_true:, if_false:) -> {
       let #(new_cont, b1) = create_block(cont, blocks)
       let #(thn_block, b2) = explicate_effect(if_true, new_cont, b1)
       let #(els_block, b3) = explicate_effect(if_false, new_cont, b2)
-      explicate_pred(cond, thn_block, els_block, b3)
+      explicate_pred(condition, thn_block, els_block, b3)
     }
     l_mon.WhileLoop(condition:, body:) -> {
       // Create a fresh label for the loop entrypoint
@@ -401,11 +449,21 @@ fn explicate_effect(
       let #(loop_condition, blocks3) =
         explicate_pred(condition, if_true, if_false, blocks2)
       // Add the entrypoint of the loop to the blocks
-      let blocks4 = dict.insert(blocks3, loop_label, loop_condition)
+      let blocks4 = insert_block(blocks3, loop_label, loop_condition)
       // Jump into the loop
       #(loop_start, blocks4)
     }
     l_mon.Collect(amount:) -> #(c.Seq(c.Collect(amount), cont), blocks)
+    l_mon.Apply(function:, arguments:) -> #(
+      c.Seq(
+        c.Assign(
+          create_label("apply", blocks),
+          c.Call(convert_atm(function), list.map(arguments, convert_atm)),
+        ),
+        cont,
+      ),
+      blocks,
+    )
 
     l_mon.Allocate(amount: _, t: _) ->
       panic as "unexpected allocate in effect position"
@@ -415,8 +473,8 @@ fn explicate_effect(
 }
 
 fn create_label(prefix: String, blocks: c.Blocks) -> String {
-  let new_index = dict.size(blocks) + 1
-  prefix <> "_" <> int.to_string(new_index)
+  let new_index = dict.size(blocks.blocks) + 1
+  blocks.prefix <> "_" <> prefix <> "_" <> int.to_string(new_index)
 }
 
 fn create_block(tail: c.Tail, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
@@ -424,9 +482,13 @@ fn create_block(tail: c.Tail, blocks: c.Blocks) -> #(c.Tail, c.Blocks) {
     c.Goto(_) -> #(tail, blocks)
     _ -> {
       let new_label = create_label("block", blocks)
-      #(c.Goto(new_label), dict.insert(blocks, new_label, tail))
+      #(c.Goto(new_label), insert_block(blocks, new_label, tail))
     }
   }
+}
+
+fn insert_block(blocks: c.Blocks, name: String, tail: c.Tail) -> c.Blocks {
+  c.Blocks(..blocks, blocks: dict.insert(blocks.blocks, name, tail))
 }
 
 fn convert_atm(input: l_mon.Atm) -> c.Atm {

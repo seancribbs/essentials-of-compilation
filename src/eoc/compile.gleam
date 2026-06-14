@@ -1,10 +1,13 @@
-// import eoc/langs/c_tup as c
+import eoc/langs/c_fun as c
 import eoc/langs/l_alloc_funref as lfra
 import eoc/langs/l_fun as l
 import eoc/langs/l_funref as lfr
+import eoc/langs/l_mon_funref as l_mon
+import eoc/passes/explicate_control
 import eoc/passes/expose_allocation
 import eoc/passes/limit_functions
 import eoc/passes/parse
+import eoc/passes/remove_complex_operands
 import eoc/passes/reveal_functions
 import eoc/passes/shrink
 import eoc/passes/uncover_get
@@ -26,6 +29,7 @@ pub type Pass {
   LimitFunctions
   ExposeAllocation
   UncoverGet
+  RemoveComplexOperands
   ExplicateControl
   SelectInstructions
   UncoverLive
@@ -46,6 +50,7 @@ pub const pass_order: List(Pass) = [
   LimitFunctions,
   ExposeAllocation,
   UncoverGet,
+  RemoveComplexOperands,
   ExplicateControl,
   SelectInstructions,
   UncoverLive,
@@ -65,6 +70,7 @@ pub fn pass_to_string(p: Pass) -> String {
     LimitFunctions -> "limit_functions"
     ExposeAllocation -> "expose_allocation"
     UncoverGet -> "uncover_get!"
+    RemoveComplexOperands -> "remove_complex_operands"
     ExplicateControl -> "explicate_control"
     SelectInstructions -> "select_instructions"
     UncoverLive -> "uncover_live"
@@ -84,6 +90,7 @@ pub fn string_to_pass(s: String) -> Pass {
     "limit_functions" -> LimitFunctions
     "expose_allocation" -> ExposeAllocation
     "uncover_get!" -> UncoverGet
+    "remove_complex_operands" -> RemoveComplexOperands
     "parse" -> Parse
     "type_check" -> TypeCheck
     "select_instructions" -> SelectInstructions
@@ -218,22 +225,39 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> doc.to_string(80)
     }
 
-    // ==== a few passes later...
+    RemoveComplexOperands -> {
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> limit_functions.limit_functions
+      |> expose_allocation.expose_allocation
+      |> uncover_get.uncover_get
+      |> remove_complex_operands.remove_complex_operands
+      |> l_mon.format_program
+      |> doc.to_string(80)
+    }
+
     ExplicateControl -> {
-      // use p <- result.map(result.map_error(
-      //   l.type_check_program(program),
-      //   string.inspect,
-      // ))
-      // p
-      // |> shrink.shrink
-      // |> uniquify.uniquify
-      // |> expose_allocation.expose_allocation
-      // |> uncover_get.uncover_get
-      // |> remove_complex_operands.remove_complex_operands
-      // |> explicate_control.explicate_control
-      // |> c.format_program()
-      // |> doc.to_string(80)
-      Ok("")
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> limit_functions.limit_functions
+      |> expose_allocation.expose_allocation
+      |> uncover_get.uncover_get
+      |> remove_complex_operands.remove_complex_operands
+      |> explicate_control.explicate_control
+      |> c.format_program()
+      |> doc.to_string(80)
     }
     SelectInstructions -> {
       // use p <- result.map(result.map_error(

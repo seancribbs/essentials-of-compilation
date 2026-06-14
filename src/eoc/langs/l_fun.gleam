@@ -616,7 +616,7 @@ fn format_def(d: Definition) -> doc.Document {
   |> parenthesize()
 }
 
-fn format_argument(arg: #(String, Type)) -> doc.Document {
+pub fn format_argument(arg: #(String, Type)) -> doc.Document {
   [doc.from_string(arg.0), doc.from_string(" : "), format_type(arg.1)]
   |> doc.concat()
   |> doc.prepend(doc.from_string("["))
