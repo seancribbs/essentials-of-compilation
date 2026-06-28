@@ -644,9 +644,147 @@ pub fn explicate_control_tailcall_function_test() {
   assert explicate_control(p) == p2
 }
 
-// TODO: Call in expression position
+// TODO: Call in assign position
+pub fn explicate_control_call_assign_test() {
+  let p =
+    parsed(
+      "
+    (define (inc [x : Integer]) : Integer (+ x 1))
+    (let ([a (inc 40)]) (+ a 1))
+    ",
+    )
+
+  let p2 =
+    c.CProgram(dict.new(), [
+      c.Definition(
+        "main",
+        [],
+        l.IntegerT,
+        c.Blocks(
+          dict.from_list([
+            #(
+              "main",
+              c.Seq(
+                c.Assign("tmp.1", c.FunRef("inc", 1)),
+                c.Seq(
+                  c.Assign("a.1", c.Call(c.Variable("tmp.1"), [c.Int(40)])),
+                  c.Return(c.Prim(c.Plus(c.Variable("a.1"), c.Int(1)))),
+                ),
+              ),
+            ),
+          ]),
+          "main",
+        ),
+      ),
+      c.Definition(
+        "inc",
+        [#("x.2", l.IntegerT)],
+        l.IntegerT,
+        c.Blocks(
+          dict.from_list([
+            #("inc", c.Return(c.Prim(c.Plus(c.Variable("x.2"), c.Int(1))))),
+          ]),
+          "inc",
+        ),
+      ),
+    ])
+
+  assert explicate_control(p) == p2
+}
+
 // TODO: Call in effect position
+pub fn explicate_control_call_effect_test() {
+  let p =
+    parsed(
+      "
+      (define (inc [x : Integer]) : Integer (+ x 1))
+      (begin
+        (inc 1)
+        42)
+    ",
+    )
+
+  let p2 =
+    c.CProgram(dict.new(), [
+      c.Definition(
+        "main",
+        [],
+        l.IntegerT,
+        c.Blocks(
+          dict.from_list([
+            #(
+              "main",
+              c.Seq(
+                c.Assign("tmp.1", c.FunRef("inc", 1)),
+                c.Seq(
+                  c.Assign(
+                    "main_apply_1",
+                    c.Call(c.Variable("tmp.1"), [c.Int(1)]),
+                  ),
+                  c.Return(c.Atom(c.Int(42))),
+                ),
+              ),
+            ),
+          ]),
+          "main",
+        ),
+      ),
+      c.Definition(
+        "inc",
+        [#("x.1", l.IntegerT)],
+        l.IntegerT,
+        c.Blocks(
+          dict.from_list([
+            #("inc", c.Return(c.Prim(c.Plus(c.Variable("x.1"), c.Int(1))))),
+          ]),
+          "inc",
+        ),
+      ),
+    ])
+
+  assert explicate_control(p) == p2
+}
+
 // TODO: FunRef in effect position
+pub fn explicate_control_funref_effect_test() {
+  let p =
+    parsed(
+      "
+      (define (inc [x : Integer]) : Integer (+ x 1))
+      (begin
+        inc
+        42)
+    ",
+    )
+
+  let p2 =
+    c.CProgram(dict.new(), [
+      c.Definition(
+        "main",
+        [],
+        l.IntegerT,
+        c.Blocks(
+          dict.from_list([
+            #("main", c.Return(c.Atom(c.Int(42)))),
+          ]),
+          "main",
+        ),
+      ),
+      c.Definition(
+        "inc",
+        [#("x.1", l.IntegerT)],
+        l.IntegerT,
+        c.Blocks(
+          dict.from_list([
+            #("inc", c.Return(c.Prim(c.Plus(c.Variable("x.1"), c.Int(1))))),
+          ]),
+          "inc",
+        ),
+      ),
+    ])
+
+  assert explicate_control(p) == p2
+}
 
 fn parsed(input: String) -> l_mon.Program {
   let assert Ok(tokens) = parse.tokens(input)
