@@ -4,21 +4,42 @@ import gleam/dict
 import gleam/int
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/pair
 
-import eoc/langs/c_tup as c
-import eoc/langs/l_tup as l
+import eoc/langs/c_fun as c
+import eoc/langs/l_fun as l
 import eoc/langs/x86_base.{R11, Rax}
-import eoc/langs/x86_global as x86
+import eoc/langs/x86_def_callq as x86
 
 pub fn select_instructions(input: c.CProgram) -> x86.X86Program {
-  let #(body, types) =
-    dict.fold(input.body, #(dict.new(), dict.new()), fn(acc, block_name, tail) {
-      let #(blocks, types) = acc
-      let #(body, new_types) = select_tail(tail)
-      let block = x86.Block(..x86.new_block(), body:)
-      #(dict.insert(blocks, block_name, block), dict.merge(types, new_types))
-    })
-  x86.X86Program(..x86.new_program(), body:, types:)
+  let defs = list.map(input.defs, select_definition)
+
+  x86.X86Program(..x86.new_program(), defs:)
+}
+
+fn select_definition(def: c.Definition) -> x86.Definition {
+  let #(blocks, types) =
+    dict.fold(
+      def.body.blocks,
+      #(dict.new(), dict.new()),
+      fn(acc, block_name, tail) {
+        let argument_moves = case block_name == def.name {
+          True -> {
+            def.arguments
+            |> list.map(pair.first)
+            |> list.zip(x86_base.argument_registers)
+            |> list.map(fn(p) { x86.Movq(x86.Reg(p.1), x86.Var(p.0)) })
+          }
+          False -> []
+        }
+        let #(blocks, types) = acc
+        let #(body, new_types) = select_tail(tail, def.name <> "_conclusion")
+        let block =
+          x86.Block(..x86.new_block(), body: list.append(argument_moves, body))
+        #(dict.insert(blocks, block_name, block), dict.merge(types, new_types))
+      },
+    )
+  x86.Definition(label: def.name, return: def.return, blocks:, types:)
 }
 
 fn select_atm(input: c.Atm) -> #(x86.Arg, Option(l.Type)) {
@@ -275,15 +296,39 @@ fn select_stmt(input: c.Stmt) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
       ],
       types,
     )
+    c.Assign(var:, expr: c.FunRef(name:, arity: _)) -> {
+      #([x86.Leaq(x86.Global(name), x86.Var(var))], types)
+    }
+    c.Assign(var:, expr: c.Call(function:, arguments:)) -> {
+      let #(f, ft) = select_atm(function)
+      echo ft
+      let arguments =
+        arguments
+        |> list.zip(x86_base.argument_registers)
+        |> list.map(fn(p) {
+          let #(a, _) = select_atm(p.0)
+          x86.Movq(a, x86.Reg(p.1))
+        })
+      #(
+        list.append(arguments, [
+          x86.IndirectCallq(f),
+          x86.Movq(x86.Reg(x86_base.Rax), x86.Var(var)),
+        ]),
+        types,
+      )
+    }
   }
 }
 
-fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
+fn select_tail(
+  input: c.Tail,
+  conclusion: String,
+) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
   let types = dict.new()
   case input {
     c.Seq(s, t) -> {
       let #(s_instrs, s_types) = select_stmt(s)
-      let #(t_instrs, t_types) = select_tail(t)
+      let #(t_instrs, t_types) = select_tail(t, conclusion)
       #(list.append(s_instrs, t_instrs), dict.merge(s_types, t_types))
     }
     c.Return(c.Atom(atm)) -> {
@@ -291,7 +336,7 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
       #(
         [
           x86.Movq(atm, x86.Reg(Rax)),
-          x86.Jmp("conclusion"),
+          x86.Jmp(conclusion),
         ],
         types,
       )
@@ -299,7 +344,7 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
     c.Return(c.Prim(c.Read)) -> #(
       [
         x86.Callq("read_int", 0),
-        x86.Jmp("conclusion"),
+        x86.Jmp(conclusion),
       ],
       types,
     )
@@ -309,7 +354,7 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
         [
           x86.Movq(atm, x86.Reg(Rax)),
           x86.Negq(x86.Reg(Rax)),
-          x86.Jmp("conclusion"),
+          x86.Jmp(conclusion),
         ],
         types,
       )
@@ -321,7 +366,7 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
         [
           x86.Movq(a, x86.Reg(Rax)),
           x86.Addq(b, x86.Reg(Rax)),
-          x86.Jmp("conclusion"),
+          x86.Jmp(conclusion),
         ],
         types,
       )
@@ -333,7 +378,7 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
         [
           x86.Movq(a, x86.Reg(Rax)),
           x86.Subq(b, x86.Reg(Rax)),
-          x86.Jmp("conclusion"),
+          x86.Jmp(conclusion),
         ],
         types,
       )
@@ -367,7 +412,7 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
           x86.Movq(x86.Deref(R11, 0), x86.Reg(Rax)),
           x86.Sarq(x86.Imm(1), x86.Reg(Rax)),
           x86.Andq(x86.Imm(63), x86.Reg(Rax)),
-          x86.Jmp("conclusion"),
+          x86.Jmp(conclusion),
         ],
         vt
           |> option.map(fn(vt) { dict.insert(types, vecname, vt) })
@@ -384,11 +429,32 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
         [
           x86.Movq(vec, x86.Reg(R11)),
           x86.Movq(x86.Deref(R11, 8 * { n + 1 }), x86.Reg(Rax)),
-          x86.Jmp("conclusion"),
+          x86.Jmp(conclusion),
         ],
         vt
           |> option.map(fn(vt) { dict.insert(types, vecname, vt) })
           |> option.unwrap(types),
+      )
+    }
+    c.Return(a: c.FunRef(name:, arity: _)) -> #(
+      [x86.Leaq(x86.Global(name), x86.Reg(Rax)), x86.Jmp(conclusion)],
+      types,
+    )
+    c.TailCall(function:, arguments:) -> {
+      let #(f, ft) = select_atm(function)
+      echo ft
+      let arguments =
+        arguments
+        |> list.zip(x86_base.argument_registers)
+        |> list.map(fn(p) {
+          let #(a, _) = select_atm(p.0)
+          x86.Movq(a, x86.Reg(p.1))
+        })
+      #(
+        list.append(arguments, [
+          x86.TailJmp(label: f, arity: list.length(arguments)),
+        ]),
+        types,
       )
     }
     c.Return(a: c.Prim(op: c.VectorSet(v: _, index: _, value: _))) ->
@@ -396,6 +462,8 @@ fn select_tail(input: c.Tail) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
     c.Return(a: c.Allocate(amount: _, t: _))
     | c.Return(a: c.GlobalValue(var: _)) ->
       panic as "runtime/gc internal in tail position"
+    c.Return(a: c.Call(function: _, arguments: _)) ->
+      panic as "normal call in tail position"
   }
 }
 

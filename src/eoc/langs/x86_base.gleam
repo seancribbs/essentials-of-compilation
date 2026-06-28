@@ -46,6 +46,8 @@ pub type Location {
   LocVar(name: String)
 }
 
+pub const argument_registers: List(Register) = [Rdi, Rsi, Rdx, Rcx, R8, R9]
+
 pub const callee_saved_registers: List(Register) = [
   Rsp,
   Rbp,
