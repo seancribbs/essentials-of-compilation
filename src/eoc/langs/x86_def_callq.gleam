@@ -56,7 +56,7 @@ pub type Instr {
   Pushq(a: Arg)
   Popq(a: Arg)
   Callq(label: String, arity: Int)
-  IndirectCallq(a: Arg)
+  IndirectCallq(a: Arg, arity: Int)
   TailJmp(label: Arg, arity: Int)
   Leaq(a: Arg, b: Arg)
   Retq
@@ -84,12 +84,6 @@ pub type Definition {
     return: l.Type,
     blocks: dict.Dict(String, Block),
     types: dict.Dict(String, l.Type),
-  )
-}
-
-pub type X86Program {
-  X86Program(
-    defs: List(Definition),
     conflicts: interference_graph.Graph,
     stack_vars: Int,
     used_callee: set.Set(x86_base.Register),
@@ -97,9 +91,16 @@ pub type X86Program {
   )
 }
 
-pub fn new_program() -> X86Program {
-  X86Program(
-    defs: [],
+pub type X86Program {
+  X86Program(defs: List(Definition))
+}
+
+pub fn new_definition() -> Definition {
+  Definition(
+    label: "",
+    return: l.VoidT,
+    blocks: dict.new(),
+    types: dict.new(),
     conflicts: interference_graph.new(),
     stack_vars: 0,
     used_callee: set.new(),
@@ -225,7 +226,8 @@ pub fn format_instr(instr: Instr) -> doc.Document {
         <> label,
       )
     Retq -> doc.from_string("retq")
-    IndirectCallq(a:) -> doc.concat([doc.from_string("callq *"), format_arg(a)])
+    IndirectCallq(a:, arity: _) ->
+      doc.concat([doc.from_string("callq *"), format_arg(a)])
     TailJmp(label:, arity: _) ->
       doc.concat([doc.from_string("tailjmp "), format_arg(label)])
     Leaq(a:, b:) ->

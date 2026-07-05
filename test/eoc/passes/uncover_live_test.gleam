@@ -1,6 +1,6 @@
-// import eoc/langs/l_tup as l
+// import eoc/langs/l_fun as l
 // import eoc/langs/x86_base.{E, LocReg, LocVar, Rax, Rsp}
-// import eoc/langs/x86_global.{
+// import eoc/langs/x86_def_callq.{
 //   Addq, Block, Callq, Cmpq, Imm, Jmp, JmpIf, Movq, Movzbq, Negq, Reg, Set, Var,
 //   X86Program,
 // } as x86
@@ -472,8 +472,9 @@
 // }
 
 // fn parsed(input: String) -> l.Program {
-//   let assert Ok(_) = input
-//   |> tokens
-//   |> should.be_ok
-//   |> parse
+//   let assert Ok(_) =
+//     input
+//     |> tokens
+//     |> should.be_ok
+//     |> parse
 // }

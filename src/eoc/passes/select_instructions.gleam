@@ -12,9 +12,7 @@ import eoc/langs/x86_base.{R11, Rax}
 import eoc/langs/x86_def_callq as x86
 
 pub fn select_instructions(input: c.CProgram) -> x86.X86Program {
-  let defs = list.map(input.defs, select_definition)
-
-  x86.X86Program(..x86.new_program(), defs:)
+  x86.X86Program(defs: list.map(input.defs, select_definition))
 }
 
 fn select_definition(def: c.Definition) -> x86.Definition {
@@ -39,7 +37,13 @@ fn select_definition(def: c.Definition) -> x86.Definition {
         #(dict.insert(blocks, block_name, block), dict.merge(types, new_types))
       },
     )
-  x86.Definition(label: def.name, return: def.return, blocks:, types:)
+  x86.Definition(
+    ..x86.new_definition(),
+    label: def.name,
+    return: def.return,
+    blocks:,
+    types:,
+  )
 }
 
 fn select_atm(input: c.Atm) -> #(x86.Arg, Option(l.Type)) {
@@ -311,7 +315,7 @@ fn select_stmt(input: c.Stmt) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
         })
       #(
         list.append(arguments, [
-          x86.IndirectCallq(f),
+          x86.IndirectCallq(f, list.length(arguments)),
           x86.Movq(x86.Reg(x86_base.Rax), x86.Var(var)),
         ]),
         types,
@@ -441,8 +445,8 @@ fn select_tail(
       types,
     )
     c.TailCall(function:, arguments:) -> {
-      let #(f, ft) = select_atm(function)
-      echo ft
+      let #(f, _ft) = select_atm(function)
+
       let arguments =
         arguments
         |> list.zip(x86_base.argument_registers)

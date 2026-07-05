@@ -1,44 +1,29 @@
 import eoc/interference_graph
-import eoc/langs/l_tup as l
+import eoc/langs/l_fun as l
 import eoc/langs/x86_base
-import eoc/langs/x86_global as x86
+import eoc/langs/x86_def_callq as x86
 import eoc/passes/uncover_live
 import gleam/dict
 import gleam/list
 import gleam/set
 
 pub fn build_interference(program: x86.X86Program) -> x86.X86Program {
+  x86.X86Program(defs: list.map(program.defs, build_interference_definition))
+}
+
+pub fn build_interference_definition(def: x86.Definition) -> x86.Definition {
   let conflicts =
-    program.types
-    |> dict.fold(program.conflicts, fn(g, var, t) {
-      case t {
-        // Conflicts must be added between callee-saved registers and
-        // tuple-typed variables so that they are not clobbered by the GC.
-        l.VectorT(_) ->
-          g
-          |> interference_graph.add_locations(
-            set.from_list([x86_base.LocVar(var)]),
-          )
-          |> list.fold(x86_base.callee_saved_registers, _, fn(g, reg) {
-            interference_graph.add_conflict(
-              g,
-              x86_base.LocVar(var),
-              x86_base.LocReg(reg),
-            )
-          })
-        _ -> g
-      }
+    dict.fold(def.blocks, def.conflicts, fn(ig, _, block) {
+      determine_conflicts(ig, block.body, block.live_after, def.types)
     })
-    |> dict.fold(program.body, _, fn(ig, _, block) {
-      determine_conflicts(ig, block.body, block.live_after)
-    })
-  x86.X86Program(..program, conflicts:)
+  x86.Definition(..def, conflicts:)
 }
 
 fn determine_conflicts(
   ig: interference_graph.Graph,
   body: List(x86.Instr),
   live_after: List(set.Set(x86_base.Location)),
+  types: dict.Dict(String, l.Type),
 ) -> interference_graph.Graph {
   body
   |> list.zip(live_after)
@@ -59,6 +44,28 @@ fn determine_conflicts(
           uncover_live.locations_in_arg(d),
           live,
         )
+      x86.IndirectCallq(_, _) as i | x86.Callq(_, _) as i -> {
+        let g = rule_2(g, uncover_live.write_location_in_inst(i), live)
+        set.fold(live, g, fn(g, loc) {
+          case loc {
+            x86_base.LocVar(name:) -> {
+              case dict.get(types, name) {
+                Ok(l.VectorT(_)) -> {
+                  list.fold(x86_base.callee_saved_registers, g, fn(g, reg) {
+                    interference_graph.add_conflict(
+                      g,
+                      loc,
+                      x86_base.LocReg(reg),
+                    )
+                  })
+                }
+                _ -> g
+              }
+            }
+            x86_base.LocReg(reg: _) -> g
+          }
+        })
+      }
       i -> rule_2(g, uncover_live.write_location_in_inst(i), live)
     }
   })

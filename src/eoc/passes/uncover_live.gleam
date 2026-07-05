@@ -9,24 +9,28 @@ import eoc/graf
 import eoc/langs/x86_base.{
   type Location, LocReg, LocVar, Rax, Rsp, bytereg_to_quad,
 }
-import eoc/langs/x86_global.{type Block, Block} as x86
+import eoc/langs/x86_def_callq.{type Block, Block} as x86
 import gleam/dict
 import gleam/list
 import gleam/result
 import gleam/set
 
 pub fn uncover_live(input: x86.X86Program) -> x86.X86Program {
+  x86.X86Program(..input, defs: list.map(input.defs, uncover_live_definition))
+}
+
+fn uncover_live_definition(input: x86.Definition) -> x86.Definition {
   let new_blocks =
-    input.body
+    input.blocks
     |> build_cfg()
-    |> analyze_dataflow(input.body)
+    |> analyze_dataflow(input.blocks)
     |> dict.map_values(fn(block_name, live_sets) {
-      let assert Ok(block) = dict.get(input.body, block_name)
+      let assert Ok(block) = dict.get(input.blocks, block_name)
       let assert [live_before, ..live_after] = live_sets
       Block(..block, live_before:, live_after:)
     })
 
-  x86.X86Program(..input, body: new_blocks)
+  x86.Definition(..input, blocks: new_blocks)
 }
 
 type LiveSet =
@@ -142,17 +146,7 @@ fn read_locations_in_inst(inst: x86.Instr) -> LiveSet {
     x86.Negq(a) -> locations_in_arg(a)
     x86.Popq(_) -> set.from_list([LocReg(Rsp)])
     x86.Pushq(a) -> set.union(locations_in_arg(a), set.from_list([LocReg(Rsp)]))
-    x86.Callq(_, arity) ->
-      [
-        LocReg(x86_base.Rdi),
-        LocReg(x86_base.Rsi),
-        LocReg(x86_base.Rdx),
-        LocReg(x86_base.Rcx),
-        LocReg(x86_base.R8),
-        LocReg(x86_base.R9),
-      ]
-      |> list.take(arity)
-      |> set.from_list()
+    x86.Callq(_, arity) -> argument_locations(arity)
     x86.Retq -> set.from_list([LocReg(Rax)])
     // Correct?
     x86.Jmp(_) -> set.new()
@@ -164,14 +158,26 @@ fn read_locations_in_inst(inst: x86.Instr) -> LiveSet {
     x86.Xorq(a:, b:) -> set.union(locations_in_arg(a), locations_in_arg(b))
     x86.Andq(a:, b:) -> set.union(locations_in_arg(a), locations_in_arg(b))
     x86.Sarq(a:, b:) -> set.union(locations_in_arg(a), locations_in_arg(b))
+    x86.IndirectCallq(a: label, arity:) | x86.TailJmp(label:, arity:) ->
+      set.union(argument_locations(arity), locations_in_arg(label))
+
+    x86.Leaq(a:, b: _) -> locations_in_arg(a)
   }
+}
+
+fn argument_locations(arity: Int) -> set.Set(Location) {
+  x86_base.argument_registers
+  |> list.take(arity)
+  |> list.map(LocReg)
+  |> set.from_list()
 }
 
 pub fn write_location_in_inst(inst: x86.Instr) -> LiveSet {
   case inst {
     x86.Addq(_, b) -> locations_in_arg(b)
     x86.Subq(_, b) -> locations_in_arg(b)
-    x86.Callq(_, _) -> set.from_list([LocReg(Rax)])
+    x86.Callq(_, _) | x86.IndirectCallq(_, _) ->
+      set.from_list(list.map(x86_base.caller_saved_registers, LocReg))
     x86.Movq(_, b) -> locations_in_arg(b)
     x86.Negq(a) -> locations_in_arg(a)
     x86.Popq(a) -> set.union(locations_in_arg(a), set.from_list([LocReg(Rsp)]))
@@ -185,5 +191,7 @@ pub fn write_location_in_inst(inst: x86.Instr) -> LiveSet {
     x86.Xorq(a: _, b:) -> locations_in_arg(b)
     x86.Andq(a: _, b:) -> locations_in_arg(b)
     x86.Sarq(a: _, b:) -> locations_in_arg(b)
+    x86.TailJmp(label: _, arity: _) -> set.new()
+    x86.Leaq(a: _, b:) -> locations_in_arg(b)
   }
 }
