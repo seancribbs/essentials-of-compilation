@@ -16,3 +16,5 @@ glam = ">= 2.0.3 and < 3.0.0"
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
 lustre_dev_tools = ">= 2.0.0 and < 3.0.0"
+birdie = ">= 2.0.1 and < 3.0.0"
+pprint = ">= 1.0.6 and < 2.0.0"
