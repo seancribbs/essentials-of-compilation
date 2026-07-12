@@ -269,7 +269,6 @@ pub fn uncover_live_while_loop_test() {
     == set.from_list([LocVar("sum.1"), LocVar("i.2"), LocReg(Rsp)])
 }
 
-
 pub fn uncover_live_functions_test() {
   let p =
     "

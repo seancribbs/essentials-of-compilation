@@ -1,5 +1,3 @@
-import eoc/passes/limit_functions
-import eoc/passes/reveal_functions
 import eoc/interference_graph as ig
 import eoc/langs/l_fun as l
 import eoc/langs/x86_base.{E, LocReg, LocVar, Rax, Rsp}
@@ -10,8 +8,10 @@ import eoc/langs/x86_def_callq.{
 import eoc/passes/build_interference
 import eoc/passes/explicate_control
 import eoc/passes/expose_allocation
+import eoc/passes/limit_functions
 import eoc/passes/parse
 import eoc/passes/remove_complex_operands
+import eoc/passes/reveal_functions
 import eoc/passes/select_instructions
 import eoc/passes/shrink
 import eoc/passes/uncover_get
@@ -227,11 +227,10 @@ pub fn build_interference_assign_boolean_var_test() {
         #("start", Block(..base_block, body: start)),
         #("block_1", Block(..base_block, body: block_1)),
         #("block_2", Block(..base_block, body: block_2)),
-      ]))
+      ]),
+    )
 
-
-  let p =
-    X86Program([main])
+  let p = X86Program([main])
 
   let assert x86.X86Program([main2]) =
     p |> uncover_live.uncover_live() |> build_interference.build_interference
@@ -254,22 +253,22 @@ pub fn build_interference_vector_with_calls_test() {
     |> prepasses
     |> build_interference.build_interference
 
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rsp))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rbp))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rbx))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R12))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R13))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R14))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R15))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rax))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rcx))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rdx))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rsi))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rdi))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R8))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R9))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R10))
-    assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R11))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rsp))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rbp))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rbx))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R12))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R13))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R14))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R15))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rax))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rcx))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rdx))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rsi))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.Rdi))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R8))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R9))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R10))
+  assert ig.has_conflict(main.conflicts, LocVar("v.1"), LocReg(x86_base.R11))
 }
 
 pub fn build_interference_vector_test() {
@@ -281,14 +280,12 @@ pub fn build_interference_vector_test() {
 
   // Tuple-typed variables must conflict with callee- and caller-saved registers
   assert ig.has_conflict(main.conflicts, LocVar("alloc6"), LocReg(Rsp))
-
   // assert ig.has_conflict(main.conflicts, LocVar("alloc6"), LocReg(x86_base.Rbp))
   // assert ig.has_conflict(main.conflicts, LocVar("alloc6"), LocReg(x86_base.Rbx))
   // assert ig.has_conflict(main.conflicts, LocVar("alloc6"), LocReg(x86_base.R12))
   // assert ig.has_conflict(main.conflicts, LocVar("alloc6"), LocReg(x86_base.R13))
   // assert ig.has_conflict(main.conflicts, LocVar("alloc6"), LocReg(x86_base.R14))
   // assert ig.has_conflict(main.conflicts, LocVar("alloc6"), LocReg(x86_base.R15))
-
 
   // ig.has_conflict(p.conflicts, LocVar("alloc6"), LocReg(x86_base.Rax))
   // |> should.be_true

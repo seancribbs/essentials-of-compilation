@@ -1,4 +1,3 @@
-import gleam/io
 import birdie
 import eoc/langs/l_fun as l
 import eoc/langs/x86_base.{G, L, LocReg, LocVar, Rax, Rcx, Rdx, Rsi, Rsp}
@@ -250,7 +249,7 @@ pub fn allocate_registers_functions_test() {
 
   allocate_registers.allocate_registers(p).defs
   |> list.map(fn(d) {
-    #(d.label, dict.map_values(d.blocks, fn(_, b) { b.body }) )
+    #(d.label, dict.map_values(d.blocks, fn(_, b) { b.body }))
   })
   |> dict.from_list()
   |> pprint.format()
@@ -273,7 +272,14 @@ pub fn allocate_registers_multiple_functions_test() {
 
   allocate_registers.allocate_registers(p).defs
   |> list.map(fn(d) {
-    #(d.label, #(dict.map_values(d.blocks, fn(_, b) { b.body }), d.root_stack_size, d.stack_vars))
+    #(
+      d.label,
+      #(
+        dict.map_values(d.blocks, fn(_, b) { b.body }),
+        d.root_stack_size,
+        d.stack_vars,
+      ),
+    )
   })
   |> dict.from_list()
   |> pprint.format()

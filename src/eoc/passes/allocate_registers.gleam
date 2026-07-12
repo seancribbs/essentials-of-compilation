@@ -123,12 +123,15 @@ fn translate_instr(
         translate_location(a, assignments),
         translate_location(b, assignments),
       )
-    x86.IndirectCallq(a:, arity:) -> x86.IndirectCallq(translate_location(a, assignments), arity)
-    x86.TailJmp(label:, arity:) -> x86.TailJmp(label: translate_location(label, assignments), arity:)
-    x86.Leaq(a:, b:) ->  x86.Leaq(
-      translate_location(a, assignments),
-      translate_location(b, assignments),
-    )
+    x86.IndirectCallq(a:, arity:) ->
+      x86.IndirectCallq(translate_location(a, assignments), arity)
+    x86.TailJmp(label:, arity:) ->
+      x86.TailJmp(label: translate_location(label, assignments), arity:)
+    x86.Leaq(a:, b:) ->
+      x86.Leaq(
+        translate_location(a, assignments),
+        translate_location(b, assignments),
+      )
   }
 }
 
@@ -235,7 +238,7 @@ fn extract_assignments(
 }
 
 fn rootstack_assignment(a: Int) -> x86.Arg {
-  x86.Deref(x86_base.R15, { -8 *  { a - 11 } })
+  x86.Deref(x86_base.R15, { -8 * { a - 11 } })
 }
 
 fn assignment_to_arg(a: Int) -> x86.Arg {
