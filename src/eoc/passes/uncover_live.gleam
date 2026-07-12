@@ -16,14 +16,16 @@ import gleam/result
 import gleam/set
 
 pub fn uncover_live(input: x86.X86Program) -> x86.X86Program {
-  x86.X86Program(..input, defs: list.map(input.defs, uncover_live_definition))
+  input.defs
+  |> list.map(uncover_live_definition)
+  |> x86.X86Program
 }
 
 fn uncover_live_definition(input: x86.Definition) -> x86.Definition {
   let new_blocks =
     input.blocks
     |> build_cfg()
-    |> analyze_dataflow(input.blocks)
+    |> analyze_dataflow(input.blocks, input.label)
     |> dict.map_values(fn(block_name, live_sets) {
       let assert Ok(block) = dict.get(input.blocks, block_name)
       let assert [live_before, ..live_after] = live_sets
@@ -48,16 +50,17 @@ type CFG =
 type Worklist =
   List(String)
 
-fn analyze_dataflow(g: CFG, blocks: Blocks) -> Mapping {
+fn analyze_dataflow(g: CFG, blocks: Blocks, prefix: String) -> Mapping {
+  let conclusion = prefix <> "_conclusion"
   let worklist = dict.keys(blocks)
   let mapping =
     worklist
     |> list.map(fn(k) { #(k, []) })
     |> dict.from_list()
-    |> dict.insert("conclusion", [set.from_list([LocReg(Rax), LocReg(Rsp)])])
+    |> dict.insert(conclusion, [set.from_list([LocReg(Rax), LocReg(Rsp)])])
 
   analyze_dataflow_loop(g, blocks, mapping, worklist)
-  |> dict.delete("conclusion")
+  |> dict.delete(conclusion)
 }
 
 fn analyze_dataflow_loop(

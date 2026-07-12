@@ -1,0 +1,75 @@
+---
+version: 2.0.1
+title: uncover_live_functions_test blocks
+file: ./test/eoc/passes/uncover_live_test.gleam
+test_name: uncover_live_functions_test
+---
+dict.from_list([
+  #(
+    "inc",
+    dict.from_list([
+      #(
+        "inc",
+        Block(
+          [
+            Movq(Reg(Rdi), Var("x.1")),
+            Movq(Var("x.1"), Reg(Rax)),
+            Addq(Imm(1), Reg(Rax)),
+            Jmp("inc_conclusion"),
+          ],
+          Set(dict.from_list([
+            #(LocReg(Rdi), []),
+            #(LocReg(Rsp), []),
+          ])),
+          [
+            Set(dict.from_list([
+              #(LocReg(Rsp), []),
+              #(LocVar("x.1"), []),
+            ])),
+            Set(dict.from_list([
+              #(LocReg(Rax), []),
+              #(LocReg(Rsp), []),
+            ])),
+            Set(dict.from_list([
+              #(LocReg(Rax), []),
+              #(LocReg(Rsp), []),
+            ])),
+            Set(dict.from_list([
+              #(LocReg(Rax), []),
+              #(LocReg(Rsp), []),
+            ])),
+          ],
+        ),
+      ),
+    ]),
+  ),
+  #(
+    "main",
+    dict.from_list([
+      #(
+        "main",
+        Block(
+          [
+            Leaq(
+              Global("inc"),
+              Var("tmp.1"),
+            ),
+            Movq(Imm(41), Reg(Rdi)),
+            TailJmp(Var("tmp.1"), 1),
+          ],
+          Set(dict.from_list([])),
+          [
+            Set(dict.from_list([
+              #(LocVar("tmp.1"), []),
+            ])),
+            Set(dict.from_list([
+              #(LocReg(Rdi), []),
+              #(LocVar("tmp.1"), []),
+            ])),
+            Set(dict.from_list([])),
+          ],
+        ),
+      ),
+    ]),
+  ),
+])

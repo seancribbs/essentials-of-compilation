@@ -304,8 +304,7 @@ fn select_stmt(input: c.Stmt) -> #(List(x86.Instr), dict.Dict(String, l.Type)) {
       #([x86.Leaq(x86.Global(name), x86.Var(var))], types)
     }
     c.Assign(var:, expr: c.Call(function:, arguments:)) -> {
-      let #(f, ft) = select_atm(function)
-      echo ft
+      let #(f, _ft) = select_atm(function)
       let arguments =
         arguments
         |> list.zip(x86_base.argument_registers)
