@@ -1,0 +1,282 @@
+---
+version: 2.0.1
+title: select_instructions_call_test function blocks
+file: ./test/eoc/passes/select_instructions_test.gleam
+test_name: select_instructions_call_test
+---
+dict.from_list([
+  #(
+    "inc",
+    dict.from_list([
+      #(
+        "inc",
+        Block(
+          [
+            Movq(Reg(Rdi), Var("x.3")),
+            Movq(Var("x.3"), Reg(Rax)),
+            Addq(Imm(1), Reg(Rax)),
+            Jmp("inc_conclusion"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+    ]),
+  ),
+  #(
+    "main",
+    dict.from_list([
+      #(
+        "main",
+        Block(
+          [
+            Leaq(
+              Global("map"),
+              Var("tmp.1"),
+            ),
+            Leaq(
+              Global("inc"),
+              Var("tmp.2"),
+            ),
+            Movq(
+              Imm(0),
+              Var("vecinit1"),
+            ),
+            Movq(
+              Imm(41),
+              Var("vecinit2"),
+            ),
+            Movq(
+              Global("free_ptr"),
+              Var("tmp.3"),
+            ),
+            Movq(
+              Var("tmp.3"),
+              Var("tmp.4"),
+            ),
+            Addq(Imm(24), Var("tmp.4")),
+            Movq(
+              Global("fromspace_end"),
+              Var("tmp.5"),
+            ),
+            Cmpq(
+              Var("tmp.5"),
+              Var("tmp.4"),
+            ),
+            JmpIf(L, "main_block_2"),
+            Jmp("main_block_3"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+      #(
+        "main_block_1",
+        Block(
+          [
+            Movq(
+              Global("free_ptr"),
+              Reg(R11),
+            ),
+            Addq(
+              Imm(24),
+              Global("free_ptr"),
+            ),
+            Movq(Imm(4), Deref(R11, 0)),
+            Movq(
+              Reg(R11),
+              Var("alloc3"),
+            ),
+            Movq(
+              Var("alloc3"),
+              Reg(R11),
+            ),
+            Movq(
+              Var("vecinit1"),
+              Deref(R11, 8),
+            ),
+            Movq(Imm(0), Var("_5")),
+            Movq(
+              Var("alloc3"),
+              Reg(R11),
+            ),
+            Movq(
+              Var("vecinit2"),
+              Deref(R11, 16),
+            ),
+            Movq(Imm(0), Var("_4")),
+            Movq(
+              Var("alloc3"),
+              Var("tmp.6"),
+            ),
+            Movq(Var("tmp.2"), Reg(Rdi)),
+            Movq(Var("tmp.6"), Reg(Rsi)),
+            IndirectCallq(
+              Var("tmp.1"),
+              2,
+            ),
+            Movq(Reg(Rax), Var("tmp.7")),
+            Movq(Var("tmp.7"), Reg(R11)),
+            Movq(
+              Deref(R11, 16),
+              Reg(Rax),
+            ),
+            Jmp("main_conclusion"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+      #(
+        "main_block_2",
+        Block(
+          [
+            Movq(Imm(0), Var("_6")),
+            Jmp("main_block_1"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+      #(
+        "main_block_3",
+        Block(
+          [
+            Movq(Reg(R15), Reg(Rdi)),
+            Movq(Imm(24), Reg(Rsi)),
+            Callq("collect", 2),
+            Jmp("main_block_1"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+    ]),
+  ),
+  #(
+    "map",
+    dict.from_list([
+      #(
+        "map",
+        Block(
+          [
+            Movq(Reg(Rdi), Var("f.1")),
+            Movq(Reg(Rsi), Var("v.2")),
+            Movq(Var("v.2"), Reg(R11)),
+            Movq(
+              Deref(R11, 8),
+              Var("tmp.1"),
+            ),
+            Movq(Var("tmp.1"), Reg(Rdi)),
+            IndirectCallq(Var("f.1"), 1),
+            Movq(
+              Reg(Rax),
+              Var("vecinit1"),
+            ),
+            Movq(Var("v.2"), Reg(R11)),
+            Movq(
+              Deref(R11, 16),
+              Var("tmp.2"),
+            ),
+            Movq(Var("tmp.2"), Reg(Rdi)),
+            IndirectCallq(Var("f.1"), 1),
+            Movq(
+              Reg(Rax),
+              Var("vecinit2"),
+            ),
+            Movq(
+              Global("free_ptr"),
+              Var("tmp.3"),
+            ),
+            Movq(
+              Var("tmp.3"),
+              Var("tmp.4"),
+            ),
+            Addq(Imm(24), Var("tmp.4")),
+            Movq(
+              Global("fromspace_end"),
+              Var("tmp.5"),
+            ),
+            Cmpq(
+              Var("tmp.5"),
+              Var("tmp.4"),
+            ),
+            JmpIf(L, "map_block_2"),
+            Jmp("map_block_3"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+      #(
+        "map_block_1",
+        Block(
+          [
+            Movq(
+              Global("free_ptr"),
+              Reg(R11),
+            ),
+            Addq(
+              Imm(24),
+              Global("free_ptr"),
+            ),
+            Movq(Imm(4), Deref(R11, 0)),
+            Movq(
+              Reg(R11),
+              Var("alloc3"),
+            ),
+            Movq(
+              Var("alloc3"),
+              Reg(R11),
+            ),
+            Movq(
+              Var("vecinit1"),
+              Deref(R11, 8),
+            ),
+            Movq(Imm(0), Var("_5")),
+            Movq(
+              Var("alloc3"),
+              Reg(R11),
+            ),
+            Movq(
+              Var("vecinit2"),
+              Deref(R11, 16),
+            ),
+            Movq(Imm(0), Var("_4")),
+            Movq(
+              Var("alloc3"),
+              Reg(Rax),
+            ),
+            Jmp("map_conclusion"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+      #(
+        "map_block_2",
+        Block(
+          [
+            Movq(Imm(0), Var("_6")),
+            Jmp("map_block_1"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+      #(
+        "map_block_3",
+        Block(
+          [
+            Movq(Reg(R15), Reg(Rdi)),
+            Movq(Imm(24), Reg(Rsi)),
+            Callq("collect", 2),
+            Jmp("map_block_1"),
+          ],
+          Set(dict.from_list([])),
+          [],
+        ),
+      ),
+    ]),
+  ),
+])

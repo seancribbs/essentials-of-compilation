@@ -1,9 +1,11 @@
+import birdie
 import eoc/langs/c_fun as c
 import eoc/passes/expose_allocation
 import eoc/passes/limit_functions
 import eoc/passes/reveal_functions
 import eoc/passes/shrink
 import eoc/passes/uncover_get
+import pprint
 
 import eoc/langs/l_fun as l
 import eoc/langs/x86_base.{Rax}
@@ -337,30 +339,35 @@ pub fn select_instructions_tuple_test() {
   assert value == l.VectorT([l.IntegerT])
 }
 
-// pub fn select_instructions_call_test() {
-//   let p =
-//     "
-//   (define (map [f : (Integer -> Integer)] [v : (Vector Integer Integer)]) : (Vector Integer Integer)
-//     (vector (f (vector-ref v 0)) (f (vector-ref v 1))))
+pub fn select_instructions_call_test() {
+  let p =
+    "
+  (define (map [f : (Integer -> Integer)] [v : (Vector Integer Integer)]) : (Vector Integer Integer)
+    (vector (f (vector-ref v 0)) (f (vector-ref v 1))))
 
-//   (define (inc [x : Integer]) : Integer
-//     (+ x 1))
+  (define (inc [x : Integer]) : Integer
+    (+ x 1))
 
-//   (vector-ref (map inc (vector 0 41)) 1)
-//   "
-//     |> parsed()
-//     |> prepasses()
+  (vector-ref (map inc (vector 0 41)) 1)
+  "
+    |> parsed()
+    |> prepasses()
 
-//   echo select_instructions(p)
-//   // funref -> leaq
-//   //  - map and inc in "main" are put into variables with leaq
-//   // moving things to/from argument registers
-//   //  - call to "map" in "main" receives two arguments
-//   //  - two calls in "map" that receive one argument
-//   // capturing return values from %rax
-//   //  - "main" copies the result of calling "map" in a variable
-//   //  - "map" copies the result of calling "f" twice into variables
-// }
+  // funref -> leaq
+  //  - map and inc in "main" are put into variables with leaq
+  // moving things to/from argument registers
+  //  - call to "map" in "main" receives two arguments
+  //  - two calls in "map" that receive one argument
+  // capturing return values from %rax
+  //  - "main" copies the result of calling "map" in a variable
+  //  - "map" copies the result of calling "f" twice into variables
+
+  select_instructions(p).defs
+  |> list.map(fn(d) { #(d.label, d.blocks) })
+  |> dict.from_list()
+  |> pprint.format()
+  |> birdie.snap(title: "select_instructions_call_test function blocks")
+}
 
 pub fn select_instructions_tail_call_test() {
   let p =
