@@ -1,0 +1,35 @@
+---
+version: 2.0.1
+title: allocate_registers_functions_test blocks
+file: ./test/eoc/passes/allocate_registers_test.gleam
+test_name: allocate_registers_functions_test
+---
+dict.from_list([
+  #(
+    "inc",
+    dict.from_list([
+      #(
+        "inc",
+        [
+          Movq(Reg(Rdi), Reg(Rcx)),
+          Movq(Reg(Rcx), Reg(Rax)),
+          Addq(Imm(1), Reg(Rax)),
+          Jmp("inc_conclusion"),
+        ],
+      ),
+    ]),
+  ),
+  #(
+    "main",
+    dict.from_list([
+      #(
+        "main",
+        [
+          Leaq(Global("inc"), Reg(Rcx)),
+          Movq(Imm(41), Reg(Rdi)),
+          TailJmp(Reg(Rcx), 1),
+        ],
+      ),
+    ]),
+  ),
+])

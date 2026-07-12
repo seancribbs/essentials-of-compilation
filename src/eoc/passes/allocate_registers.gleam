@@ -1,8 +1,8 @@
 import eoc/graf
 import eoc/interference_graph as ig
-import eoc/langs/l_tup as l
+import eoc/langs/l_fun as l
 import eoc/langs/x86_base
-import eoc/langs/x86_global as x86
+import eoc/langs/x86_def_callq as x86
 import gleam/dict
 import gleam/int
 import gleam/list
@@ -13,6 +13,12 @@ import gleam/result
 import gleam/set
 
 pub fn allocate_registers(input: x86.X86Program) -> x86.X86Program {
+  input.defs
+  |> list.map(allocate_registers_definition)
+  |> x86.X86Program
+}
+
+pub fn allocate_registers_definition(input: x86.Definition) -> x86.Definition {
   let assignments =
     input.conflicts
     |> color_graph
@@ -58,14 +64,14 @@ pub fn allocate_registers(input: x86.X86Program) -> x86.X86Program {
     |> set.from_list()
     |> set.size()
 
-  let body =
-    input.body
+  let blocks =
+    input.blocks
     |> dict.map_values(fn(_, block) {
       let new_instrs = list.map(block.body, translate_instr(_, assignments))
       x86.Block(..block, body: new_instrs)
     })
 
-  x86.X86Program(..input, body:, stack_vars:, used_callee:, root_stack_size:)
+  x86.Definition(..input, blocks:, stack_vars:, used_callee:, root_stack_size:)
 }
 
 fn translate_instr(
@@ -117,6 +123,12 @@ fn translate_instr(
         translate_location(a, assignments),
         translate_location(b, assignments),
       )
+    x86.IndirectCallq(a:, arity:) -> x86.IndirectCallq(translate_location(a, assignments), arity)
+    x86.TailJmp(label:, arity:) -> x86.TailJmp(label: translate_location(label, assignments), arity:)
+    x86.Leaq(a:, b:) ->  x86.Leaq(
+      translate_location(a, assignments),
+      translate_location(b, assignments),
+    )
   }
 }
 
@@ -223,7 +235,7 @@ fn extract_assignments(
 }
 
 fn rootstack_assignment(a: Int) -> x86.Arg {
-  x86.Deref(x86_base.R15, { -8 * a })
+  x86.Deref(x86_base.R15, { -8 *  { a - 11 } })
 }
 
 fn assignment_to_arg(a: Int) -> x86.Arg {
