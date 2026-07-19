@@ -19,18 +19,22 @@
 // jmp conclusion
 
 import eoc/langs/x86_base.{Rax}
-import eoc/langs/x86_global as x86
+import eoc/langs/x86_def_callq as x86
 import gleam/dict
 import gleam/list
 
 pub fn patch_instructions(input: x86.X86Program) -> x86.X86Program {
-  let body =
-    input.body
+  x86.X86Program(defs: list.map(input.defs, patch_instructions_definition))
+}
+
+pub fn patch_instructions_definition(input: x86.Definition) -> x86.Definition {
+  let blocks =
+    input.blocks
     |> dict.map_values(fn(_, block) {
       x86.Block(..block, body: patch_instructions_block(block.body))
     })
 
-  x86.X86Program(..input, body:)
+  x86.Definition(..input, blocks:)
 }
 
 fn patch_instructions_block(instrs: List(x86.Instr)) -> List(x86.Instr) {
@@ -57,6 +61,14 @@ fn patch_instruction(instr: x86.Instr) -> List(x86.Instr) {
     x86.Cmpq(a, x86.Imm(_) as b) -> [
       x86.Movq(b, x86.Reg(Rax)),
       x86.Cmpq(a, x86.Reg(Rax)),
+    ]
+    x86.Leaq(a, x86.Deref(_, _) as b) -> [
+      x86.Leaq(a, x86.Reg(Rax)),
+      x86.Movq(x86.Reg(Rax), b),
+    ]
+    x86.TailJmp(dest, arity) if dest != x86.Reg(Rax) -> [
+      x86.Movq(dest, x86.Reg(Rax)),
+      x86.TailJmp(x86.Reg(Rax), arity),
     ]
     x86.Movzbq(_, x86.Imm(_)) -> panic as "invalid movzbq instruction"
     x86.Movzbq(a, x86.Deref(_, _) as b) -> [

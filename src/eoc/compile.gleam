@@ -1,21 +1,22 @@
-import eoc/passes/build_interference
-import eoc/passes/allocate_registers
-import eoc/passes/uncover_live
 import eoc/langs/c_fun as c
 import eoc/langs/l_alloc_funref as lfra
 import eoc/langs/l_fun as l
 import eoc/langs/l_funref as lfr
 import eoc/langs/l_mon_funref as l_mon
 import eoc/langs/x86_def_callq as x86
+import eoc/passes/allocate_registers
+import eoc/passes/build_interference
 import eoc/passes/explicate_control
 import eoc/passes/expose_allocation
 import eoc/passes/limit_functions
 import eoc/passes/parse
+import eoc/passes/patch_instructions
 import eoc/passes/remove_complex_operands
 import eoc/passes/reveal_functions
 import eoc/passes/select_instructions
 import eoc/passes/shrink
 import eoc/passes/uncover_get
+import eoc/passes/uncover_live
 import eoc/passes/uniquify
 import gleam/bool
 
@@ -325,25 +326,26 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
     }
 
     PatchInstructions -> {
-      // use p <- result.map(result.map_error(
-      //   l.type_check_program(program),
-      //   string.inspect,
-      // ))
-      // p
-      // |> shrink.shrink
-      // |> uniquify.uniquify
-      // |> expose_allocation.expose_allocation
-      // |> uncover_get.uncover_get
-      // |> remove_complex_operands.remove_complex_operands
-      // |> explicate_control.explicate_control
-      // |> select_instructions.select_instructions
-      // |> uncover_live.uncover_live
-      // |> build_interference.build_interference
-      // |> allocate_registers.allocate_registers
-      // |> patch_instructions.patch_instructions
-      // |> x86.format_program()
-      // |> doc.to_string(80)
-      Ok("")
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> limit_functions.limit_functions
+      |> expose_allocation.expose_allocation
+      |> uncover_get.uncover_get
+      |> remove_complex_operands.remove_complex_operands
+      |> explicate_control.explicate_control
+      |> select_instructions.select_instructions
+      |> uncover_live.uncover_live
+      |> build_interference.build_interference
+      |> allocate_registers.allocate_registers
+      |> patch_instructions.patch_instructions
+      |> x86.format_program()
+      |> doc.to_string(80)
     }
     GeneratePreludeAndConclusion -> {
       // use p <- result.map(result.map_error(

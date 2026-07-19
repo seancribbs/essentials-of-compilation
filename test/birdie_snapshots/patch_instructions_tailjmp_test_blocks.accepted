@@ -1,0 +1,36 @@
+---
+version: 2.0.2
+title: patch_instructions_tailjmp_test blocks
+file: ./test/eoc/passes/patch_instructions_test.gleam
+test_name: patch_instructions_tailjmp_test
+---
+dict.from_list([
+  #(
+    "inc",
+    dict.from_list([
+      #(
+        "inc",
+        [
+          Movq(Reg(Rdi), Reg(Rcx)),
+          Movq(Reg(Rcx), Reg(Rax)),
+          Addq(Imm(1), Reg(Rax)),
+          Jmp("inc_conclusion"),
+        ],
+      ),
+    ]),
+  ),
+  #(
+    "main",
+    dict.from_list([
+      #(
+        "main",
+        [
+          Leaq(Global("inc"), Reg(Rcx)),
+          Movq(Imm(41), Reg(Rdi)),
+          Movq(Reg(Rcx), Reg(Rax)),
+          TailJmp(Reg(Rax), 1),
+        ],
+      ),
+    ]),
+  ),
+])

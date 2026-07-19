@@ -1,15 +1,34 @@
+import birdie
+import eoc/langs/l_fun as l
 import eoc/langs/x86_base.{E, Rax, Rbp, Rcx, Rsp}
-import eoc/langs/x86_global as x86
+import eoc/langs/x86_def_callq as x86
+import eoc/passes/allocate_registers
+import eoc/passes/build_interference
+import eoc/passes/explicate_control
+import eoc/passes/expose_allocation
+import eoc/passes/limit_functions
+import eoc/passes/parse
 import eoc/passes/patch_instructions.{patch_instructions}
+import eoc/passes/remove_complex_operands
+import eoc/passes/reveal_functions
+import eoc/passes/select_instructions
+import eoc/passes/shrink
+import eoc/passes/uncover_get
+import eoc/passes/uncover_live
+import eoc/passes/uniquify
 import gleam/dict
+import gleam/list
+import pprint
 
 pub fn patch_instructions_test() {
-  let base_program = x86.new_program()
   let base_block = x86.new_block()
-  let p1 =
-    x86.X86Program(
-      ..base_program,
-      body: dict.from_list([
+
+  let main =
+    x86.Definition(
+      ..x86.new_definition(),
+      label: "main",
+      return: l.IntegerT,
+      blocks: dict.from_list([
         #(
           "start",
           x86.Block(..base_block, body: [
@@ -25,10 +44,12 @@ pub fn patch_instructions_test() {
       stack_vars: 24,
     )
 
-  let p2 =
-    x86.X86Program(
-      ..base_program,
-      body: dict.from_list([
+  let main2 =
+    x86.Definition(
+      ..x86.new_definition(),
+      label: "main",
+      return: l.IntegerT,
+      blocks: dict.from_list([
         #(
           "start",
           x86.Block(..base_block, body: [
@@ -46,16 +67,17 @@ pub fn patch_instructions_test() {
       stack_vars: 24,
     )
 
-  assert patch_instructions(p1) == p2
+  assert patch_instructions(x86.X86Program([main])) == x86.X86Program([main2])
 }
 
 pub fn patch_instructions_ch3_test() {
-  let base_program = x86.new_program()
   let base_block = x86.new_block()
-  let p1 =
-    x86.X86Program(
-      ..base_program,
-      body: dict.from_list([
+  let main =
+    x86.Definition(
+      ..x86.new_definition(),
+      label: "main",
+      return: l.IntegerT,
+      blocks: dict.from_list([
         #(
           "start",
           x86.Block(..base_block, body: [
@@ -77,10 +99,12 @@ pub fn patch_instructions_ch3_test() {
       stack_vars: 24,
     )
 
-  let p2 =
-    x86.X86Program(
-      ..base_program,
-      body: dict.from_list([
+  let main2 =
+    x86.Definition(
+      ..x86.new_definition(),
+      label: "main",
+      return: l.IntegerT,
+      blocks: dict.from_list([
         #(
           "start",
           x86.Block(..base_block, body: [
@@ -101,11 +125,10 @@ pub fn patch_instructions_ch3_test() {
       stack_vars: 24,
     )
 
-  assert patch_instructions(p1) == p2
+  assert patch_instructions(x86.X86Program([main])) == x86.X86Program([main2])
 }
 
 pub fn patch_instructions_cmp_immediate_test() {
-  let base_program = x86.new_program()
   let base_block = x86.new_block()
   let body = [
     x86.Callq("read_int", 0),
@@ -115,11 +138,16 @@ pub fn patch_instructions_cmp_immediate_test() {
     x86.Movzbq(x86_base.Al, x86.Reg(Rax)),
     x86.Jmp("conclusion"),
   ]
-  let p =
-    x86.X86Program(
-      ..base_program,
-      body: dict.from_list([#("start", x86.Block(..base_block, body:))]),
-    )
+
+  let assert x86.X86Program([main]) =
+    x86.X86Program([
+      x86.Definition(
+        ..x86.new_definition(),
+        label: "main",
+        return: l.IntegerT,
+        blocks: dict.from_list([#("start", x86.Block(..base_block, body:))]),
+      ),
+    ])
     |> patch_instructions
 
   let body_expected = [
@@ -132,12 +160,11 @@ pub fn patch_instructions_cmp_immediate_test() {
     x86.Jmp("conclusion"),
   ]
 
-  let assert Ok(start_block) = dict.get(p.body, "start")
+  let assert Ok(start_block) = dict.get(main.blocks, "start")
   assert start_block.body == body_expected
 }
 
 pub fn patch_instructions_movzbq_stack_test() {
-  let base_program = x86.new_program()
   let base_block = x86.new_block()
 
   let body = [
@@ -153,11 +180,15 @@ pub fn patch_instructions_movzbq_stack_test() {
     x86.Jmp("conclusion"),
   ]
 
-  let p =
-    x86.X86Program(
-      ..base_program,
-      body: dict.from_list([#("start", x86.Block(..base_block, body:))]),
-    )
+  let assert x86.X86Program([main]) =
+    x86.X86Program([
+      x86.Definition(
+        ..x86.new_definition(),
+        label: "main",
+        return: l.IntegerT,
+        blocks: dict.from_list([#("start", x86.Block(..base_block, body:))]),
+      ),
+    ])
     |> patch_instructions
 
   let body_expected = [
@@ -174,6 +205,72 @@ pub fn patch_instructions_movzbq_stack_test() {
     x86.Jmp("conclusion"),
   ]
 
-  let assert Ok(start_block) = dict.get(p.body, "start")
+  let assert Ok(start_block) = dict.get(main.blocks, "start")
   assert start_block.body == body_expected
+}
+
+pub fn patch_instructions_tailjmp_test() {
+  let p =
+    "
+  (define (inc [x : Integer]) : Integer
+    (+ x 1))
+
+  (inc 41)
+  "
+    |> parsed
+    |> prepasses
+
+  patch_instructions(p).defs
+  |> list.map(fn(d) {
+    #(d.label, dict.map_values(d.blocks, fn(_, b) { b.body }))
+  })
+  |> dict.from_list()
+  |> pprint.format()
+  |> birdie.snap(title: "patch_instructions_tailjmp_test blocks")
+}
+
+pub fn patch_instructions_map_inc_test() {
+  let p =
+    "
+  (define (map [f : (Integer -> Integer)] [v : (Vector Integer Integer)]) : (Vector Integer Integer)
+    (vector (f (vector-ref v 0)) (f (vector-ref v 1))))
+
+  (define (inc [x : Integer]) : Integer
+    (+ x 1))
+
+  (vector-ref (map inc (vector 0 41)) 1)
+  "
+    |> parsed()
+    |> prepasses()
+
+  patch_instructions(p).defs
+  |> list.map(fn(d) {
+    #(d.label, dict.map_values(d.blocks, fn(_, b) { b.body }))
+  })
+  |> dict.from_list()
+  |> pprint.format()
+  |> birdie.snap(title: "patch_instructions_map_inc_test blocks")
+}
+
+fn parsed(input: String) -> l.Program {
+  let assert Ok(toks) = parse.tokens(input)
+  let assert Ok(ast) = parse.parse(toks)
+  let assert Ok(typed) = l.type_check_program(ast)
+  typed
+}
+
+fn prepasses(program: l.Program) -> x86.X86Program {
+  program
+  |> shrink.shrink
+  |> uniquify.uniquify
+  |> reveal_functions.reveal_functions
+  |> limit_functions.limit_functions
+  |> expose_allocation.expose_allocation
+  |> uncover_get.uncover_get
+  |> remove_complex_operands.remove_complex_operands
+  |> explicate_control.explicate_control
+  |> select_instructions.select_instructions
+  |> uncover_live.uncover_live
+  |> build_interference.build_interference
+  |> allocate_registers.allocate_registers
 }
