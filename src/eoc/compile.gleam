@@ -1,3 +1,6 @@
+import eoc/passes/build_interference
+import eoc/passes/allocate_registers
+import eoc/passes/uncover_live
 import eoc/langs/c_fun as c
 import eoc/langs/l_alloc_funref as lfra
 import eoc/langs/l_fun as l
@@ -281,43 +284,46 @@ pub fn compile(input: String, pass: Pass) -> Result(String, String) {
       |> doc.to_string(80)
     }
     UncoverLive -> {
-      // use p <- result.map(result.map_error(
-      //   l.type_check_program(program),
-      //   string.inspect,
-      // ))
-      // p
-      // |> shrink.shrink
-      // |> uniquify.uniquify
-      // |> expose_allocation.expose_allocation
-      // |> uncover_get.uncover_get
-      // |> remove_complex_operands.remove_complex_operands
-      // |> explicate_control.explicate_control
-      // |> select_instructions.select_instructions
-      // |> uncover_live.uncover_live
-      // |> x86.format_program()
-      // |> doc.to_string(80)
-      Ok("")
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> limit_functions.limit_functions
+      |> expose_allocation.expose_allocation
+      |> uncover_get.uncover_get
+      |> remove_complex_operands.remove_complex_operands
+      |> explicate_control.explicate_control
+      |> select_instructions.select_instructions
+      |> uncover_live.uncover_live
+      |> x86.format_program()
+      |> doc.to_string(80)
     }
     AllocateRegisters -> {
-      // use p <- result.map(result.map_error(
-      //   l.type_check_program(program),
-      //   string.inspect,
-      // ))
-      // p
-      // |> shrink.shrink
-      // |> uniquify.uniquify
-      // |> expose_allocation.expose_allocation
-      // |> uncover_get.uncover_get
-      // |> remove_complex_operands.remove_complex_operands
-      // |> explicate_control.explicate_control
-      // |> select_instructions.select_instructions
-      // |> uncover_live.uncover_live
-      // |> build_interference.build_interference
-      // |> allocate_registers.allocate_registers
-      // |> x86.format_program()
-      // |> doc.to_string(80)
-      Ok("")
+      use p <- result.map(result.map_error(
+        l.type_check_program(program),
+        string.inspect,
+      ))
+      p
+      |> shrink.shrink
+      |> uniquify.uniquify
+      |> reveal_functions.reveal_functions
+      |> limit_functions.limit_functions
+      |> expose_allocation.expose_allocation
+      |> uncover_get.uncover_get
+      |> remove_complex_operands.remove_complex_operands
+      |> explicate_control.explicate_control
+      |> select_instructions.select_instructions
+      |> uncover_live.uncover_live
+      |> build_interference.build_interference
+      |> allocate_registers.allocate_registers
+      |> x86.format_program()
+      |> doc.to_string(80)
     }
+
     PatchInstructions -> {
       // use p <- result.map(result.map_error(
       //   l.type_check_program(program),
