@@ -15,7 +15,6 @@ pub fn generate_prelude_and_conclusion(
   |> x86_callq.X86Program()
 }
 
-
 pub fn generate_prelude_and_conclusion_definition(
   input: x86.Definition,
 ) -> dict.Dict(String, x86_callq.Block) {

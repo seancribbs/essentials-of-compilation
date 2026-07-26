@@ -14,16 +14,39 @@ pub fn build_interference(program: x86.X86Program) -> x86.X86Program {
 pub fn build_interference_definition(def: x86.Definition) -> x86.Definition {
   let conflicts =
     dict.fold(def.blocks, def.conflicts, fn(ig, _, block) {
-      determine_conflicts(ig, block.body, block.live_after, def.types)
+      ig
+      |> add_tuple_type_conflicts(def.types)
+      |> determine_conflicts(block.body, block.live_after)
     })
   x86.Definition(..def, conflicts:)
+}
+
+fn add_tuple_type_conflicts(
+  graph: interference_graph.Graph,
+  types: dict.Dict(String, l.Type),
+) -> interference_graph.Graph {
+  let all_registers =
+    x86_base.callee_saved_registers
+    |> list.append(x86_base.caller_saved_registers)
+    |> list.map(x86_base.LocReg)
+
+  use ig, name, ty <- dict.fold(types, graph)
+  case ty {
+    l.VectorT(_) -> {
+      use ig, reg <- list.fold(all_registers, ig)
+      let var = x86_base.LocVar(name)
+      ig
+      |> interference_graph.insert_location(var)
+      |> interference_graph.add_conflict(var, reg)
+    }
+    _ -> ig
+  }
 }
 
 fn determine_conflicts(
   ig: interference_graph.Graph,
   body: List(x86.Instr),
   live_after: List(set.Set(x86_base.Location)),
-  types: dict.Dict(String, l.Type),
 ) -> interference_graph.Graph {
   body
   |> list.zip(live_after)
@@ -44,28 +67,6 @@ fn determine_conflicts(
           uncover_live.locations_in_arg(d),
           live,
         )
-      x86.IndirectCallq(_, _) as i | x86.Callq(_, _) as i -> {
-        let g = rule_2(g, uncover_live.write_location_in_inst(i), live)
-        set.fold(live, g, fn(g, loc) {
-          case loc {
-            x86_base.LocVar(name:) -> {
-              case dict.get(types, name) {
-                Ok(l.VectorT(_)) -> {
-                  list.fold(x86_base.callee_saved_registers, g, fn(g, reg) {
-                    interference_graph.add_conflict(
-                      g,
-                      loc,
-                      x86_base.LocReg(reg),
-                    )
-                  })
-                }
-                _ -> g
-              }
-            }
-            x86_base.LocReg(reg: _) -> g
-          }
-        })
-      }
       i -> rule_2(g, uncover_live.write_location_in_inst(i), live)
     }
   })

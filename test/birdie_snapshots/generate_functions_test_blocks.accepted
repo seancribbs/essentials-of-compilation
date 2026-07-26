@@ -1,0 +1,245 @@
+---
+version: 2.0.2
+title: generate_functions_test blocks
+file: ./test/eoc/passes/generate_prelude_and_conclusion_test.gleam
+test_name: generate_functions_test
+---
+dict.from_list([
+  #(
+    "inc",
+    Block(
+      [
+        Pushq(Reg(Rbp)),
+        Movq(Reg(Rsp), Reg(Rbp)),
+        Subq(Imm(8), Reg(Rsp)),
+        Movq(Reg(Rdi), Reg(Rcx)),
+        Movq(Reg(Rcx), Reg(Rax)),
+        Addq(Imm(1), Reg(Rax)),
+        Jmp("inc_conclusion"),
+      ],
+      True,
+    ),
+  ),
+  #(
+    "inc_conclusion",
+    Block(
+      [
+        Addq(Imm(8), Reg(Rsp)),
+        Popq(Reg(Rbp)),
+        Retq,
+      ],
+      False,
+    ),
+  ),
+  #(
+    "main",
+    Block(
+      [
+        Pushq(Reg(Rbp)),
+        Pushq(Reg(Rbx)),
+        Pushq(Reg(R12)),
+        Pushq(Reg(R13)),
+        Pushq(Reg(R14)),
+        Movq(Reg(Rsp), Reg(Rbp)),
+        Subq(Imm(8), Reg(Rsp)),
+        Movq(Imm(65536), Reg(Rdi)),
+        Movq(Imm(65536), Reg(Rsi)),
+        Callq("initialize"),
+        Movq(
+          Global("rootstack_begin"),
+          Reg(R15),
+        ),
+        Movq(Imm(0), Deref(R15, 0)),
+        Addq(Imm(8), Reg(R15)),
+        Leaq(Global("map"), Reg(Rbx)),
+        Leaq(Global("inc"), Reg(R12)),
+        Movq(Imm(0), Reg(R13)),
+        Movq(Imm(41), Reg(R14)),
+        Movq(
+          Global("free_ptr"),
+          Reg(Rcx),
+        ),
+        Addq(Imm(24), Reg(Rcx)),
+        Movq(
+          Global("fromspace_end"),
+          Reg(Rdx),
+        ),
+        Cmpq(Reg(Rdx), Reg(Rcx)),
+        JmpIf(L, "main_block_2"),
+        Jmp("main_block_3"),
+      ],
+      True,
+    ),
+  ),
+  #(
+    "main_block_1",
+    Block(
+      [
+        Movq(
+          Global("free_ptr"),
+          Reg(R11),
+        ),
+        Addq(
+          Imm(24),
+          Global("free_ptr"),
+        ),
+        Movq(Imm(4), Deref(R11, 0)),
+        Movq(Reg(R11), Deref(R15, 0)),
+        Movq(Deref(R15, 0), Reg(R11)),
+        Movq(Reg(R13), Deref(R11, 8)),
+        Movq(Imm(0), Reg(Rcx)),
+        Movq(Deref(R15, 0), Reg(R11)),
+        Movq(Reg(R14), Deref(R11, 16)),
+        Movq(Imm(0), Reg(Rcx)),
+        Movq(Deref(R15, 0), Reg(Rcx)),
+        Movq(Reg(R12), Reg(Rdi)),
+        Movq(Reg(Rcx), Reg(Rsi)),
+        IndirectCallq(Reg(Rbx)),
+        Movq(Reg(Rax), Deref(R15, 0)),
+        Movq(Deref(R15, 0), Reg(R11)),
+        Movq(Deref(R11, 16), Reg(Rax)),
+        Jmp("main_conclusion"),
+      ],
+      False,
+    ),
+  ),
+  #(
+    "main_block_2",
+    Block(
+      [
+        Movq(Imm(0), Reg(Rcx)),
+        Jmp("main_block_1"),
+      ],
+      False,
+    ),
+  ),
+  #(
+    "main_block_3",
+    Block(
+      [
+        Movq(Reg(R15), Reg(Rdi)),
+        Movq(Imm(24), Reg(Rsi)),
+        Callq("collect"),
+        Jmp("main_block_1"),
+      ],
+      False,
+    ),
+  ),
+  #(
+    "main_conclusion",
+    Block(
+      [
+        Subq(Imm(8), Reg(R15)),
+        Addq(Imm(8), Reg(Rsp)),
+        Popq(Reg(R14)),
+        Popq(Reg(R13)),
+        Popq(Reg(R12)),
+        Popq(Reg(Rbx)),
+        Popq(Reg(Rbp)),
+        Retq,
+      ],
+      False,
+    ),
+  ),
+  #(
+    "map",
+    Block(
+      [
+        Pushq(Reg(Rbp)),
+        Pushq(Reg(Rbx)),
+        Pushq(Reg(R12)),
+        Movq(Reg(Rsp), Reg(Rbp)),
+        Subq(Imm(8), Reg(Rsp)),
+        Movq(Imm(0), Deref(R15, 0)),
+        Addq(Imm(8), Reg(R15)),
+        Movq(Reg(Rdi), Reg(Rbx)),
+        Movq(Reg(Rsi), Deref(R15, 0)),
+        Movq(Deref(R15, 0), Reg(R11)),
+        Movq(Deref(R11, 8), Reg(Rcx)),
+        Movq(Reg(Rcx), Reg(Rdi)),
+        IndirectCallq(Reg(Rbx)),
+        Movq(Reg(Rax), Reg(R12)),
+        Movq(Deref(R15, 0), Reg(R11)),
+        Movq(Deref(R11, 16), Reg(Rcx)),
+        Movq(Reg(Rcx), Reg(Rdi)),
+        IndirectCallq(Reg(Rbx)),
+        Movq(Reg(Rax), Reg(Rbx)),
+        Movq(
+          Global("free_ptr"),
+          Reg(Rcx),
+        ),
+        Addq(Imm(24), Reg(Rcx)),
+        Movq(
+          Global("fromspace_end"),
+          Reg(Rdx),
+        ),
+        Cmpq(Reg(Rdx), Reg(Rcx)),
+        JmpIf(L, "map_block_2"),
+        Jmp("map_block_3"),
+      ],
+      True,
+    ),
+  ),
+  #(
+    "map_block_1",
+    Block(
+      [
+        Movq(
+          Global("free_ptr"),
+          Reg(R11),
+        ),
+        Addq(
+          Imm(24),
+          Global("free_ptr"),
+        ),
+        Movq(Imm(4), Deref(R11, 0)),
+        Movq(Reg(R11), Deref(R15, 0)),
+        Movq(Deref(R15, 0), Reg(R11)),
+        Movq(Reg(R12), Deref(R11, 8)),
+        Movq(Imm(0), Reg(Rcx)),
+        Movq(Deref(R15, 0), Reg(R11)),
+        Movq(Reg(Rbx), Deref(R11, 16)),
+        Movq(Imm(0), Reg(Rcx)),
+        Movq(Deref(R15, 0), Reg(Rax)),
+        Jmp("map_conclusion"),
+      ],
+      False,
+    ),
+  ),
+  #(
+    "map_block_2",
+    Block(
+      [
+        Movq(Imm(0), Reg(Rcx)),
+        Jmp("map_block_1"),
+      ],
+      False,
+    ),
+  ),
+  #(
+    "map_block_3",
+    Block(
+      [
+        Movq(Reg(R15), Reg(Rdi)),
+        Movq(Imm(24), Reg(Rsi)),
+        Callq("collect"),
+        Jmp("map_block_1"),
+      ],
+      False,
+    ),
+  ),
+  #(
+    "map_conclusion",
+    Block(
+      [
+        Subq(Imm(8), Reg(R15)),
+        Addq(Imm(8), Reg(Rsp)),
+        Popq(Reg(R12)),
+        Popq(Reg(Rbx)),
+        Popq(Reg(Rbp)),
+        Retq,
+      ],
+      False,
+    ),
+  ),
+])

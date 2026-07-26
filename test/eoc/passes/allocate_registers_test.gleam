@@ -233,7 +233,7 @@ pub fn allocate_registers_vectors_multiple_roots_test() {
     |> prepasses()
 
   let assert X86Program([main]) = allocate_registers.allocate_registers(p)
-  assert main.root_stack_size == 3
+  assert main.root_stack_size == 2
 }
 
 pub fn allocate_registers_functions_test() {
